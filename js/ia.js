@@ -51,19 +51,10 @@ function construirPrompt(obtenerDatosPaciente, obtenerValoresFormulario, getUlti
     const totalImagenes = imagenesDataUrl.filter(Boolean).length + capturasMicroscopio.length;
     const hayImagenes = totalImagenes > 0;
 
-    let lineasValores;
-    if (hayImagenes) {
-        lineasValores = hallazgos.length > 0
-            ? hallazgos.map(h => `  ${h.nombre}: ${h.valor} ${h.unidad || ''} (${h.direccion} · ${h.gravedad})`).join('\n')
-            : 'Todos los valores dentro de rangos de referencia.';
-    } else {
-        lineasValores = Object.entries(valores).map(([clave, valor]) => {
-            const ref = refEspecie[clave];
-            const nombre = ref?.nombre || clave;
-            const unidad = ref?.unidad || '';
-            return `  ${nombre}: ${valor} ${unidad}`;
-        }).join('\n') || 'Sin valores ingresados';
-    }
+    // SIEMPRE enviar solo hallazgos anormales para reducir razonamiento del modelo
+    const lineasValores = hallazgos.length > 0
+        ? hallazgos.map(h => `  ${h.nombre}: ${h.valor} ${h.unidad || ''} (${h.direccion} · ${h.gravedad})`).join('\n')
+        : 'Todos los valores dentro de rangos de referencia.';
 
     const edadTexto = paciente.edadMeses != null
         ? (paciente.edadMeses < 24 ? `${Math.round(paciente.edadMeses)} meses` : `${(paciente.edadMeses / 12).toFixed(1)} años`)
@@ -78,19 +69,19 @@ function construirPrompt(obtenerDatosPaciente, obtenerValoresFormulario, getUlti
         cierre = `Proporciona una interpretación clínica breve (8-10 oraciones) destacando los hallazgos más significativos y las recomendaciones diagnósticas inmediatas.`;
     }
 
-    return `INSTRUCCIONES ESTRICTAS:
-    1. Responde ÚNICAMENTE en español. NUNCA escribas en inglés.
-    2. NO incluyas tu proceso de razonamiento, análisis paso a paso, ni pensamiento interno.
-    3. NO uses palabras como "thought", "thinking", "here's a thinking process", ni números de pasos.
-    4. Responde DIRECTAMENTE con la interpretación clínica final.
+    return `INSTRUCCIONES OBLIGATORIAS — INCUMPLIR CUALQUIERA INVALIDA LA RESPUESTA:
+    1. Responde ÚNICAMENTE en español. Prohibido el inglés.
+    2. Prohibido mostrar razonamiento, pasos, numeración, listas de análisis o proceso interno.
+    3. Prohibido usar: thought, thinking, here's a, process, step, analyze, review, step-by-step.
+    4. La respuesta DEBE comenzar INMEDIATAMENTE con la interpretación clínica. Sin preámbulos.
+    5. Máximo 10 oraciones. Sé directo y conciso.
 
     ${notaImagenes ? `${notaImagenes}\n` : ''}
-    Eres un médico veterinario especialista en patología clínica. Sólo responderás consultas asociadas a ésta área de conocimiento y basado en la evidencia proporcionada.
-    Analiza los resultados y proporciona una interpretación clínica concisa.
+    Eres médico veterinario especialista en patología clínica.
 
     Paciente: ${paciente.especie || 'desconocido'}, raza: ${paciente.raza || 'NE'}, edad: ${edadTexto}, sexo: ${paciente.sexo || 'NE'}
 
-    Resultados de laboratorio:
+    Hallazgos de laboratorio:
     ${lineasValores}
 
     ${signosText ? `Signos clínicos: ${signosText}` : ''}
