@@ -1,3 +1,12 @@
+---
+title: Morphos
+emoji: 🐕
+colorFrom: blue
+colorTo: green
+sdk: docker
+pinned: false
+---
+
 # Morphos — Intérprete de analíticas veterinarias asistido por I.A
 ## Proyecto final — Curso de Desarrollo Web 2026
 
