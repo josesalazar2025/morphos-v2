@@ -48,6 +48,9 @@ function construirPrompt(obtenerDatosPaciente, obtenerValoresFormulario, getUlti
     const signosText = document.getElementById('signos-clinicos').value.trim();
     const refEspecie = paciente.especie ? (getReferencias()[paciente.especie] || {}) : {};
 
+    const totalImagenes = imagenesDataUrl.filter(Boolean).length + capturasMicroscopio.length;
+    const hayImagenes = totalImagenes > 0;
+
     const lineasValores = Object.entries(valores).map(([clave, valor]) => {
         const ref = refEspecie[clave];
         const nombre = ref?.nombre || clave;
@@ -66,21 +69,48 @@ function construirPrompt(obtenerDatosPaciente, obtenerValoresFormulario, getUlti
         ? (paciente.edadMeses < 24 ? `${Math.round(paciente.edadMeses)} meses` : `${(paciente.edadMeses / 12).toFixed(1)} años`)
         : 'desconocida';
 
-    return `IMPORTANTE: Responde ÚNICAMENTE en español. Do not write in English under any circumstance.
+    if (hayImagenes) {
+        return `Responde en español.
 
-    Eres un médico veterinario especialista en patología clínica. Sólo responderás consultas asociadas a ésta área de conocimiento y basado en la evidencia proporcionada.
-    Si te envían imágenes de citología debes hacer una revisión exhaustiva de la morfología celular, identificar lesiones, patrones anormales, presencia de hemoparásitos intracelulares y extracelulares (Anaplasma, Babesia, Ehrlichia, Hepatozoon, Piroplasma, Mycoplasma, etc) o inclusiones citoplasmáticas.
-    Analiza los resultados y proporciona una interpretación clínica concisa.
+Eres médico veterinario especialista en patología clínica.
 
-    Paciente: ${paciente.especie || 'desconocido'}, raza: ${paciente.raza || 'NE'}, edad: ${edadTexto}, sexo: ${paciente.sexo || 'NE'}
+Se adjuntan ${totalImagenes} imagen${totalImagenes > 1 ? 'es' : ''} de citología. Tu tarea principal es analizar estas imágenes.
 
-    Resultados de laboratorio:
-    ${lineasValores}
+Instrucciones para el análisis de imágenes:
+- Examina la morfología celular en detalle
+- Identifica lesiones celulares y patrones anormales
+- Busca hemoparásitos intracelulares y extracelulares (Anaplasma, Babesia, Ehrlichia, Hepatozoon, Piroplasma, Mycoplasma)
+- Identifica inclusiones citoplasmáticas
+- Describe tus hallazgos citológicos
 
-    Patrones detectados:
-    ${lineasPatrones}
-    ${signosText ? `\nSignos clínicos: ${signosText}` : ''}
-    Proporciona una interpretación clínica breve (6-8 oraciones) destacando los hallazgos más significativos y las recomendaciones diagnósticas inmediatas.`;
+Una vez analizadas las imágenes, integra los hallazgos con los siguientes datos:
+
+Paciente: ${paciente.especie || 'desconocido'}, raza: ${paciente.raza || 'NE'}, edad: ${edadTexto}, sexo: ${paciente.sexo || 'NE'}
+
+Resultados de laboratorio:
+${lineasValores}
+
+Patrones detectados:
+${lineasPatrones}
+${signosText ? `\nSignos clínicos: ${signosText}` : ''}
+
+Estructura tu respuesta en dos partes: (1) Hallazgos citológicos de las imágenes, (2) Integración con laboratorio y recomendaciones. Máximo 10 oraciones en total.`;
+    }
+
+    return `Responde en español.
+
+Eres médico veterinario especialista en patología clínica.
+
+Paciente: ${paciente.especie || 'desconocido'}, raza: ${paciente.raza || 'NE'}, edad: ${edadTexto}, sexo: ${paciente.sexo || 'NE'}
+
+Resultados de laboratorio:
+${lineasValores}
+
+Patrones detectados:
+${lineasPatrones}
+${signosText ? `\nSignos clínicos: ${signosText}` : ''}
+
+Proporciona una interpretación clínica breve (6-8 oraciones) destacando los hallazgos más significativos y las recomendaciones diagnósticas inmediatas.`;
 }
 
 function limpiarRespuesta(text) {
