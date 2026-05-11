@@ -32,4 +32,7 @@ saved_model/**/* filter=lfs diff=lfs merge=lfs -text
 *.xz filter=lfs diff=lfs merge=lfs -text
 *.zip filter=lfs diff=lfs merge=lfs -text
 *.zst filter=lfs diff=lfs merge=lfs -text
-*tfevents* filter=lfs diff=lfs merge=lfs -text
+*tfevents* filter=lfs diff=lfs merge=lfs -text*.ttf filter=xet
+*.otf filter=xet
+*.woff filter=xet
+*.woff2 filter=xet
