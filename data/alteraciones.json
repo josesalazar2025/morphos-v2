@@ -1,0 +1,181 @@
+{
+  "anemia": {
+    "nombre": "Anemia",
+    "prefijo": "Parámetros eritrocitarios disminuidos.",
+    "etiologias": {
+      "ferropenia":  "Compatible con déficit de hierro (microcitosis + hipocromia marcada) o anemia de enfermedad crónica. Evaluar reticulocitos para valorar respuesta regenerativa; considerar electroforesis de proteínas si se sospecha proceso crónico.",
+      "macrocitica": "Compatible con anemia regenerativa (reticulocitosis activa), déficit de cobalamina/folato o mielodisplasia. En felinos descartar FeLV como causa de macrocitosis no regenerativa.",
+      "normocitica": "Compatible con anemia no regenerativa (enfermedad crónica, insuficiencia renal, fallo medular), hemorragia aguda reciente o hemólisis. En felinos considerar Mycoplasma haemofelis y FeLV/FIV."
+    }
+  },
+  "eritrocitosis": {
+    "nombre": "Eritrocitosis",
+    "descripcion": "Aumento de la masa eritrocitaria. Distinguir eritrocitosis relativa (deshidratación, contracción esplénica) de absoluta. En la forma absoluta evaluar hipoxia crónica (cardiopatía, broncopatía), eritrocitosis primaria (policitemia vera) o producción ectópica de eritropoyetina (carcinoma renal)."
+  },
+  "leucocitosis_neutrofilica": {
+    "nombre": "Leucocitosis neutrofílica",
+    "descripcion": "Compatible con infección bacteriana, inflamación aguda, estrés fisiológico o necrosis tisular. La presencia de neutrófilos en banda (desviación a la izquierda) indica alta demanda medular y sugiere proceso infeccioso o inflamatorio grave. En recuentos extremos descartar leucemia mieloide."
+  },
+  "leucocitosis_linfocitica": {
+    "nombre": "Leucocitosis linfocítica",
+    "descripcion": "Compatible con estimulación antigénica crónica, linfoma o excitación fisiológica (frecuente en felinos). En felinos jóvenes con linfocitosis marcada considerar linfoma de células grandes de alto grado."
+  },
+  "eosinofilia": {
+    "nombre": "Eosinofilia",
+    "descripcion": "Compatible con parasitismo (especialmente tisular), hipersensibilidad/alergia, enfermedad inflamatoria intestinal eosinofílica, tumores mastocitarios o síndrome hipereosinofílico idiopático (más frecuente en felinos)."
+  },
+  "leucocitosis": {
+    "nombre": "Leucocitosis",
+    "descripcion": "Aumento del recuento leucocitario sin predominio diferencial claro. Evaluar diferencial completo para orientar la etiología."
+  },
+  "leucopenia": {
+    "nombre": "Leucopenia",
+    "descripcion": "Compatible con infección viral grave (parvovirus canino — causa más frecuente en cachorros no vacunados —, FeLV/FIV en felinos, moquillo), sepsis con consumo de neutrófilos, toxicidad por fármacos o supresión medular."
+  },
+  "neutropenia": {
+    "nombre": "Neutropenia",
+    "descripcion": "Recuento de neutrófilos disminuido. Compatible con infección viral (parvovirus, FeLV/FIV), sepsis con consumo, toxicidad farmacológica (quimioterapia, AINEs, metimazol en felinos) o supresión medular. Si < 1.000/μL existe riesgo elevado de infección secundaria grave; valorar profilaxis antibiótica."
+  },
+  "linfopenia": {
+    "nombre": "Linfopenia",
+    "descripcion": "Compatible con estrés agudo o hipercortisolismo (endógeno o iatrogénico por glucocorticoides), quilotórax o linfangiectasia con pérdida de linfocitos, infección viral (parvovirus, FeLV/FIV) o inmunodeficiencia grave."
+  },
+  "trombocitopenia": {
+    "nombre": "Trombocitopenia",
+    "descripcion": "Evaluar trombocitopenia inmunomediada primaria (IMT), enfermedades vectoriales (Ehrlichia, Anaplasma, Babesia, Leishmania), CID o supresión medular. Recuento < 50.000/μL conlleva riesgo de sangrado espontáneo; < 20.000/μL requiere actuación urgente."
+  },
+  "trombocitosis": {
+    "nombre": "Trombocitosis",
+    "descripcion": "Puede ser reactiva (inflamación, ferropenia, esplenectomía, traumatismo) o primaria (trombocitemia esencial, neoplasia mieloproliferativa). La forma reactiva es la más frecuente y generalmente no requiere tratamiento específico."
+  },
+  "dano_hepatocelular": {
+    "nombre": "Daño hepatocelular",
+    "descripcion": "Elevación de transaminasas compatible con hepatitis (infecciosa, tóxica, inmunomediada), toxicosis por fármacos o plantas, lipidosis hepática (principal en felinos anoréxicos) o necrosis hepatocelular. Correlacionar con bilirrubina y función sintética (albúmina, BUN, glucosa)."
+  },
+  "alt_aislada": {
+    "nombre": "Elevación de ALT aislada",
+    "descripcion": "Daño hepatocelular leve o lesión muscular (la ALT también se encuentra en músculo esquelético, especialmente en felinos). Descartar hepatopatía incipiente, reacción a fármacos (fenobarbital, glucocorticoides) o vacunación reciente. Recomendable repetir la analítica en 2–4 semanas."
+  },
+  "patron_colestasico": {
+    "nombre": "Patrón colestásico",
+    "descripcion": {
+      "canino": "Compatible con colestasis intrahepática o extrahepática, hiperadrenocorticismo (HAC), hepatopatía vacuolar por glucocorticoides o inducción enzimática (fenobarbital, primidona). La ALP canina tiene una semivida larga; evaluar en contexto clínico.",
+      "felino": "En felinos la GGT es más específica de colestasis que la ALP. Considerar el complejo colangitis-colangiohepatitis (neutrofílica aguda o linfocítica crónica), lipidosis hepática y triaditis (colangitis + pancreatitis + enfermedad inflamatoria intestinal simultáneas). La ALP fisiológicamente baja en felinos hace que cualquier elevación sea clínicamente relevante."
+    }
+  },
+  "hiperbilirrubinemia": {
+    "nombre": "Hiperbilirrubinemia",
+    "descripcion": "Clasificar en prehepática (hemólisis — suele acompañarse de anemia y esferocitosis), hepática (hepatopatía grave, lipidosis) o posthepática (obstrucción biliar — colelitiasis, colangiocarcinoma, pancreatitis compresiva). Correlacionar con bilirrubina directa/indirecta y hallazgos ecográficos."
+  },
+  "azotemia": {
+    "nombre": "Azotemia",
+    "descripcion": "Elevación de BUN y creatinina. Clasificar en prerrenal (deshidratación, hipoperfusión), renal (ERC o IRA) o posrenal (obstrucción, rotura urinaria). Estadificar según criterios IRIS si se sospecha ERC. Correlacionar con densidad urinaria, urianálisis y presión arterial."
+  },
+  "hiperuremia_bun": {
+    "nombre": "Hiperuremia aislada (BUN)",
+    "descripcion": "BUN elevado con creatinina normal. Compatible con dieta hiperproteica, deshidratación leve, hemorragia gastrointestinal alta (digestión de sangre) o catabolismo aumentado."
+  },
+  "bun_disminuido": {
+    "nombre": "BUN disminuido",
+    "descripcion": "Compatible con insuficiencia hepática grave (shunt portosistémico, cirrosis — incapacidad para sintetizar urea), malnutrición proteica grave o poliuria marcada con dilución. Evaluar ácidos biliares y amoniemia si se sospecha disfunción hepática."
+  },
+  "creatinina_aislada": {
+    "nombre": "Creatinina elevada (BUN normal)",
+    "descripcion": "Creatinina elevada con BUN normal o bajo. Puede reflejar inicio de ERC con BUN artificialmente bajo por baja masa muscular o dieta hipoproteica. Realizar urianálisis con densidad urinaria para descartar ERC estadio I–II (IRIS). Repetir en 2–4 semanas."
+  },
+  "hiperglucemia": {
+    "nombre": "Hiperglucemia",
+    "descripcion": {
+      "canino": "Compatible con diabetes mellitus, hiperadrenocorticismo (HAC), glucocorticoides iatrogénicos, pancreatitis o hiperglucemia por estrés. Evaluar poliuria/polidipsia y fructosamina para confirmar hiperglucemia persistente.",
+      "felino": "Frecuente hiperglucemia por estrés en felinos (puede superar 400 mg/dL). Si persiste o se acompaña de poliuria/polidipsia, considerar diabetes mellitus y correlacionar con fructosamina. Descartar también acromegalia (hipersomatotropismo felino) como causa de diabetes resistente a insulina."
+    }
+  },
+  "hipoglucemia": {
+    "nombre": "Hipoglucemia",
+    "descripcion": "Compatible con insulinoma (principal en adultos/geriátricos), sepsis grave, insuficiencia hepática, glucogenosis, neonatos/cachorros de razas toy o inanición prolongada. Requiere evaluación urgente si la gravedad es moderada o grave; documentar con glucemia simultánea e insulinemia en ayuno."
+  },
+  "hiperproteinemia": {
+    "nombre": "Hiperproteinemia",
+    "descripcion": "Proteína total elevada. La causa más frecuente es deshidratación (relativa). Si el paciente está bien hidratado considerar gammapatía monoclonal (mieloma múltiple, ehrlichiosis crónica, leishmaniosis) o policlonal (inflamación crónica persistente, infección). Evaluar relación albúmina/globulinas y considerar electroforesis de proteínas."
+  },
+  "hipoproteinemia_hipoalbuminemia": {
+    "nombre": "Hipoproteinemia / Hipoalbuminemia",
+    "descripcion": "Compatible con enteropatía con pérdida de proteínas (EPP — linfangiectasia, EII grave), nefropatía con pérdida de proteínas (EPR — glomerulonefritis, amiloidosis) o malnutrición grave. Evaluar proteinuria (cociente UPC) y ecografía intestinal."
+  },
+  "hipoalbuminemia": {
+    "nombre": "Hipoalbuminemia",
+    "descripcion": "Hipoalbuminemia con proteína total normal o elevada (globulinas normales/altas): compatible con insuficiencia hepática (reducción de síntesis), distribución al tercer espacio (ascitis, efusión) o inflamación aguda (albúmina como proteína de fase aguda negativa). Correlacionar con ácidos biliares y función hepática."
+  },
+  "ratio_nak": {
+    "nombre": "Ratio Na:K reducido — sospecha de hipoadrenocorticismo",
+    "descripcion": "Ratio Na:K de {ratio} (referencia > 27). Altamente compatible con hipoadrenocorticismo (enfermedad de Addison). También puede observarse en efusiones (quilotórax, derrame pleural), nefropatía con pérdida de sodio o diarrea grave. Confirmar con test de estimulación con ACTH (cortisol basal y a los 60 minutos)."
+  },
+  "hipercalcemia": {
+    "nombre": "Hipercalcemia",
+    "descripcion": "Compatible con hipercalcemia de malignidad (linfoma — más frecuente en el perro —, adenocarcinoma apocrino de sacos anales, tumores osteolíticos), hiperparatiroidismo primario, hipervitaminosis D (intoxicación por raticidas, suplementos), granulomatosis (hongos, micobacterias) o hipoadrenocorticismo. Confirmar con calcio ionizado y PTH/PTHrP."
+  },
+  "hipocalcemia": {
+    "nombre": "Hipocalcemia",
+    "descripcion": "Compatible con hipoparatiroidismo (postquirúrgico — tiroidectomía en felinos — o idiopático), eclampsia puerperal (tetania lactante en hembras periparturientas), pancreatitis aguda grave, hipoalbuminemia (evaluar calcio ionizado corregido) o hipomagnesemia concurrente que perpetúa la hipocalcemia. La tetania se presenta generalmente por debajo de 6,5 mg/dL."
+  },
+  "hipernatremia": {
+    "nombre": "Hipernatremia",
+    "descripcion": "Compatible con déficit de agua libre (deshidratación hipotónica, diabetes insípida central o nefrogénica, acceso limitado al agua), pérdidas hipotónicas gastrointestinales o iatrogénica (soluciones hipertónicas). Puede asociarse a signos neurológicos graves (depresión, convulsiones) si la instauración es rápida. La corrección debe ser gradual para evitar edema cerebral."
+  },
+  "hiponatremia": {
+    "nombre": "Hiponatremia",
+    "descripcion": "Compatible con hipoadrenocorticismo (Addison — causa principal en animales jóvenes), pérdidas digestivas hipotónicas (vómito, diarrea), efusiones en tercer espacio (ascitis, derrame pleural), insuficiencia cardíaca congestiva, hepatopatía crónica o SIADH. Evaluar osmolaridad plasmática y ratio Na:K para orientar la etiología."
+  },
+  "hiperpotasemia": {
+    "nombre": "Hiperpotasemia",
+    "descripcion": "Compatible con insuficiencia renal (aguda o crónica grave), hipoadrenocorticismo, acidosis metabólica grave, obstrucción uretral (especialmente en felinos), traumatismo muscular masivo (rabdomiólisis) o pseudohiperpotasemia por hemólisis in vitro. Evaluar siempre ECG si K⁺ > 6,5 mEq/L por riesgo de arritmias."
+  },
+  "hipopotasemia": {
+    "nombre": "Hipopotasemia",
+    "descripcion": "Compatible con pérdidas digestivas (vómito crónico, diarrea), diuresis (diuréticos, poliuria), alcalosis metabólica, anorexia prolongada o diabetes mellitus mal controlada. En felinos la hipopotasemia grave puede causar miopatía hipopotasémica (cuadro de flexión cervical ventral). Reponer con cautela para evitar hiperpotasemia de rebote."
+  },
+  "hiperfosforemia": {
+    "nombre": "Hiperfosforemia",
+    "descripcion": "Frecuente en enfermedad renal crónica (ERC); la retención de fósforo contribuye al hiperparatiroidismo renal secundario y acelera la progresión del daño tubular. Considerar también hipoparatiroidismo, hipervitaminosis D, lisis tumoral o hemólisis artefactual. Clave en estadiaje IRIS y planificación dietética (restricción de fósforo en ERC estadio ≥ II)."
+  },
+  "hiposthenuria": {
+    "nombre": "Hiposthenuria (USG < 1.008) — concentración muy disminuida",
+    "descripcion": "Densidad urinaria muy baja. Compatible con diabetes insípida central o nefrogénica, hiperadrenocorticismo (HAC), hipercalcemia, hipopotasemia o administración de diuréticos. En felinos, considerar acromegalia y HAC. Requiere prueba de privación de agua o test de vasopresina para diferenciar los subtipos de diabetes insípida."
+  },
+  "isosthenuria": {
+    "nombre": "Isosthenuria (USG 1.008–1.013) — capacidad de concentración deteriorada",
+    "descripcion": "La densidad urinaria isostenúrica refleja incapacidad para concentrar la orina por encima de la osmolaridad plasmática. Compatible con ERC moderada–grave (pérdida tubular), pielonefritis, hiperadrenocorticismo o diabetes insípida parcial. Evaluar función renal completa (creatinina, BUN) y presión arterial."
+  },
+  "hipotiroidismo": {
+    "nombre": "Hipotiroidismo — T4 disminuida",
+    "descripcion": {
+      "canino": "T4 total disminuida. El hipotiroidismo canino es la endocrinopatía más frecuente en perros adultos de mediana edad. Signos clásicos: letargia, obesidad, alopecia bilateral simétrica, intolerancia al frío. Confirmar con T4 libre por diálisis de equilibrio. Los fármacos (glucocorticoides, fenobarbital, sulfonamidas) y la enfermedad sistémica pueden suprimir T4 falsamente (síndrome del enfermo eutiroideo)."
+    }
+  },
+  "hipertiroidismo": {
+    "nombre": "Hipertiroidismo — T4 elevada",
+    "descripcion": {
+      "canino": "T4 total elevada en caninos: infrecuente; descartar adenocarcinoma tiroideo o suplementación exógena. Evaluar masa cervical palpable y ecografía tiroidea.",
+      "felino": "Causa endocrina más frecuente en gatos mayores de 8 años. Compatible con adenoma o hiperplasia nodular tiroidea. Signos clásicos: pérdida de peso con polifagia, hiperactividad, vómito, taquicardia. Confirmar con T4 libre si T4 total en zona limítrofe. Evaluar función renal antes de iniciar tratamiento (el hipertiroidismo puede enmascarar ERC subyacente)."
+    }
+  },
+  "hiperadrenocorticismo": {
+    "nombre": "Hiperadrenocorticismo (Cushing) — cortisol post-ACTH elevado",
+    "descripcion": {
+      "canino": "Cortisol post-ACTH elevado compatible con hiperadrenocorticismo (HAC). El 85% de los casos son hipofisarios (PDH); el 15% adrenales (ADH). Signos clásicos: poliuria/polidipsia, polifagia, abdomen péndulo, alopecia, calcinosis cutis. Confirmar con prueba de supresión con dexametasona a dosis baja (PSDDB) y ecografía abdominal.",
+      "felino": "HAC felino es infrecuente; frecuentemente asociado a diabetes mellitus resistente a insulina. Sospechar en gatos diabéticos de difícil control. Signos: piel frágil, PU/PD marcada, abdomen distendido. Confirmar con PSDDB o test de ACTH."
+    }
+  },
+  "hipoadrenocorticismo_cortisol": {
+    "nombre": "Hipoadrenocorticismo (Addison) — cortisol post-ACTH bajo",
+    "descripcion": "Respuesta adrenocortical insuficiente al test de estimulación con ACTH. Diagnóstico de hipoadrenocorticismo si cortisol post-ACTH < 2 μg/dL (canino) o < 3,5 μg/dL (felino). Correlacionar con electrolitos (ratio Na:K < 27 en forma clásica). La forma atípica (solo déficit glucocorticoide) cursa con electrolitos normales. Puede presentarse como crisis addisoniana (colapso, hipoglucemia, bradiarritmia)."
+  },
+  "cortisol_basal_bajo": {
+    "nombre": "Cortisol basal bajo — posible hipoadrenocorticismo",
+    "descripcion": "Cortisol basal disminuido. Un valor < 1 μg/dL (canino) o < 0,5 μg/dL (felino) es altamente sugestivo de hipoadrenocorticismo; confirmar con test de estimulación con ACTH. Valores basales < 2 μg/dL justifican la realización del test. Evaluar junto a electrolitos y ratio Na:K."
+  },
+  "deficit_insulina": {
+    "nombre": "Posible déficit de insulina — hiperglucemia con insulina baja",
+    "descripcion": "Insulinemia baja en presencia de hiperglucemia sugiere déficit insulínico relativo o absoluto compatible con diabetes mellitus tipo 1 (destrucción de células β) o pancreatitis crónica con afectación exocrina y endocrina. Correlacionar con fructosamina para confirmar cronicidad. En felinos, la diabetes mellitus tipo 2 (resistencia insulínica) es más frecuente y puede cursar con insulina normal o alta."
+  }
+}

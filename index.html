@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Morphos - Interprete de Analíticas potenciado con IA</title>
+    <meta name="description" content="Morphos detecta patrones clínicos en analíticas veterinarias en tiempo real e interpreta los resultados con IA para perros y gatos.">
+    
+    <link rel="preconnect" href="https://blackmistcode-morphos-medgemma.hf.space">
+    <link rel="preconnect" href="https://api.semanticscholar.org">
+    <link rel="dns-prefetch" href="https://eutils.ncbi.nlm.nih.gov">
+    <link rel="dns-prefetch" href="https://pubmed.ncbi.nlm.nih.gov">
+    <link rel="dns-prefetch" href="https://doi.org">
+
+    <link rel="preload" href="assets/fonts/Inter/Inter-VariableFont_opsz,wght.ttf" as="font" type="font/ttf" crossorigin>
+    <link rel="preload" href="assets/fonts/Inter/Inter-Italic-VariableFont_opsz,wght.ttf" as="font" type="font/ttf" crossorigin>
+    <link rel="preload" href="assets/fonts/JetBrains_Mono/JetBrainsMono-VariableFont_wght.ttf" as="font" type="font/ttf" crossorigin>
+
+    <link rel="icon" href="assets/icons/favicon.ico">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+    <h1 id="logo">
+        <svg viewBox="0 -960 960 960" aria-hidden="true"><path d="M600-90q-12 0-21-9t-9-21v-41q-28-3-53-13t-47-27l-39 39q-9 8-21.5 8.5T388-162q-9-9-9-21.5t9-21.5l40-39q-5-7-9.5-14.5T410-274l-31-62-51 51q-9 8-21.5 8.5T285-285q-9-9-9-21t9-21l51-52-62-31q-7-4-13.5-7.5T248-426l-35 35q-9 8-21.5 8.5T170-391q-9-9-9-21t9-21l34-34q-17-22-28.5-48T161-570h-41q-12 0-21-9t-9-21q0-13 9-21.5t21-8.5h43q5-24 14.5-46t23.5-41l-34-34q-9-9-9-21t9-21q9-9 21-9t21 9l34 34q19-14 41-23.5t46-14.5v-43q0-13 9-21.5t21-8.5q13 0 21.5 8.5T390-840v41q29 3 55 14.5t49 29.5l34-34q9-9 21.5-9t21.5 9q9 9 9 21t-9 21l-36 36 8 12q4 6 7 13l30 60 48-49q9-9 21.5-9t21.5 9q9 9 9 21.5t-9 21.5l-50 49 65 33 16 10 16 10 39-39q9-9 21-9t21 9q9 9 9 21.5t-9 21.5l-39 38q16 21 26 46t13 52h41q13 0 21.5 8.5T870-360q0 12-8.5 21t-21.5 9h-43q-5 24-14 46t-23 41l32 32q9 9 9 21.5t-9 21.5q-9 8-21.5 8.5T749-168l-32-33q-19 14-41 23.5T630-163v43q0 12-8.5 21T600-90Zm-6-130q69 0 112-51.5T738-389q-6-35-26.5-63T659-496l-66-34q-20-11-36-27t-27-36l-34-66q-19-38-53.5-59.5T366-740q-69 0-112 51.5T222-571q6 35 26.5 63t52.5 44l66 33q20 11 36.5 27.5T431-367l33 66q19 38 53.5 59.5T594-220ZM380-540q25 0 42.5-17.5T440-600q0-25-17.5-42.5T380-660q-25 0-42.5 17.5T320-600q0 25 17.5 42.5T380-540Zm235.5 235.5Q630-319 630-340t-14.5-35.5Q601-390 580-390t-35.5 14.5Q530-361 530-340t14.5 35.5Q559-290 580-290t35.5-14.5ZM480-480Z"/></svg>
+        MORPHOS
+    </h1>
+    <div class="barra-paciente">
+        <h2 class="barra-paciente-titulo">Datos del paciente</h2>
+        <label for="pt-especie">Especie:</label>
+        <select id="pt-especie" name="especie">
+            <option value="">— seleccionar —</option>
+            <option>Canino</option>
+            <option>Felino</option>
+        </select>
+        <label for="pt-raza">Raza:</label>
+        <input id="pt-raza" name="raza" type="text" placeholder="ej. Labrador">
+        <label for="pt-edad">Edad:</label>
+        <input id="pt-edad" name="edad" type="number" min="0" placeholder="0">
+        <select id="pt-edad-unidad" name="edad-unidad" aria-label="Unidad de edad">
+            <option value="anyos">Años</option>
+            <option value="meses">Meses</option>
+        </select>
+        <label for="pt-sexo">Sexo:</label>
+        <select id="pt-sexo" name="sexo">
+            <option value="">— seleccionar —</option>
+            <option>Macho</option>
+            <option>Hembra</option>
+        </select>
+    </div>
+    <div class="acciones-cabecera">
+        <button class="boton boton-tema" id="btn-tema" type="button" aria-label="Cambiar tema" data-tooltip="Cambiar tema">
+            <svg class="icono-sol" viewBox="0 -960 960 960" aria-hidden="true"><path d="M565-395q35-35 35-85t-35-85q-35-35-85-35t-85 35q-35 35-35 85t35 85q35 35 85 35t85-35Zm-226.5 56.5Q280-397 280-480t58.5-141.5Q397-680 480-680t141.5 58.5Q680-563 680-480t-58.5 141.5Q563-280 480-280t-141.5-58.5ZM200-440H40v-80h160v80Zm720 0H760v-80h160v80ZM440-760v-160h80v160h-80Zm0 720v-160h80v160h-80ZM256-650l-101-97 57-59 96 100-52 56Zm492 496-97-101 53-55 101 97-57 59Zm-98-550 97-101 59 57-100 96-56-52ZM154-212l101-97 55 53-97 101-59-57Zm326-268Z"/></svg>
+            <svg class="icono-luna" viewBox="0 -960 960 960" aria-hidden="true"><path d="M480-120q-150 0-255-105T120-480q0-150 105-255t255-105q14 0 27.5 1t26.5 3q-41 29-65.5 75.5T444-660q0 90 63 153t153 63q55 0 101-24.5t75-65.5q2 13 3 26.5t1 27.5q0 150-105 255T480-120Zm0-80q88 0 158-48.5T740-375q-20 5-40 8t-40 3q-123 0-209.5-86.5T364-660q0-20 3-40t8-40q-78 32-126.5 102T200-480q0 116 82 198t198 82Zm-10-270Z"/></svg>
+        </button>
+        <button class="boton boton-usuario" id="btn-usuario" type="button" data-tooltip="Iniciar sesión"><svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="currentColor" aria-hidden="true"><path d="M480-120v-80h280v-560H480v-80h280q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H480Zm-80-160-55-58 102-102H120v-80h327L345-622l55-58 200 200-200 200Z"/></svg> Login</button>
+    </div>
+</header>
+
+<div id="examenes-subtabs-bar" hidden>
+    <button class="tab-examenes activo" data-subtab-target="panel-hema" data-tooltip="Hematología">Hemat.</button>
+    <button class="tab-examenes" data-subtab-target="panel-bioquim" data-tooltip="Bioquímica sanguínea">Bioq.</button>
+    <button class="tab-examenes" data-subtab-target="panel-uri" data-tooltip="Urianálisis">Uri.</button>
+    <button class="tab-examenes" data-subtab-target="panel-endo" data-tooltip="Perfil endocrino">Endo.</button>
+</div>
+
+<!-- GRID -->
+<main>
+
+    <!-- DATOS DEL PACIENTE -->
+    <section class="panel" id="panel-paciente">
+        <h2 class="panel-cabecera">Datos del paciente</h2>
+        <div class="panel-cuerpo panel-cuerpo--paciente">
+            <div class="fila-paciente">
+                <label for="mob-pt-especie">Especie</label>
+                <select id="mob-pt-especie">
+                    <option value="">— seleccionar —</option>
+                    <option value="Canino">Canino</option>
+                    <option value="Felino">Felino</option>
+                </select>
+            </div>
+            <div class="fila-paciente">
+                <label for="mob-pt-raza">Raza</label>
+                <input id="mob-pt-raza" type="text" placeholder="ej. Labrador">
+            </div>
+            <div class="fila-paciente">
+                <label for="mob-pt-edad">Edad</label>
+                <div class="fila-paciente-edad">
+                    <input id="mob-pt-edad" type="number" min="0" placeholder="0">
+                    <select id="mob-pt-edad-unidad" aria-label="Unidad de edad">
+                        <option value="anyos">Años</option>
+                        <option value="meses">Meses</option>
+                    </select>
+                </div>
+            </div>
+            <div class="fila-paciente">
+                <label for="mob-pt-sexo">Sexo</label>
+                <select id="mob-pt-sexo">
+                    <option value="">— seleccionar —</option>
+                    <option value="Macho">Macho</option>
+                    <option value="Hembra">Hembra</option>
+                </select>
+            </div>
+            <input type="file" id="pdf-input-paciente" class="pdf-input" accept=".pdf" hidden>
+            <button class="btn-importar-pdf btn-adjuntar-mob" type="button" data-panel="paciente" aria-label="Adjuntar PDF de exámenes">
+                <svg viewBox="0 -960 960 960" aria-hidden="true"><path d="M720-330q0 104-73 177T470-80q-104 0-177-73t-73-177v-370q0-75 52.5-127.5T400-880q75 0 127.5 52.5T580-700v350q0 46-32 78t-78 32q-46 0-78-32t-32-78v-370h80v370q0 13 8.5 21.5T470-320q13 0 21.5-8.5T500-350V-700q0-42-29-71t-71-29q-42 0-71 29t-29 71v370q0 71 49.5 120.5T470-160q71 0 120.5-49.5T640-330v-390h80v390Z"/></svg>
+                Adjuntar Exámenes
+            </button>
+            <div id="aviso-mob">
+                <strong>Aviso:</strong> La información proporcionada por Morphos y medGemma es orientativa y no sustituye el criterio de un profesional, herramienta exclusivamente para apoyo diagnóstico.
+            </div>
+            <p id="creditos-mob"><svg viewBox="0 -960 960 960" aria-hidden="true"><path d="M160-160q-33 0-56.5-23.5T80-240v-480q0-33 23.5-56.5T160-800h640q33 0 56.5 23.5T880-720v480q0 33-23.5 56.5T800-160H160Zm320-280L160-640v400h640v-400L480-440Zm0-80 320-200H160l320 200ZM160-640v-80 480-400Z"/></svg><a href="mailto:mvjose.salazar@gmail.com">Desarrollado por José Salazar &copy; 2026</a></p>
+        </div>
+    </section>
+
+    <!-- HEMATOLOGÍA -->
+    <section class="panel subpanel" id="panel-hema">
+        <h2 class="panel-cabecera">
+            Hematología
+            <input type="file" id="pdf-input-hema" class="pdf-input" accept=".pdf" hidden>
+            <button class="btn-limpiar-panel" type="button" data-panel="hema" aria-label="Limpiar campos Hematología" data-tooltip="Limpiar formulario">
+                <svg viewBox="0 -960 960 960" aria-hidden="true"><path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z"/></svg>
+            </button>
+            <button class="btn-importar-pdf" type="button" data-panel="hema" aria-label="Importar PDF Hematología" data-tooltip="Adjuntar PDF">
+                <svg viewBox="0 -960 960 960" aria-hidden="true"><path d="M720-330q0 104-73 177T470-80q-104 0-177-73t-73-177v-370q0-75 52.5-127.5T400-880q75 0 127.5 52.5T580-700v350q0 46-32 78t-78 32q-46 0-78-32t-32-78v-370h80v370q0 13 8.5 21.5T470-320q13 0 21.5-8.5T500-350v-350q-1-42-29.5-71T400-800q-42 0-71 29t-29 71v370q-1 71 49 120.5T470-160q70 0 119-49.5T640-330v-390h80v390Z"/></svg>
+            </button>
+        </h2>
+        <div class="subpanel-anim"><div class="panel-cuerpo" id="cuerpo-hema">
+            <div class="cabecera-columnas" aria-hidden="true">
+                <span></span>
+                <span class="cabecera-col-label">Valor</span>
+                <span class="cabecera-col-label">Unidad</span>
+                <div class="cabecera-col-btns">
+                    <button class="btn-limpiar-panel" type="button" data-panel="hema" aria-label="Limpiar campos Hematología" data-tooltip="Limpiar formulario">
+                        <svg viewBox="0 -960 960 960" aria-hidden="true"><path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z"/></svg>
+                    </button>
+                    <button class="btn-importar-pdf" type="button" data-panel="hema" aria-label="Importar PDF Hematología" data-tooltip="Adjuntar PDF">
+                        <svg viewBox="0 -960 960 960" aria-hidden="true"><path d="M720-330q0 104-73 177T470-80q-104 0-177-73t-73-177v-370q0-75 52.5-127.5T400-880q75 0 127.5 52.5T580-700v350q0 46-32 78t-78 32q-46 0-78-32t-32-78v-370h80v370q0 13 8.5 21.5T470-320q13 0 21.5-8.5T500-350v-350q-1-42-29.5-71T400-800q-42 0-71 29t-29 71v370q-1 71 49 120.5T470-160q70 0 119-49.5T640-330v-390h80v390Z"/></svg>
+                    </button>
+                </div>
+            </div>
+            <div class="grupo-campo">
+                <h3 class="titulo-grupo">Serie Roja</h3>
+                <div class="fila-campo">
+                    <label for="hema-rbc">Eritrocitos (RBC)</label>
+                    <input id="hema-rbc" name="rbc" type="number" min="0" placeholder="—">
+                    <span class="unidad">x10⁶/μL</span>
+                </div>
+                <div class="fila-campo">
+                    <label for="hema-hgb">Hemoglobina (Hgb)</label>
+                    <input id="hema-hgb" name="hgb" type="number" min="0" placeholder="—">
+                    <span class="unidad">g/dL</span>
+                </div>
+                <div class="fila-campo">
+                    <label for="hema-hct">Hematocrito (Hct)</label>
+                    <input id="hema-hct" name="hct" type="number" min="0" placeholder="—">
+                    <span class="unidad">%</span>
+                </div>
+                <div class="fila-campo">
+                    <label for="hema-vcm">VCM (MCV)</label>
+                    <input id="hema-vcm" name="vcm" type="number" min="0" placeholder="—">
+                    <span class="unidad">fL</span>
+                </div>
+                <div class="fila-campo">
+                    <label for="hema-hcm">HCM (MCH)</label>
+                    <input id="hema-hcm" name="hcm" type="number" min="0" placeholder="—">
+                    <span class="unidad">pg</span>
+                </div>
+                <div class="fila-campo">
+                    <label for="hema-chcm">CHCM (MCHC)</label>
+                    <input id="hema-chcm" name="chcm" type="number" min="0" step="0.1" placeholder="—">
+                    <span class="unidad">g/dL</span>
+                </div>
+                <div class="fila-campo">
+                    <label for="hema-rdw">RDW</label>
+                    <input id="hema-rdw" name="rdw" type="number" min="0" step="0.1" placeholder="—">
+                    <span class="unidad">%</span>
+                </div>
+            </div>
+            <div class="grupo-campo">
+                <h3 class="titulo-grupo">Serie Blanca</h3>
+                <div class="fila-campo">
+                    <label for="hema-wbc">Leucocitos (WBC)</label>
+                    <input id="hema-wbc" name="wbc" type="number" min="0" placeholder="—">
+                    <span class="unidad">x10³/μL</span>
+                </div>
+                <div class="fila-campo">
+                    <label for="hema-neutro">Neutrófilos</label>
+                    <input id="hema-neutro" name="neutro" type="number" min="0" placeholder="—">
+                    <span class="unidad">%</span>
+                </div>
+                <div class="fila-campo">
+                    <label for="hema-neutro-abs">Neutrófilos #</label>
+                    <input id="hema-neutro-abs" name="neutro_abs" type="number" min="0" step="0.01" placeholder="—">
+                    <span class="unidad">x10³/μL</span>
+                </div>
+                <div class="fila-campo">
+                    <label for="hema-linfo">Linfocitos</label>
+                    <input id="hema-linfo" name="linfo" type="number" min="0" placeholder="—">
+                    <span class="unidad">%</span>
+                </div>
+                <div class="fila-campo">
+                    <label for="hema-linfo-abs">Linfocitos #</label>
+                    <input id="hema-linfo-abs" name="linfo_abs" type="number" min="0" step="0.01" placeholder="—">
+                    <span class="unidad">x10³/μL</span>
+                </div>
+                <div class="fila-campo">
+                    <label for="hema-mono">Monocitos</label>
+                    <input id="hema-mono" name="mono" type="number" min="0" placeholder="—">
+                    <span class="unidad">%</span>
+                </div>
+                <div class="fila-campo">
+                    <label for="hema-mono-abs">Monocitos #</label>
+                    <input id="hema-mono-abs" name="mono_abs" type="number" min="0" step="0.01" placeholder="—">
+                    <span class="unidad">x10³/μL</span>
+                </div>
+                <div class="fila-campo">
+                    <label for="hema-eosino">Eosinófilos</label>
+                    <input id="hema-eosino" name="eosino" type="number" min="0" placeholder="—">
+                    <span class="unidad">%</span>
+                </div>
+                <div class="fila-campo">
+                    <label for="hema-eosino-abs">Eosinófilos #</label>
+                    <input id="hema-eosino-abs" name="eosino_abs" type="number" min="0" step="0.01" placeholder="—">
+                    <span class="unidad">x10³/μL</span>
+                </div>
+                <div class="fila-campo">
+                    <label for="hema-baso">Basófilos</label>
+                    <input id="hema-baso" name="baso" type="number" min="0" placeholder="—">
+                    <span class="unidad">%</span>
+                </div>
+                <div class="fila-campo">
+                    <label for="hema-baso-abs">Basófilos #</label>
+                    <input id="hema-baso-abs" name="baso_abs" type="number" min="0" step="0.01" placeholder="—">
+                    <span class="unidad">x10³/μL</span>
+                </div>
+            </div>
+            <div class="grupo-campo">
+                <h3 class="titulo-grupo">Reticulocitos</h3>
+                <div class="fila-campo">
+                    <label for="hema-reti">Reticulocitos</label>
+                    <input id="hema-reti" name="reti" type="number" min="0" step="0.01" placeholder="—">
+                    <span class="unidad">%</span>
+                </div>
+                <div class="fila-campo">
+                    <label for="hema-reti-abs">Reticulocitos #</label>
+                    <input id="hema-reti-abs" name="reti_abs" type="number" min="0" placeholder="—">
+                    <span class="unidad">x10³/μL</span>
+                </div>
+                <div class="fila-campo">
+                    <label for="hema-nrbc">nRBC</label>
+                    <input id="hema-nrbc" name="nrbc" type="number" min="0" step="0.1" placeholder="—">
+                    <span class="unidad">100WBC</span>
+                </div>
+            </div>
+            <div class="grupo-campo">
+                <h3 class="titulo-grupo">Plaquetas</h3>
+                <div class="fila-campo">
+                    <label for="hema-plt">Plaquetas</label>
+                    <input id="hema-plt" name="plt" type="number" min="0" placeholder="—">
+                    <span class="unidad">x10³/μL</span>
+                </div>
+                <div class="fila-campo">
+                    <label for="hema-mpv">MPV</label>
+                    <input id="hema-mpv" name="mpv" type="number" min="0" step="0.1" placeholder="—">
+                    <span class="unidad">fL</span>
+                </div>
+                <div class="fila-campo">
+                    <label for="hema-pct">Plaquetocrito (PCT)</label>
+                    <input id="hema-pct" name="pct" type="number" min="0" step="0.01" placeholder="—">
+                    <span class="unidad">%</span>
+                </div>
+            </div>
+        </div></div>
+    </section>
+
+    <!-- PERFIL ENDOCRINO -->
+    <section class="panel subpanel" id="panel-endo">
+        <h2 class="panel-cabecera">
+            Perfil Endocrino
+            <input type="file" id="pdf-input-endo" class="pdf-input" accept=".pdf" hidden>
+            <button class="btn-limpiar-panel" type="button" data-panel="endo" aria-label="Limpiar campos Perfil Endocrino" data-tooltip="Limpiar formulario">
+                <svg viewBox="0 -960 960 960" aria-hidden="true"><path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z"/></svg>
+            </button>
+            <button class="btn-importar-pdf" type="button" data-panel="endo" aria-label="Importar PDF Perfil Endocrino" data-tooltip="Adjuntar PDF">
+                <svg viewBox="0 -960 960 960" aria-hidden="true"><path d="M720-330q0 104-73 177T470-80q-104 0-177-73t-73-177v-370q0-75 52.5-127.5T400-880q75 0 127.5 52.5T580-700v350q0 46-32 78t-78 32q-46 0-78-32t-32-78v-370h80v370q0 13 8.5 21.5T470-320q13 0 21.5-8.5T500-350v-350q-1-42-29.5-71T400-800q-42 0-71 29t-29 71v370q-1 71 49 120.5T470-160q70 0 119-49.5T640-330v-390h80v390Z"/></svg>
+            </button>
+            <button class="btn-colapsar-subpanel" id="btn-colapsar-endo" type="button"
+                    aria-expanded="true" aria-controls="cuerpo-endo" aria-label="Colapsar Perfil Endocrino" data-tooltip="Contraer / Expandir">
+                <svg class="icono-colapsar" viewBox="0 -960 960 960" aria-hidden="true"><path d="m296-224-56-56 240-240 240 240-56 56-184-183-184 183Zm0-240-56-56 240-240 240 240-56 56-184-183-184 183Z"/></svg><svg class="icono-expandir" viewBox="0 -960 960 960" aria-hidden="true"><path d="M480-200 240-440l56-56 184 183 184-183 56 56-240 240Zm0-240L240-680l56-56 184 183 184-183 56 56-240 240Z"/></svg>
+            </button>
+        </h2>
+        <div class="subpanel-anim"><div class="subpanel-cuerpo" id="cuerpo-endo">
+            <div class="cabecera-columnas cabecera-columnas--mobile-only" aria-hidden="true">
+                <span></span>
+                <button class="btn-limpiar-panel" type="button" data-panel="endo" aria-label="Limpiar campos Perfil Endocrino" data-tooltip="Limpiar formulario">
+                    <svg viewBox="0 -960 960 960" aria-hidden="true"><path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z"/></svg>
+                </button>
+                <button class="btn-importar-pdf" type="button" data-panel="endo" aria-label="Importar PDF Perfil Endocrino" data-tooltip="Adjuntar PDF">
+                    <svg viewBox="0 -960 960 960" aria-hidden="true"><path d="M720-330q0 104-73 177T470-80q-104 0-177-73t-73-177v-370q0-75 52.5-127.5T400-880q75 0 127.5 52.5T580-700v350q0 46-32 78t-78 32q-46 0-78-32t-32-78v-370h80v370q0 13 8.5 21.5T470-320q13 0 21.5-8.5T500-350v-350q-1-42-29.5-71T400-800q-42 0-71 29t-29 71v370q-1 71 49 120.5T470-160q70 0 119-49.5T640-330v-390h80v390Z"/></svg>
+                </button>
+            </div>
+            <div class="fila-campo">
+                <label for="endo-cort-bas">Cortisol basal</label>
+                <input id="endo-cort-bas" name="cortisol_bas" type="number" min="0" step="0.01" placeholder="—">
+                <span class="unidad">μg/dL</span>
+            </div>
+            <div class="fila-campo">
+                <label for="endo-cort-acth">Cortisol post-ACTH</label>
+                <input id="endo-cort-acth" name="cortisol_acth" type="number" min="0" step="0.01" placeholder="—">
+                <span class="unidad">μg/dL</span>
+            </div>
+            <div class="fila-campo">
+                <label for="endo-t4">T4 total</label>
+                <input id="endo-t4" name="t4_total" type="number" min="0" step="0.1" placeholder="—">
+                <span class="unidad">nmol/L</span>
+            </div>
+            <div class="fila-campo">
+                <label for="endo-ins">Insulina basal</label>
+                <input id="endo-ins" name="insulina" type="number" min="0" step="0.1" placeholder="—">
+                <span class="unidad">μIU/mL</span>
+            </div>
+        </div></div>
+    </section>
+
+    <!-- BIOQUÍMICA -->
+    <section class="panel subpanel" id="panel-bioquim">
+        <h2 class="panel-cabecera">
+            Bioquímica sanguínea
+            <input type="file" id="pdf-input-bioquim" class="pdf-input" accept=".pdf" hidden>
+            <button class="btn-limpiar-panel" type="button" data-panel="bioquim" aria-label="Limpiar campos Bioquímica" data-tooltip="Limpiar formulario">
+                <svg viewBox="0 -960 960 960" aria-hidden="true"><path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z"/></svg>
+            </button>
+            <button class="btn-importar-pdf" type="button" data-panel="bioquim" aria-label="Importar PDF Bioquímica" data-tooltip="Adjuntar PDF">
+                <svg viewBox="0 -960 960 960" aria-hidden="true"><path d="M720-330q0 104-73 177T470-80q-104 0-177-73t-73-177v-370q0-75 52.5-127.5T400-880q75 0 127.5 52.5T580-700v350q0 46-32 78t-78 32q-46 0-78-32t-32-78v-370h80v370q0 13 8.5 21.5T470-320q13 0 21.5-8.5T500-350v-350q-1-42-29.5-71T400-800q-42 0-71 29t-29 71v370q-1 71 49 120.5T470-160q70 0 119-49.5T640-330v-390h80v390Z"/></svg>
+            </button>
+        </h2>
+        <div class="subpanel-anim"><div class="panel-cuerpo" id="cuerpo-bioquim">
+            <div class="cabecera-columnas" aria-hidden="true">
+                <span></span>
+                <span class="cabecera-col-label">Valor</span>
+                <span class="cabecera-col-label">Unidad</span>
+                <div class="cabecera-col-btns">
+                    <button class="btn-limpiar-panel" type="button" data-panel="bioquim" aria-label="Limpiar campos Bioquímica" data-tooltip="Limpiar formulario">
+                        <svg viewBox="0 -960 960 960" aria-hidden="true"><path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z"/></svg>
+                    </button>
+                    <button class="btn-importar-pdf" type="button" data-panel="bioquim" aria-label="Importar PDF Bioquímica" data-tooltip="Adjuntar PDF">
+                        <svg viewBox="0 -960 960 960" aria-hidden="true"><path d="M720-330q0 104-73 177T470-80q-104 0-177-73t-73-177v-370q0-75 52.5-127.5T400-880q75 0 127.5 52.5T580-700v350q0 46-32 78t-78 32q-46 0-78-32t-32-78v-370h80v370q0 13 8.5 21.5T470-320q13 0 21.5-8.5T500-350v-350q-1-42-29.5-71T400-800q-42 0-71 29t-29 71v370q-1 71 49 120.5T470-160q70 0 119-49.5T640-330v-390h80v390Z"/></svg>
+                    </button>
+                </div>
+            </div>
+            <div class="grupo-campo">
+                <h3 class="titulo-grupo">Enzimas Hepáticas</h3>
+                <div class="fila-campo">
+                    <label for="bio-alt">ALT (GPT)</label>
+                    <input id="bio-alt" name="alt" type="number" min="0" placeholder="—">
+                    <span class="unidad">U/L</span>
+                </div>
+                <div class="fila-campo">
+                    <label for="bio-ast">AST (GOT)</label>
+                    <input id="bio-ast" name="ast" type="number" min="0" placeholder="—">
+                    <span class="unidad">U/L</span>
+                </div>
+                <div class="fila-campo">
+                    <label for="bio-fal">FAL (ALP)</label>
+                    <input id="bio-fal" name="fal" type="number" min="0" placeholder="—">
+                    <span class="unidad">U/L</span>
+                </div>
+                <div class="fila-campo">
+                    <label for="bio-ggt">GGT</label>
+                    <input id="bio-ggt" name="ggt" type="number" min="0" placeholder="—">
+                    <span class="unidad">U/L</span>
+                </div>
+            </div>
+            <div class="grupo-campo">
+                <h3 class="titulo-grupo">Función Hepática</h3>
+                <div class="fila-campo">
+                    <label for="bio-bili">Bilirrubina Total</label>
+                    <input id="bio-bili" name="bili" type="number" min="0" placeholder="—">
+                    <span class="unidad">mg/dL</span>
+                </div>
+                <div class="fila-campo">
+                    <label for="bio-bili-dir">Bilirrubina Directa</label>
+                    <input id="bio-bili-dir" name="bili_dir" type="number" min="0" step="0.01" placeholder="—">
+                    <span class="unidad">mg/dL</span>
+                </div>
+                <div class="fila-campo">
+                    <label for="bio-acidos-bil">Ácidos Biliares</label>
+                    <input id="bio-acidos-bil" name="acidos_bil" type="number" min="0" step="0.1" placeholder="—">
+                    <span class="unidad">μmol/L</span>
+                </div>
+            </div>
+            <div class="grupo-campo">
+                <h3 class="titulo-grupo">Función Renal</h3>
+                <div class="fila-campo">
+                    <label for="bio-bun">BUN / Urea</label>
+                    <input id="bio-bun" name="bun" type="number" min="0" placeholder="—">
+                    <span class="unidad">mg/dL</span>
+                </div>
+                <div class="fila-campo">
+                    <label for="bio-creat">Creatinina</label>
+                    <input id="bio-creat" name="creat" type="number" min="0" placeholder="—">
+                    <span class="unidad">mg/dL</span>
+                </div>
+                <div class="fila-campo">
+                    <label for="bio-sdma">SDMA</label>
+                    <input id="bio-sdma" name="sdma" type="number" min="0" step="0.1" placeholder="—">
+                    <span class="unidad">μg/dL</span>
+                </div>
+            </div>
+            <div class="grupo-campo">
+                <h3 class="titulo-grupo">Metabolitos</h3>
+                <div class="fila-campo">
+                    <label for="bio-gluc">Glucosa</label>
+                    <input id="bio-gluc" name="gluc" type="number" min="0" placeholder="—">
+                    <span class="unidad">mg/dL</span>
+                </div>
+                <div class="fila-campo">
+                    <label for="bio-prot">Proteína Total</label>
+                    <input id="bio-prot" name="prot" type="number" min="0" placeholder="—">
+                    <span class="unidad">g/dL</span>
+                </div>
+                <div class="fila-campo">
+                    <label for="bio-alb">Albúmina</label>
+                    <input id="bio-alb" name="alb" type="number" min="0" placeholder="—">
+                    <span class="unidad">g/dL</span>
+                </div>
+                <div class="fila-campo">
+                    <label for="bio-glob">Globulinas</label>
+                    <input id="bio-glob" name="glob" type="number" min="0" step="0.1" placeholder="—">
+                    <span class="unidad">g/dL</span>
+                </div>
+                <div class="fila-campo">
+                    <label for="bio-fosf">Fósforo</label>
+                    <input id="bio-fosf" name="fosf" type="number" min="0" placeholder="—">
+                    <span class="unidad">mg/dL</span>
+                </div>
+                <div class="fila-campo">
+                    <label for="bio-calc">Calcio</label>
+                    <input id="bio-calc" name="calc" type="number" min="0" placeholder="—">
+                    <span class="unidad">mg/dL</span>
+                </div>
+                <div class="fila-campo">
+                    <label for="bio-fruc">Fructosamina</label>
+                    <input id="bio-fruc" name="fruc" type="number" min="0" placeholder="—">
+                    <span class="unidad">μmol/L</span>
+                </div>
+            </div>
+            <div class="grupo-campo">
+                <h3 class="titulo-grupo">Electrolitos</h3>
+                <div class="fila-campo">
+                    <label for="bio-na">Sodio</label>
+                    <input id="bio-na" name="sodio" type="number" min="0" placeholder="—">
+                    <span class="unidad">mEq/L</span>
+                </div>
+                <div class="fila-campo">
+                    <label for="bio-k">Potasio</label>
+                    <input id="bio-k" name="potasio" type="number" min="0" placeholder="—">
+                    <span class="unidad">mEq/L</span>
+                </div>
+                <div class="fila-campo">
+                    <label for="bio-cl">Cloro</label>
+                    <input id="bio-cl" name="cloro" type="number" min="0" placeholder="—">
+                    <span class="unidad">mEq/L</span>
+                </div>
+                <div class="fila-campo">
+                    <label for="bio-tco2">TCO₂ / Bicarbonato</label>
+                    <input id="bio-tco2" name="tco2" type="number" min="0" step="0.5" placeholder="—">
+                    <span class="unidad">mEq/L</span>
+                </div>
+            </div>
+            <div class="grupo-campo">
+                <h3 class="titulo-grupo">Lípidos</h3>
+                <div class="fila-campo">
+                    <label for="bio-colest">Colesterol</label>
+                    <input id="bio-colest" name="colest" type="number" min="0" placeholder="—">
+                    <span class="unidad">mg/dL</span>
+                </div>
+                <div class="fila-campo">
+                    <label for="bio-trigli">Triglicéridos</label>
+                    <input id="bio-trigli" name="trigli" type="number" min="0" placeholder="—">
+                    <span class="unidad">mg/dL</span>
+                </div>
+            </div>
+            <div class="grupo-campo">
+                <h3 class="titulo-grupo">Enzimas</h3>
+                <div class="fila-campo">
+                    <label for="bio-lipasa">Lipasa</label>
+                    <input id="bio-lipasa" name="lipasa" type="number" min="0" placeholder="—">
+                    <span class="unidad">U/L</span>
+                </div>
+                <div class="fila-campo">
+                    <label for="bio-ck">Creatina Kinasa (CK)</label>
+                    <input id="bio-ck" name="ck" type="number" min="0" placeholder="—">
+                    <span class="unidad">U/L</span>
+                </div>
+            </div>
+        </div></div>
+    </section>
+
+    <!-- URIANÁLISIS  -->
+    <section class="panel subpanel" id="panel-uri">
+        <h2 class="panel-cabecera">
+            Urianálisis
+            <input type="file" id="pdf-input-uri" class="pdf-input" accept=".pdf" hidden>
+            <button class="btn-limpiar-panel" type="button" data-panel="uri" aria-label="Limpiar campos Urianálisis" data-tooltip="Limpiar formulario">
+                <svg viewBox="0 -960 960 960" aria-hidden="true"><path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z"/></svg>
+            </button>
+            <button class="btn-importar-pdf" type="button" data-panel="uri" aria-label="Importar PDF Urianálisis" data-tooltip="Adjuntar PDF">
+                <svg viewBox="0 -960 960 960" aria-hidden="true"><path d="M720-330q0 104-73 177T470-80q-104 0-177-73t-73-177v-370q0-75 52.5-127.5T400-880q75 0 127.5 52.5T580-700v350q0 46-32 78t-78 32q-46 0-78-32t-32-78v-370h80v370q0 13 8.5 21.5T470-320q13 0 21.5-8.5T500-350v-350q-1-42-29.5-71T400-800q-42 0-71 29t-29 71v370q-1 71 49 120.5T470-160q70 0 119-49.5T640-330v-390h80v390Z"/></svg>
+            </button>
+            <button class="btn-colapsar-subpanel" id="btn-colapsar-uri" type="button"
+                    aria-expanded="true" aria-controls="cuerpo-uri" aria-label="Colapsar Urianálisis" data-tooltip="Contraer / Expandir">
+                <svg class="icono-colapsar" viewBox="0 -960 960 960" aria-hidden="true"><path d="m296-224-56-56 240-240 240 240-56 56-184-183-184 183Zm0-240-56-56 240-240 240 240-56 56-184-183-184 183Z"/></svg><svg class="icono-expandir" viewBox="0 -960 960 960" aria-hidden="true"><path d="M480-200 240-440l56-56 184 183 184-183 56 56-240 240Zm0-240L240-680l56-56 184 183 184-183 56 56-240 240Z"/></svg>
+            </button>
+        </h2>
+        <div class="subpanel-anim"><div class="subpanel-cuerpo" id="cuerpo-uri">
+            <div class="cabecera-columnas cabecera-columnas--mobile-only" aria-hidden="true">
+                <span></span>
+                <button class="btn-limpiar-panel" type="button" data-panel="uri" aria-label="Limpiar campos Urianálisis" data-tooltip="Limpiar formulario">
+                    <svg viewBox="0 -960 960 960" aria-hidden="true"><path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z"/></svg>
+                </button>
+                <button class="btn-importar-pdf" type="button" data-panel="uri" aria-label="Importar PDF Urianálisis" data-tooltip="Adjuntar PDF">
+                    <svg viewBox="0 -960 960 960" aria-hidden="true"><path d="M720-330q0 104-73 177T470-80q-104 0-177-73t-73-177v-370q0-75 52.5-127.5T400-880q75 0 127.5 52.5T580-700v350q0 46-32 78t-78 32q-46 0-78-32t-32-78v-370h80v370q0 13 8.5 21.5T470-320q13 0 21.5-8.5T500-350v-350q-1-42-29.5-71T400-800q-42 0-71 29t-29 71v370q-1 71 49 120.5T470-160q70 0 119-49.5T640-330v-390h80v390Z"/></svg>
+                </button>
+            </div>
+            <div class="fila-campo">
+                <label for="uri-usg">Densidad (USG)</label>
+                <input id="uri-usg" name="usg" type="number" min="1.000" max="1.060" step="0.001" placeholder="—">
+                <span class="unidad"></span>
+            </div>
+            <div class="fila-campo">
+                <label for="uri-ph">pH</label>
+                <input id="uri-ph" name="ph" type="number" min="4.5" max="9.0" step="0.5" placeholder="—">
+                <span class="unidad"></span>
+            </div>
+            <div class="fila-campo">
+                <label for="uri-prot">Proteínas</label>
+                <select id="uri-prot" name="uri-prot">
+                    <option value="">—</option>
+                    <option value="neg">Negativo</option>
+                    <option value="+">+</option>
+                    <option value="++">++</option>
+                    <option value="+++">+++</option>
+                </select>
+                <span class="unidad"></span>
+            </div>
+            <div class="fila-campo">
+                <label for="uri-gluc">Glucosuria</label>
+                <select id="uri-gluc" name="uri-gluc">
+                    <option value="">—</option>
+                    <option value="neg">Negativo</option>
+                    <option value="+">+</option>
+                    <option value="++">++</option>
+                    <option value="+++">+++</option>
+                </select>
+                <span class="unidad"></span>
+            </div>
+        </div></div>
+    </section>
+
+    <!-- FLUJO DE TRABAJO -->
+    <section class="panel panel-flujo activo" id="panel-flujo">
+        <h2 class="panel-cabecera">
+            Flujo de trabajo
+            <button class="btn-colapsar-flujo" id="btn-colapsar-flujo" type="button"
+                    aria-expanded="true" aria-controls="cuerpo-flujo" aria-label="Colapsar panel" data-tooltip="Contraer / Expandir">
+                <svg class="icono-colapsar" viewBox="0 -960 960 960" aria-hidden="true"><path d="m296-224-56-56 240-240 240 240-56 56-184-183-184 183Zm0-240-56-56 240-240 240 240-56 56-184-183-184 183Z"/></svg><svg class="icono-expandir" viewBox="0 -960 960 960" aria-hidden="true"><path d="M480-200 240-440l56-56 184 183 184-183 56 56-240 240Zm0-240L240-680l56-56 184 183 184-183 56 56-240 240Z"/></svg>
+            </button>
+        </h2>
+        <div class="panel-cuerpo cuerpo-flujo" id="cuerpo-flujo">
+            <ol class="pasos-flujo">
+                <li>
+                    <svg class="num-paso" aria-hidden="true" viewBox="0 -960 960 960"><path d="M480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Zm-20 200h80v-400H380v80h80v320Z"/></svg>
+                    <div>
+                        <strong>Datos del paciente</strong>
+                        <p>Ingresa especie, raza, edad y sexo. Esta información ajusta los rangos de referencia utilizados en el análisis. Sí adjuntas un PDF y contiene estos datos, la app los detectará.</p>
+                    </div>
+                </li>
+                <li>
+                    <svg class="num-paso" aria-hidden="true" viewBox="0 -960 960 960"><path d="M480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320ZM360-280h240v-80H440v-80h80q33 0 56.5-23.5T600-520v-80q0-33-23.5-56.5T520-680H360v80h160v80h-80q-33 0-56.5 23.5T360-440v160Z"/></svg>
+                    <div>
+                        <strong>Exámenes</strong>
+                        <p>Adjunta un PDF para que la app detecte los valores automáticamente, o ingresalos manualmente. Los campos se colorean en tiempo real según el rango de referencia. No es necesario completar todos.</p>
+                    </div>
+                </li>
+                <li>
+                    <svg class="num-paso" aria-hidden="true" viewBox="0 -960 960 960"><path d="M480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320ZM360-280h160q33 0 56.5-23.5T600-360v-60q0-26-17-43t-43-17q26 0 43-17t17-43v-60q0-33-23.5-56.5T520-680H360v80h160v80h-80v80h80v80H360v80Z"/></svg>
+                    <div>
+                        <strong>Citologías</strong>
+                        <p>Adjunta fotos de muestras o conecta una cámara de microscopio o usa la del móvil para captura en vivo. El modelo de I.A incluirá las imágenes en su análisis junto con los valores de laboratorio.</p>
+                    </div>
+                </li>
+                <li>
+                    <svg class="num-paso" aria-hidden="true" viewBox="0 -960 960 960"><path d="M480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Zm40 200h80v-400h-80v160h-80v-160h-80v240h160v160Z"/></svg>
+                    <div>
+                        <strong>Interpretación</strong>
+                        <p>Morphos detecta patrones automáticamente sin exponer la data del paciente o propietario a la I.A. Presiona <em>Análisis I.A</em> para obtener una interpretación clínica completa. Puede agregar información adicional para darle aportar más contexto.</p>
+                    </div>
+                </li>
+            </ol>
+        </div>
+    </section>
+
+    <!-- COLUMNA MEDIA: IMÁGENES + SIGNOS CLÍNICOS -->
+    <div class="col3-wrapper">
+
+    <section class="panel" id="panel-imagenes">
+
+        <!-- IMÁGENES / CITOLOGÍA -->
+        <div class="subpanel" id="subpanel-citologia">
+        <h2 class="panel-cabecera">
+            Citologías
+        </h2>
+        <div class="subpanel-anim"><div class="subpanel-cuerpo" id="cuerpo-citologia">
+            <div class="zonas-imagen">
+                <div class="zona-imagen" data-zona="0" data-tooltip="Adjuntar citología 1">
+                    <input type="file" class="input-zona" accept="image/*" hidden>
+                    <div class="zona-vacia">
+                        <svg class="zona-vacia-icono" viewBox="0 -960 960 960" aria-hidden="true"><path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm0-80h560v-560H200v560Zm40-80h480L570-480 450-320l-90-120-120 160Zm-40 80v-560 560Zm182.5-377.5Q400-595 400-620t-17.5-42.5Q365-680 340-680t-42.5 17.5Q280-645 280-620t17.5 42.5Q315-560 340-560t42.5-17.5Z"/></svg>
+                        <span>Muestra 1</span>
+                    </div>
+                    <button class="btn-quitar-zona" type="button" aria-label="Quitar imagen" data-tooltip="Quitar imagen" hidden>
+                        <svg viewBox="0 -960 960 960" aria-hidden="true"><path d="m336-280-56-56 144-144-144-143 56-56 144 144 143-144 56 56-144 143 144 144-56 56-143-144-144 144Z"/></svg>
+                    </button>
+                </div>
+                <div class="zona-imagen" data-zona="1" data-tooltip="Adjuntar citología 2">
+                    <input type="file" class="input-zona" accept="image/*" hidden>
+                    <div class="zona-vacia">
+                        <svg class="zona-vacia-icono" viewBox="0 -960 960 960" aria-hidden="true"><path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm0-80h560v-560H200v560Zm40-80h480L570-480 450-320l-90-120-120 160Zm-40 80v-560 560Zm182.5-377.5Q400-595 400-620t-17.5-42.5Q365-680 340-680t-42.5 17.5Q280-645 280-620t17.5 42.5Q315-560 340-560t42.5-17.5Z"/></svg>
+                        <span>Muestra 2</span>
+                    </div>
+                    <button class="btn-quitar-zona" type="button" aria-label="Quitar imagen" data-tooltip="Quitar imagen" hidden>
+                        <svg viewBox="0 -960 960 960" aria-hidden="true"><path d="m336-280-56-56 144-144-144-143 56-56 144 144 143-144 56 56-144 143 144 144-56 56-143-144-144 144Z"/></svg>
+                    </button>
+                </div>
+                <div class="zona-imagen" data-zona="2" data-tooltip="Adjuntar citología 3">
+                    <input type="file" class="input-zona" accept="image/*" hidden>
+                    <div class="zona-vacia">
+                        <svg class="zona-vacia-icono" viewBox="0 -960 960 960" aria-hidden="true"><path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm0-80h560v-560H200v560Zm40-80h480L570-480 450-320l-90-120-120 160Zm-40 80v-560 560Zm182.5-377.5Q400-595 400-620t-17.5-42.5Q365-680 340-680t-42.5 17.5Q280-645 280-620t17.5 42.5Q315-560 340-560t42.5-17.5Z"/></svg>
+                        <span>Muestra 3</span>
+                    </div>
+                    <button class="btn-quitar-zona" type="button" aria-label="Quitar imagen" data-tooltip="Quitar imagen" hidden>
+                        <svg viewBox="0 -960 960 960" aria-hidden="true"><path d="m336-280-56-56 144-144-144-143 56-56 144 144 143-144 56 56-144 143 144 144-56 56-143-144-144 144Z"/></svg>
+                    </button>
+                </div>
+                <div class="zona-imagen" data-zona="3" data-tooltip="Adjuntar citología 4">
+                    <input type="file" class="input-zona" accept="image/*" hidden>
+                    <div class="zona-vacia">
+                        <svg class="zona-vacia-icono" viewBox="0 -960 960 960" aria-hidden="true"><path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm0-80h560v-560H200v560Zm40-80h480L570-480 450-320l-90-120-120 160Zm-40 80v-560 560Zm182.5-377.5Q400-595 400-620t-17.5-42.5Q365-680 340-680t-42.5 17.5Q280-645 280-620t17.5 42.5Q315-560 340-560t42.5-17.5Z"/></svg>
+                        <span>Muestra 4</span>
+                    </div>
+                    <button class="btn-quitar-zona" type="button" aria-label="Quitar imagen" data-tooltip="Quitar imagen" hidden>
+                        <svg viewBox="0 -960 960 960" aria-hidden="true"><path d="m336-280-56-56 144-144-144-143 56-56 144 144 143-144 56 56-144 143 144 144-56 56-143-144-144 144Z"/></svg>
+                    </button>
+                </div>
+            </div>
+            <div class="zona-microscopio" data-zona="4" data-tooltip="Conectar cámara de microscopio">
+                <div class="micro-vacia">
+                    <svg class="zona-vacia-icono" viewBox="0 -960 960 960" aria-hidden="true"><path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm0-80h560v-560H200v560Zm40-80h480L570-480 450-320l-90-120-120 160Zm-40 80v-560 560Zm182.5-377.5Q400-595 400-620t-17.5-42.5Q365-680 340-680t-42.5 17.5Q280-645 280-620t17.5 42.5Q315-560 340-560t42.5-17.5Z"/></svg>
+                    <span>Microscopio</span>
+                </div>
+                <video class="micro-video" autoplay playsinline muted hidden></video>
+                <div class="micro-controles" hidden>
+                    <button class="micro-btn micro-btn-galeria" type="button" aria-label="Galería" data-tooltip="Galería de capturas">
+                        <svg viewBox="0 -960 960 960" aria-hidden="true"><path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm0-80h560v-560H200v560Zm40-80h480L570-480 450-320l-90-120-120 160Zm-40 80v-560 560Zm182.5-377.5Q400-595 400-620t-17.5-42.5Q365-680 340-680t-42.5 17.5Q280-645 280-620t17.5 42.5Q315-560 340-560t42.5-17.5Z"/></svg>
+                        <span class="micro-badge" hidden>0</span>
+                    </button>
+                    <button class="micro-btn micro-btn-capturar" type="button" aria-label="Capturar foto" data-tooltip="Capturar foto">
+                        <svg viewBox="0 -960 960 960" aria-hidden="true"><path d="M480-260q75 0 127.5-52.5T660-440q0-75-52.5-127.5T480-620q-75 0-127.5 52.5T300-440q0 75 52.5 127.5T480-260Zm0-80q-42 0-71-29t-29-71q0-42 29-71t71-29q42 0 71 29t29 71q0 42-29 71t-71 29ZM160-120q-33 0-56.5-23.5T80-200v-480q0-33 23.5-56.5T160-760h126l74-80h240l74 80h126q33 0 56.5 23.5T880-680v480q0 33-23.5 56.5T800-120H160Zm0-80h640v-480H638l-73-80H395l-73 80H160v480Zm320-240Z"/></svg>
+                    </button>
+                    <button class="micro-btn micro-btn-cerrar" type="button" aria-label="Cerrar cámara" data-tooltip="Cerrar cámara">
+                        <svg viewBox="0 -960 960 960" aria-hidden="true"><path d="m336-280-56-56 144-144-144-143 56-56 144 144 143-144 56 56-144 143 144 144-56 56-143-144-144 144Z"/></svg>
+                    </button>
+                </div>
+
+                <div class="micro-galeria" hidden></div>
+            </div>
+        </div></div></div>
+
+    </section>
+
+    </div>
+
+    <!-- RESULTADOS -->
+    <section class="panel" id="panel-resultados">
+        <h2 class="panel-cabecera">Interpretación</h2>
+        <div class="panel-cuerpo">
+
+            <div class="seccion-resultado seccion-patrones" id="seccion-patrones">
+                <h3 class="titulo-seccion-resultado titulo-patrones">
+                    Patrones detectados
+                    <button class="btn-colapsar-patrones" id="btn-colapsar-patrones" type="button"
+                            aria-expanded="true" aria-controls="patrones-anim" aria-label="Colapsar patrones" data-tooltip="Contraer / Expandir">
+                        <svg class="icono-colapsar" viewBox="0 -960 960 960" aria-hidden="true"><path d="m296-224-56-56 240-240 240 240-56 56-184-183-184 183Zm0-240-56-56 240-240 240 240-56 56-184-183-184 183Z"/></svg><svg class="icono-expandir" viewBox="0 -960 960 960" aria-hidden="true"><path d="M480-200 240-440l56-56 184 183 184-183 56 56-240 240Zm0-240L240-680l56-56 184 183 184-183 56 56-240 240Z"/></svg>
+                    </button>
+                </h3>
+                <div class="patrones-anim" id="patrones-anim">
+                    <div id="patrones-lista"></div>
+                </div>
+            </div>
+
+            <div class="seccion-resultado">
+                <h3 class="titulo-seccion-resultado">Interpretación IA</h3>
+                <div id="salida-ia">Envía todas las analíticas y citologías al modelo medGemma para obtener una evaluación integrada...</div>
+                <div class="ia-backend-config">
+                    <span class="ia-backend-label">Entorno IA</span>
+                    <label class="ia-backend-opt"><input type="radio" name="ia-backend" value="hf" id="ia-backend-hf" checked>HugginFace</label>
+                    <label class="ia-backend-opt"><input type="radio" name="ia-backend" value="local" id="ia-backend-local">Local</label>
+                    <div class="ia-ollama-fields" id="ia-ollama-fields">
+                        <input type="url" id="ia-ollama-url" class="ia-text-input" placeholder="http://localhost:11434" value="http://localhost:11434" aria-label="URL de Ollama">
+                        <input type="text" id="ia-ollama-model" class="ia-text-input ia-model-input" placeholder="medgemma1.5:latest" value="medgemma1.5:latest" aria-label="Modelo Ollama">
+                    </div>
+                </div>
+            </div>
+
+        </div>
+        <div class="chat-area">
+            <textarea id="signos-clinicos" name="signos-clinicos" placeholder="Aporta información adicional a medGemma..."></textarea>
+        </div>
+        <div class="panel-pie-acciones">
+            <button class="boton boton-papers" type="button" data-tooltip="Literatura científica relacionada">Papers</button>
+            <button class="boton boton-analizar" type="button" data-tooltip="Análisis IA completo">Análisis I.A</button>
+        </div>
+    </section>
+
+</main>
+
+<!-- FOOTER -->
+<footer>
+    <div id="aviso">
+        <strong>Aviso:</strong> La información proporcionada por Morphos y medGemma es orientativa y no sustituye el criterio de un profesional, herramienta exclusivamente para apoyo diagnóstico.
+    </div>
+    <!-- NAV INFERIOR -->
+    <nav class="nav-inferior" id="nav-inferior" aria-label="Secciones">
+    <button class="tab-nav activo" data-target="panel-flujo" aria-current="true" data-tooltip="Guía de uso">
+        <svg viewBox="0 -960 960 960" aria-hidden="true"><path d="M513.5-254.5Q528-269 528-290t-14.5-35.5Q499-340 478-340t-35.5 14.5Q428-311 428-290t14.5 35.5Q457-240 478-240t35.5-14.5ZM442-394h74q0-33 7.5-52t42.5-52q26-26 41-49.5t15-56.5q0-56-41-86t-97-30q-57 0-92.5 30T342-618l66 26q5-18 22.5-39t53.5-21q32 0 48 17.5t16 38.5q0 20-12 37.5T506-526q-44 39-54 59t-10 73Zm38 314q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Z"/></svg>
+        <span>Flujo</span>
+    </button>
+    <button class="tab-nav" data-target="panel-paciente" aria-current="false" data-tooltip="Datos del paciente">
+        <svg viewBox="0 -960 960 960" aria-hidden="true"><path d="M280-280h280v-80H280v80Zm0-160h400v-80H280v80Zm0-160h400v-80H280v80Zm-80 480q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm0-80h560v-560H200v560Zm0-560v560-560Z"/></svg>
+        <span>Paciente</span>
+    </button>
+    <button class="tab-nav" data-target="examenes" aria-current="false" data-tooltip="Exámenes de laboratorio">
+        <svg viewBox="0 -960 960 960" aria-hidden="true"><path d="M320-280v-80h87q-5 20-6.5 40t.5 40h-81Zm0 200q-83 0-141.5-58.5T120-280v-360q-33 0-56.5-23.5T40-720v-80q0-33 23.5-56.5T120-880h400q33 0 56.5 23.5T600-800v80q0 33-23.5 56.5T520-640v121q-24 15-44 35t-35 44H320v-80h120v-120H200v360q0 50 35 85t85 35q30 0 54.5-13t41.5-36q8 20 18 38t24 35q-27 26-62 41t-76 15ZM120-720h400v-80H120v80Zm611 491q29-29 29-71t-29-71q-29-29-71-29t-71 29q-29 29-29 71t29 71q29 29 71 29t71-29ZM864-40 756-148q-22 14-46 21t-50 7q-75 0-127.5-52.5T480-300q0-75 52.5-127.5T660-480q75 0 127.5 52.5T840-300q0 26-7 50t-21 46L920-96l-56 56ZM120-720v-80 80Z"/></svg>
+        <span>Exámenes</span>
+    </button>
+    <button class="tab-nav" data-target="panel-imagenes" aria-current="false" data-tooltip="Imágenes y citologías">
+        <svg viewBox="0 -960 960 960" aria-hidden="true"><path d="M200-120v-80h200v-80q-83 0-141.5-58.5T200-480q0-61 33.5-111t90.5-73q8-34 35.5-55t62.5-21l-22-62 38-14-14-36 76-28 12 38 38-14 110 300-38 14 14 38-76 28-12-38-38 14-24-66q-15 14-34.5 21t-39.5 5q-22-2-41-13.5T338-582q-27 16-42.5 43T280-480q0 50 35 85t85 35h320v80H520v80h240v80H200Zm346-458 36-14-68-188-38 14 70 188Zm-97.5-33.5Q460-623 460-640t-11.5-28.5Q437-680 420-680t-28.5 11.5Q380-657 380-640t11.5 28.5Q403-600 420-600t28.5-11.5ZM546-578Zm-126-62Zm0 0Z"/></svg>
+        <span>Citologías</span>
+    </button>
+    <button class="tab-nav" data-target="panel-resultados" aria-current="false" data-tooltip="Resultados e interpretación I.A">
+        <svg viewBox="0 -960 960 960" aria-hidden="true"><path d="M323-160q-11 0-20.5-5.5T288-181l-78-139h58l40 80h92v-40h-68l-40-80H188l-57-100q-2-5-3.5-10t-1.5-10q0-4 5-20l57-100h104l40-80h68v-40h-92l-40 80h-58l78-139q5-10 14.5-15.5T323-800h97q17 0 28.5 11.5T460-760v160h-60l-40 40h100v120h-88l-40-80h-92l-40 40h108l40 80h112v200q0 17-11.5 28.5T420-160h-97Zm217 0q-17 0-28.5-11.5T500-200v-200h112l40-80h108l-40-40h-92l-40 80h-88v-120h100l-40-40h-60v-160q0-17 11.5-28.5T540-800h97q11 0 20.5 5.5T672-779l78 139h-58l-40-80h-92v40h68l40 80h104l57 100q2 5 3.5 10t1.5 10q0 4-5 20l-57 100H668l-40 80h-68v40h92l40-80h58l-78 139q-5 10-14.5 15.5T637-160h-97Z"/></svg>
+        <span>Interpretación</span>
+    </button>
+    </nav>
+    <p id="creditos"><svg viewBox="0 -960 960 960" aria-hidden="true"><path d="M160-160q-33 0-56.5-23.5T80-240v-480q0-33 23.5-56.5T160-800h640q33 0 56.5 23.5T880-720v480q0 33-23.5 56.5T800-160H160Zm320-280L160-640v400h640v-400L480-440Zm0-80 320-200H160l320 200ZM160-640v-80 480-400Z"/></svg><a href="mailto:mvjose.salazar@gmail.com">Desarrollado por José Salazar &copy; 2026</a></p>
+</footer>
+
+
+<!-- MODAL DE PAPERS -->
+<div id="modal-papers-overlay" class="modal-overlay" aria-hidden="true"></div>
+<div id="modal-papers" class="modal-papers" role="dialog" aria-modal="true" aria-labelledby="modal-papers-titulo" hidden>
+    <div class="modal-papers-cabecera">
+        <div>
+            <h2 id="modal-papers-titulo" class="modal-titulo">Literatura científica</h2>
+            <p class="papers-consulta-label">Búsqueda: <span id="papers-consulta"></span></p>
+        </div>
+        <button id="modal-papers-cerrar" class="modal-cerrar" type="button" aria-label="Cerrar" data-tooltip="Cerrar">
+            <svg viewBox="0 -960 960 960" aria-hidden="true"><path d="m336-280-56-56 144-144-144-143 56-56 144 144 143-144 56 56-144 143 144 144-56 56-143-144-144 144Z"/></svg>
+        </button>
+    </div>
+    <form id="papers-busqueda-form" class="papers-busqueda" role="search">
+        <input type="search" id="papers-busqueda-input" class="papers-busqueda-input"
+               placeholder="Buscar manualmente (Sólo en inglés)…" aria-label="Búsqueda manual de artículos científicos">
+        <button type="submit" class="papers-busqueda-btn" aria-label="Buscar">
+            <img src="assets/icons/busqueda.svg" alt="" aria-hidden="true" width="18" height="18">
+        </button>
+    </form>
+    <div id="papers-lista" class="papers-lista"></div>
+    <div id="papers-paginacion" class="papers-paginacion"></div>
+</div>
+
+<!-- MODAL DE AUTENTICACIÓN -->
+<div id="modal-auth-overlay" class="modal-overlay" aria-hidden="true"></div>
+<div id="modal-auth" class="modal-auth" role="dialog" aria-modal="true" aria-labelledby="modal-auth-titulo" hidden>
+    <button id="modal-auth-cerrar" class="modal-cerrar" type="button" aria-label="Cerrar" data-tooltip="Cerrar">
+        <svg viewBox="0 -960 960 960" aria-hidden="true"><path d="m336-280-56-56 144-144-144-143 56-56 144 144 143-144 56 56-144 143 144 144-56 56-143-144-144 144Z"/></svg>
+    </button>
+    <h2 id="modal-auth-titulo" class="modal-titulo">Acceso a Morphos</h2>
+    <div class="modal-tabs" role="tablist">
+        <button id="auth-tab-login"   class="modal-tab activo" type="button" role="tab">Ingresar</button>
+        <button id="auth-tab-registro" class="modal-tab"        type="button" role="tab">Crear cuenta</button>
+    </div>
+
+    <div id="auth-panel-login">
+        <form id="form-login" novalidate>
+            <div class="modal-campo">
+                <label for="login-email">Email</label>
+                <input id="login-email" name="email" type="email" autocomplete="email" placeholder="correo@ejemplo.com" required>
+            </div>
+            <div class="modal-campo">
+                <label for="login-password">Contraseña</label>
+                <input id="login-password" name="password" type="password" autocomplete="current-password" placeholder="••••••" required>
+            </div>
+            <p id="auth-error-login" class="modal-error" aria-live="polite"></p>
+            <button class="boton boton-primario modal-submit" type="submit">Ingresar</button>
+        </form>
+    </div>
+
+    <div id="auth-panel-registro" hidden>
+        <form id="form-registro" novalidate>
+            <div class="modal-fila-doble">
+                <div class="modal-campo">
+                    <label for="reg-nombre">Nombre</label>
+                    <input id="reg-nombre" name="nombre" type="text" autocomplete="given-name" placeholder="Tu nombre" required>
+                </div>
+                <div class="modal-campo">
+                    <label for="reg-apellido">Apellido</label>
+                    <input id="reg-apellido" name="apellido" type="text" autocomplete="family-name" placeholder="Tu apellido" required>
+                </div>
+            </div>
+            <div class="modal-campo">
+                <label for="reg-email">Email</label>
+                <input id="reg-email" name="email" type="email" autocomplete="email" placeholder="correo@ejemplo.com" required>
+            </div>
+            <div class="modal-campo">
+                <label for="reg-password">Contraseña</label>
+                <input id="reg-password" name="password" type="password" autocomplete="new-password" placeholder="Mínimo 6 caracteres" required>
+            </div>
+            <div class="modal-campo">
+                <label for="reg-password2">Confirmar contraseña</label>
+                <input id="reg-password2" name="password2" type="password" autocomplete="new-password" placeholder="Repite la contraseña" required>
+            </div>
+            <div class="modal-campo modal-campo--aviso">
+                <p class="aviso-legal-texto">Soy Veterinario y sé que la información obtenida en esta web es orientativa y complementaria al proceso diagnóstico y no debe tratarse como única fuente.</p>
+                <div class="aviso-legal-aceptar">
+                    <label for="reg-aviso-legal">Acepto</label>
+                    <input id="reg-aviso-legal" name="aviso-legal" type="checkbox" required>
+                </div>
+            </div>
+            <p id="auth-error-registro" class="modal-error" aria-live="polite"></p>
+            <button class="boton boton-primario modal-submit" type="submit">Crear cuenta</button>
+        </form>
+    </div>
+</div>
+
+<script type="module" src="js/main.js"></script>
+
+</body>
+</html>

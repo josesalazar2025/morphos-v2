@@ -1,0 +1,29 @@
+# Sensitive files
+.env
+*.env
+
+# SQLite database (will be created at runtime)
+data/*.db
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Node / build tools (none used, but just in case)
+node_modules/
+
+# Documentation not needed in the image
+README.md
+CLAUDE.md
+SKILL.md
+USO_DE_IA.md
