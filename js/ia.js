@@ -78,8 +78,13 @@ function construirPrompt(obtenerDatosPaciente, obtenerValoresFormulario, getUlti
         cierre = `Proporciona una interpretación clínica breve (8-10 oraciones) destacando los hallazgos más significativos y las recomendaciones diagnósticas inmediatas.`;
     }
 
-    return `IMPORTANTE: Responde ÚNICAMENTE en español. Do not write in English under any circumstance.
-    ${notaImagenes ? `\n    ${notaImagenes}\n` : ''}
+    return `INSTRUCCIONES ESTRICTAS:
+    1. Responde ÚNICAMENTE en español. NUNCA escribas en inglés.
+    2. NO incluyas tu proceso de razonamiento, análisis paso a paso, ni pensamiento interno.
+    3. NO uses palabras como "thought", "thinking", "here's a thinking process", ni números de pasos.
+    4. Responde DIRECTAMENTE con la interpretación clínica final.
+
+    ${notaImagenes ? `${notaImagenes}\n` : ''}
     Eres un médico veterinario especialista en patología clínica. Sólo responderás consultas asociadas a ésta área de conocimiento y basado en la evidencia proporcionada.
     Analiza los resultados y proporciona una interpretación clínica concisa.
 
@@ -88,7 +93,7 @@ function construirPrompt(obtenerDatosPaciente, obtenerValoresFormulario, getUlti
     Resultados de laboratorio:
     ${lineasValores}
 
-    ${signosText ? `\nSignos clínicos: ${signosText}` : ''}
+    ${signosText ? `Signos clínicos: ${signosText}` : ''}
     ${cierre}`;
 }
 
@@ -111,6 +116,33 @@ function limpiarRespuesta(text) {
 
     // Quitar prefijos de rol que el modelo a veces antepone
     text = text.replace(/^\d+\s+(medical assistant|assistant|model)\s*/i, '');
+
+    // Quitar bloques de razonamiento / thinking process
+    text = text.replace(/^thought\s*\n?/i, '');
+
+    // Detectar si el modelo solo generó razonamiento en inglés sin respuesta clínica
+    const tieneRazonamiento = /Here'?s a thinking process|Understand the Role|Analyze the Request|Review the Lab Results|Synthesize Findings|Formulate Clinical Interpretation/i.test(text);
+    const tieneEspanol = /[áéíóúñÁÉÍÓÚÑ]{2,}/.test(text) || /\b(paciente|hallazgos|interpretación|recomendaciones|análisis|resultados|clínica|diagnóstico|evaluación|hepatopatía|nefropatía|anemia|leucocitosis|neutrofilia|linfopenia|hiperglucemia|hipoglucemia|pancreatitis|hepatitis|cirrosis|insuficiencia)\b/i.test(text);
+    if (tieneRazonamiento && !tieneEspanol) {
+        return 'El modelo generó un proceso de razonamiento interno en lugar de una interpretación clínica. Esto suele deberse a que el modelo está configurado en modo "pensamiento". Intenta nuevamente o contacta al administrador del espacio para desactivar el modo de razonamiento.';
+    }
+
+    // Si hay razonamiento mezclado con español, intentar extraer solo la respuesta
+    if (tieneRazonamiento) {
+        // Buscar la primera línea que parezca español clínico
+        const lineas = text.split('\n');
+        let inicioRespuesta = -1;
+        for (let i = 0; i < lineas.length; i++) {
+            const linea = lineas[i].trim();
+            if (linea.length > 20 && /[áéíóúñÁÉÍÓÚÑ]/.test(linea) && !/\*\*[^*]+\*\*/.test(linea) && !/^\d+\./.test(linea) && !/Here'?s a thinking process/i.test(linea)) {
+                inicioRespuesta = i;
+                break;
+            }
+        }
+        if (inicioRespuesta > 0) {
+            text = lineas.slice(inicioRespuesta).join('\n');
+        }
+    }
 
     // Quitar LaTeX
     text = text.replace(/\$\\boxed\{[^}]*\}\$/g, '');
