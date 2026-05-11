@@ -7,6 +7,7 @@ RUN apt-get update && apt-get install -y \
     libfreetype6-dev \
     libzip-dev \
     libsqlite3-dev \
+    git \
     unzip \
     && docker-php-ext-install pdo pdo_mysql pdo_sqlite \
     && docker-php-ext-enable pdo pdo_mysql pdo_sqlite \
