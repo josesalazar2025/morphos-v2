@@ -315,12 +315,23 @@ document.querySelectorAll('.zona-imagen').forEach(zona => {
         if (!file) return;
         const reader = new FileReader();
         reader.onload = ev => {
-            imagenesDataUrl[indice] = ev.target.result;
-            vistaPrevia.src = ev.target.result;
-            vistaPrevia.hidden = false;
-            btnQuitar.hidden = false;
-            vacia.hidden = true;
-            zona.classList.add('con-imagen');
+            const img = new Image();
+            img.onload = () => {
+                const MAX_PIXELES = 1024;
+                const scale = Math.min(MAX_PIXELES / img.width, MAX_PIXELES / img.height, 1);
+                const canvas = document.createElement('canvas');
+                canvas.width = Math.round(img.width * scale);
+                canvas.height = Math.round(img.height * scale);
+                canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+                imagenesDataUrl[indice] = dataUrl;
+                vistaPrevia.src = dataUrl;
+                vistaPrevia.hidden = false;
+                btnQuitar.hidden = false;
+                vacia.hidden = true;
+                zona.classList.add('con-imagen');
+            };
+            img.src = ev.target.result;
         };
         reader.readAsDataURL(file);
     });
