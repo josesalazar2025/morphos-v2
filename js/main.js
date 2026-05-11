@@ -56,6 +56,7 @@ const obtenerDatosPaciente = () => {
     const especieCruda = document.getElementById('pt-especie').value;
     const valorEdad = document.getElementById('pt-edad').value;
     const edadUnidad = document.getElementById('pt-edad-unidad').value;
+    // Normaliza la edad siempre a meses para que analisis.js pueda aplicar ajustes por cachorro/adulto/senior
     const edadMeses = valorEdad === '' ? null
         : edadUnidad === 'meses' ? parseFloat(valorEdad)
         : parseFloat(valorEdad) * 12;
@@ -124,6 +125,7 @@ const renderizarPatrones = (patrones) => {
 const evaluar = () => {
     const paciente = obtenerDatosPaciente();
 
+    // Si no hay especie o aun no cargaron las referencias, limpia la UI para evitar falsos positivos
     if (!paciente.especie || !referencias[paciente.especie]) {
         actualizarClasesInputs([]);
         renderizarPatrones([]);
@@ -131,6 +133,7 @@ const evaluar = () => {
     }
 
     const valores = obtenerValoresFormulario();
+    // Delega en analisis.js la comparacion contra rangos de referencia y la deteccion de patrones clinicos
     const { hallazgos, patrones } = analizarResultados(valores, paciente, referencias, alteraciones);
     ultimoAnalisis = { hallazgos, patrones };
 
@@ -142,6 +145,7 @@ const evaluar = () => {
 
 document.addEventListener('input', e => {
     if (e.target.type !== 'number') return;
+    // Impide valores negativos y limita a 4 digitos significativos para mantener la UI limpia
     if (e.target.value < 0) e.target.value = 0;
     if (e.target.value.replace('.', '').length > 4) e.target.value = e.target.value.slice(0, 4);
     e.target.classList.toggle('max-chars', e.target.value.replace('.', '').length >= 4);
@@ -164,6 +168,7 @@ document.addEventListener('click', e => {
     if (!btn) return;
     const panel = document.getElementById(`panel-${btn.dataset.panel}`);
     if (!panel) return;
+    // Recorre todos los campos editables del panel y los resetea, incluyendo indicadores visuales de estado
     panel.querySelectorAll('input[type="number"], input[type="text"], input[type="url"], select').forEach(el => {
         if (el.tagName === 'SELECT') {
             el.selectedIndex = 0;
@@ -181,6 +186,7 @@ document.addEventListener('click', e => {
 });
 
 document.querySelector('.boton-analizar').addEventListener('click', async () => {
+    // Si el usuario no esta logueado, abre el modal de auth y encola la llamada a IA como callback
     const autenticado = await verificarAuth();
     if (!autenticado) {
         abrirModalAuth(() => {

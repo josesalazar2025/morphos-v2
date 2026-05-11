@@ -15,6 +15,7 @@ export function activarTab(targetId) {
     const esTabExamenes = targetId === 'examenes';
     const mostrarExamenes = esTabExamenes || esSubpanelExamenes;
 
+    // Si se clickea la tab generica "Examenes", muestra el ultimo subtab activo; si es un subtab, lo guarda
     let idPanelActual;
     if (esTabExamenes) {
         idPanelActual = panelExamenActivo;
@@ -70,6 +71,7 @@ document.querySelector('main').addEventListener('touchstart', e => {
 document.querySelector('main').addEventListener('touchend', e => {
     const dx = e.changedTouches[0].clientX - inicioSwipeX;
     const dy = e.changedTouches[0].clientY - inicioSwipeY;
+    // Ignora gestos cortos o verticales para no interferir con scroll
     if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy)) return;
     const indice = SWIPE_ORDER.indexOf(panelActivo);
     const siguiente = dx < 0 ? SWIPE_ORDER[indice + 1] : SWIPE_ORDER[indice - 1];
@@ -122,6 +124,7 @@ function inicializarFilasGrid() {
     if (!esGridEscritorio()) return;
     mainEl.style.gridTemplateRows = '1fr auto auto';
 
+    // Mide el panel de flujo expandido y colapsado para animar grid-template-rows con precision
     const alturaPanel = panelFlujo.getBoundingClientRect().height;
     const alturaEncabezado = panelFlujo.querySelector('.panel-cabecera').getBoundingClientRect().height;
     if (alturaPanel > 0) filaExpandida = `${alturaPanel}px`;
@@ -188,6 +191,7 @@ function establecerSubpanelColapsado(subpanel, debeColapsar) {
     if (debeColapsar === subpanel.classList.contains('collapsed')) return;
     subpanel.classList.toggle('collapsed', debeColapsar);
     if (btn) btn.setAttribute('aria-expanded', String(!debeColapsar));
+    // Forzar reflujo antes de cambiar height permite que CSS transition anime correctamente
     if (debeColapsar) {
         animEl.style.height = `${animEl.offsetHeight}px`;
         animEl.offsetHeight;
@@ -324,6 +328,7 @@ document.querySelectorAll('.zona-imagen').forEach(zona => {
         reader.onload = ev => {
             const img = new Image();
             img.onload = () => {
+                // Reduce la imagen a max 1024px en su lado mayor para no saturar la memoria ni la API
                 const MAX_PIXELES = 1024;
                 const scale = Math.min(MAX_PIXELES / img.width, MAX_PIXELES / img.height, 1);
                 const canvas = document.createElement('canvas');
@@ -420,6 +425,7 @@ document.querySelectorAll('.zona-imagen').forEach(zona => {
 
     async function abrirCamara() {
         try {
+            // Preferencia por camara trasera (microscopio o movil apuntando a la muestra)
             stream = await navigator.mediaDevices.getUserMedia({
                 video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 } }
             });
@@ -429,7 +435,7 @@ document.querySelectorAll('.zona-imagen').forEach(zona => {
             controles.hidden = false;
             actualizarInsignia();
         } catch {
-            // Permiso denegado o cámara no disponible — no se requiere fallback
+            // Permiso denegado o camara no disponible; no se requiere fallback
         }
     }
 
@@ -447,6 +453,7 @@ document.querySelectorAll('.zona-imagen').forEach(zona => {
         e.stopPropagation();
         if (capturasMicroscopio.length >= MAX_CAPTURAS_MICRO) return;
         const canvas = document.createElement('canvas');
+        // Escala el fotograma de video para mantener un tamano razonable antes de enviarlo al modelo
         const MAX_PIXELES = 1024;
         const scale = Math.min(MAX_PIXELES / video.videoWidth, MAX_PIXELES / video.videoHeight, 1);
         canvas.width = Math.round(video.videoWidth * scale);

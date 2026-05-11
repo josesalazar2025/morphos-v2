@@ -6,6 +6,7 @@
 const UMBRALES_GRAVEDAD = { leve: 0.5, moderado: 1.5 };
 
 const clasificarGravedad = (valor, ref) => {
+    // Mide cuantos anchos de rango de referencia se desvia el valor
     const rango = ref.superior - ref.inferior;
     const desviacion = valor > ref.superior
         ? (valor - ref.superior) / rango
@@ -98,6 +99,7 @@ const ajustarReferencias = (refsEspecie, paciente) => {
     const ajRaza = obtenerAjustesRaza(paciente.raza, paciente.especie);
     const ajSexo = AJUSTES_SEXO[paciente.especie]?.[paciente.sexo] ?? {};
 
+    // Multiplica los limites inferiores y superiores por los factores de edad, raza y sexo
     return Object.entries(refsEspecie).reduce((acc, [clave, ref]) => {
         const factorEdad = ajEdad[clave] ?? {};
         const factorRaza = ajRaza[clave] ?? {};
@@ -133,6 +135,7 @@ const detectarPatrones = (hallazgos, especie, alt) => {
     // Serie roja
 
     if (esBajo('hct') || esBajo('hgb') || esBajo('rbc')) {
+        // Clasifica el tipo de anemia segun el VCM para sugerir la etiologia mas probable
         const tipoPorVcm = !presente('vcm') ? '' :
             esBajo('vcm') ? 'microcítica' :
             esAlto('vcm') ? 'macrocítica' : 'normocítica';
@@ -160,6 +163,7 @@ const detectarPatrones = (hallazgos, especie, alt) => {
     // Serie blanca
 
     if (esAlto('wbc')) {
+        // Diferencia leucocitosis neutrofilica de linfocitica; si no hay diferencial, informa generico
         const neutrofilia = esAlto('neutro');
         const linfocitosis = esAlto('linfo');
 
@@ -329,6 +333,7 @@ const detectarPatrones = (hallazgos, especie, alt) => {
     const valSodio = valor('sodio');
     const valPotasio = valor('potasio');
 
+    // Ratio Na/K < 27 es sugestivo de hipoadrenocorticismo; la gravedad aumenta a menor ratio
     if (valSodio !== null && valPotasio !== null && valPotasio > 0) {
         const ratioNaK = valSodio / valPotasio;
         if (ratioNaK < 27) agregar({
@@ -461,6 +466,7 @@ export const analizarResultados = (valoresInput, paciente, referencias, alteraci
     const refsEspecie = referencias[paciente.especie];
     if (!refsEspecie) return { hallazgos: [], patrones: [] };
 
+    // Ajusta los rangos segun edad, raza y sexo antes de comparar
     const refsAjustadas = ajustarReferencias(refsEspecie, paciente);
     const hallazgos = [];
 

@@ -1,11 +1,12 @@
 # Uso de inteligencia artificial en el desarrollo de Morphos
+
 ## Proyecto final — Curso de Desarrollo Web 2026
 
 ---
 
 ## Modelo utilizado
 
-Se utilizó exclusivamente Claude Code (Sonnet 4.6) de Anthropic como asistente de desarrollo a lo largo de todo el proyecto.
+Se utilizó Claude Code (Sonnet 4.6) de Anthropic como asistente de desarrollo a lo largo de todo el proyecto y para el despliegue, docker y debug del comportamiento del modelo de IA se utilizó Kimi 2.6 con Open Code CLI.
 
 ---
 
@@ -21,11 +22,13 @@ El modelo actuó como ejecutor de decisiones ya tomadas, no como tomador de deci
 
 Para el motor de detección de patrones (`analisis.js`) y los datos de referencia (`valores_referencia.json`, `alteraciones.json`), se proporcionó al modelo literatura especializada en patología clínica veterinaria como contexto de generación.
 
-Los rangos de referencia por especie, los ajustes por edad, raza y sexo, las descripciones clínicas de cada alteración, y la lógica de clasificación de gravedad fueron **validados gracias a mi formación y experiencia profesional en Medicina Veterinaria**, antes de ser incorporados al código. El modelo fue un medio para estructurar y codificar ese conocimiento, no la fuente del mismo.
+Los rangos de referencia por especie, los ajustes por edad, raza y sexo, las descripciones clínicas de cada alteración, y la lógica de clasificación de gravedad fueron **validados gracias a mi formación y experiencia profesional en Medicina Veterinaria**, antes de ser incorporados al código. El modelo fue un medio para estructurar y codificar ese conocimiento, no la fuente del mismo. Se han realizado múltiples pruebas con resultados de laboratorio reales y citologías de pacientes facilitados por otros veterinarios ejercientes.
 
 Textos de referencia utilizados:
+
 - Thrall,  *Veterinary Hematology and Clinical Chemistry*, 3.ª ed. 2022
 - Weiss, — *Schalm's Veterinary Hematology*, 7.ª ed. 2022
+
 ---
 
 ## Afinamiento del prompt y control de salidas del modelo de IA
@@ -58,9 +61,11 @@ Durante las auditorías de rendimiento con Lighthouse se identificó que la carg
 Al concluir el desarrollo se realizó una auditoría asistida por IA con los siguientes objetivos:
 
 **Código muerto**
+
 - Identificación y eliminación de exportaciones sin consumidores y código que ya no era necesario o era experimental
 
 **Seguridad**
+
 - Protección de archivos sensibles (`.env`, `setup.php`) mediante `.htaccess`
 - Sanitización de datos externos de APIs con `textContent` en lugar de `innerHTML`, eliminando el riesgo de XSS
 - Validación de URLs externas antes de usarlas como atributos `href`

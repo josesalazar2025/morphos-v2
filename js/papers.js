@@ -60,6 +60,7 @@ const traducirPatron = (nombre) => {
 
 const construirQuery = (patrones) => {
     if (!patrones || patrones.length === 0) return 'veterinary clinical laboratory diagnosis canine feline';
+    // Limita a 3 terminos para mantener la query enfocada y evitar resultados irrelevantes
     const terminos = [...new Set(patrones.map(p => traducirPatron(p.nombre)))].slice(0, 3);
     return `${terminos.join(' ')} canine OR feline veterinary`;
 };
@@ -139,6 +140,7 @@ const renderizarPaginacion = () => {
         return;
     }
 
+    // Ventana deslizante de maximo 5 botones centrada en la pagina actual
     const inicio = Math.max(0, paginaActual - 2);
     const fin = Math.min(totalPaginas, inicio + 5);
 
@@ -211,6 +213,7 @@ export const abrirModalPapers = async (patrones) => {
     const etiquetaConsulta = document.getElementById('papers-consulta');
     if (etiquetaConsulta) etiquetaConsulta.textContent = `"${nuevaConsulta}"`;
 
+    // Reutiliza resultados si la consulta no cambio desde la ultima vez
     if (nuevaConsulta === consultaActual && todosLosPapers.length > 0) {
         renderizarPaginaActual();
         return;

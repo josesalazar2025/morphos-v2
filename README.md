@@ -164,38 +164,6 @@ O bien con el servidor integrado de PHP desde la raiz del proyecto:
 php -S localhost:8000
 ```
 
-### 5. Despliegue con Docker (HuggingFace Spaces)
-
-El proyecto incluye un `Dockerfile` basado en `php:8.2-apache` configurado para ejecutarse en HuggingFace Spaces en el puerto `7860`.
-
-**Construir y ejecutar localmente:**
-
-```bash
-docker build -t morphos .
-docker run -p 7860:7860 morphos
-```
-
-Abrir en el navegador: `http://localhost:7860`
-
-**Variables de entorno en Docker:**
-
-La API key de HuggingFace debe estar en `api/.env` antes de construir la imagen:
-
-```text
-HF_API_KEY=tu_clave_de_huggingface
-```
-
-> En HuggingFace Spaces también puede configurarse como secreto desde *Settings → Repository secrets* para no exponerla en el repositorio.
-
-**Notas del entorno Docker:**
-
-* Apache escucha en el puerto `7860` (configurado vía `sed` sobre `ports.conf` y `000-default.conf`)
-* El script `docker-entrypoint.sh` inicializa la base de datos SQLite en `/var/www/html/data/morphos.db` al arrancar el contenedor
-* Los datos escritos en SQLite durante la ejecución **no persisten** entre reinicios del contenedor a menos que se monte un volumen externo
-* Si el Space queda en estado de error por un proceso Apache colgado, usar **Factory reboot** desde el menú del Space en HuggingFace
-
----
-
 ## Backend de IA
 
 El modelo de IA se configura desde la propia interfaz. La seleccion se guarda en `localStorage`.
@@ -259,7 +227,7 @@ La gravedad se calcula como la desviacion relativa al ancho del rango de referen
 ## Retos
 
 * Por la diversidad de unidades de medición que utilizan los diferentes fabricantes de equipos de laboratorio se incorporó una detección de unidades para su conversión y normalización
-* El modelado del output de la I.A requirió muchísimas iteraciones de formateo del prompt y harness
+* El modelado del output de la I.A requirió muchísimas iteraciones de formateo del prompt y harness para evitar alucinaciones o que envíara su proceso de pensamiento, aún requiere de mucho trabajo extra de refinamiento
 * Inicialmente quería usar proveedores de inferencia gratuita de medGemma (como featherless AI) pero fallaban continuamente, por eso decidí optar por hostear al modelo en Zero GPU de HF con la subscripción pro para la prueba de concepto
 * Incluir las librería de parseo de pdf y las fuentes en el directorio del proyecto con la intención de reducir dependencias externas estaba generando problemas con las métricas de velocidad de lighthouse que no lograba solucionar. Claude planteó implementación de caché en htacesss y pre carga de las fuentes, lo cual llevó la puntuación de 60 a 90/100 sin mayores cambios estructurales
 * Lograr una interfaz limpia y entendible requirío de muchos intentos hasta lograr un flujo de trabajo intuitivo y accsesible con la mínima friccion posible para los usuarios

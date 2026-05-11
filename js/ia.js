@@ -74,6 +74,7 @@ function construirPrompt(obtenerDatosPaciente, obtenerValoresFormulario, getUlti
             ? hallazgos.map(h => `  ${h.nombre}: ${h.valor} ${h.unidad || ''} (${h.direccion} · ${h.gravedad})`).join('\n')
             : '  Todos los valores normales';
 
+        // Prompt enfocado en citologia cuando hay imagenes adjuntas
         return `Eres médico veterinario especialista en patología clínica.
 
 Paciente: ${paciente.especie || 'desconocido'}, ${paciente.raza || 'raza desconocida'}, ${edadTexto}, ${paciente.sexo || 'sexo desconocido'}
@@ -105,6 +106,7 @@ Proporciona una interpretación clínica breve (6-8 oraciones) destacando los ha
 }
 
 function limpiarRespuesta(text) {
+    // Elimina tokens especiales del modelo medGemma y otros artefactos de generacion
     if (text.includes('<start_of_turn>model')) {
         text = text.split('<start_of_turn>model').pop();
     }
@@ -115,7 +117,7 @@ function limpiarRespuesta(text) {
         // Formato normal: <unused94>pensamiento<unused95>respuesta
         text = text.split('<unused95>').pop();
     } else if (text.includes('<unused94>')) {
-        // El modelo agotó tokens en el razonamiento — mostrar el pensamiento como respuesta
+        // El modelo agoto tokens en el razonamiento; muestra el pensamiento como respuesta
         text = text.split('<unused94>').slice(1).join('').trim();
     }
     text = text.replace(/<unused\d+>/g, '');
@@ -127,7 +129,7 @@ function limpiarRespuesta(text) {
     // Quitar bloques de razonamiento / thinking process
     text = text.replace(/^thought\s*\n?/i, '');
 
-    // Detectar si el modelo solo generó razonamiento en inglés sin respuesta clínica
+    // Detectar si el modelo solo genero razonamiento en ingles sin respuesta clinica
     const tieneRazonamiento = /Here'?s a thinking process|Understand the Role|Analyze the Request|Review the Lab Results|Synthesize Findings|Formulate Clinical Interpretation/i.test(text);
     const tieneEspanol = /[áéíóúñÁÉÍÓÚÑ]{2,}/.test(text) || /\b(paciente|hallazgos|interpretación|recomendaciones|análisis|resultados|clínica|diagnóstico|evaluación|hepatopatía|nefropatía|anemia|leucocitosis|neutrofilia|linfopenia|hiperglucemia|hipoglucemia|pancreatitis|hepatitis|cirrosis|insuficiencia)\b/i.test(text);
     if (tieneRazonamiento && !tieneEspanol) {
@@ -136,7 +138,7 @@ function limpiarRespuesta(text) {
 
     // Si hay razonamiento mezclado con español, intentar extraer solo la respuesta
     if (tieneRazonamiento) {
-        // Buscar la primera línea que parezca español clínico
+        // Buscar la primera linea que parezca español clinico
         const lineas = text.split('\n');
         let inicioRespuesta = -1;
         for (let i = 0; i < lineas.length; i++) {
@@ -157,10 +159,10 @@ function limpiarRespuesta(text) {
     text = text.replace(/\\[a-zA-Z]+(\{[^}]*\})?/g, '');
     text = text.replace(/\$[^$]*\$/g, '');
 
-    // Colapsar líneas vacías múltiples
+    // Colapsar lineas vacias multiples
     text = text.replace(/\n{3,}/g, '\n\n').trim();
 
-    // Cortar al primer párrafo que se repite (loop del modelo)
+    // Cortar al primer parrafo que se repite (loop del modelo)
     const parrafos = text.split(/\n\n+/);
     const vistos = new Set();
     const sinRepetidos = [];
@@ -203,6 +205,7 @@ async function _llamarOllama(salidaEl, obtenerDatosPaciente, obtenerValoresFormu
     const prompt = construirPrompt(obtenerDatosPaciente, obtenerValoresFormulario, getUltimoAnalisis, getReferencias);
     const imagenes = [...imagenesDataUrl.filter(Boolean), ...capturasMicroscopio];
 
+    // Construye el payload compatible con OpenAI vision: imagenes primero, luego el texto
     const contenido = [];
     for (const img of imagenes) {
         if (typeof img === 'string' && img.startsWith('data:image/'))
@@ -244,16 +247,16 @@ async function _llamarOllama(salidaEl, obtenerDatosPaciente, obtenerValoresFormu
 async function _llamarSpace(salidaEl, obtenerDatosPaciente, obtenerValoresFormulario, getUltimoAnalisis, getReferencias) {
     let prompt = construirPrompt(obtenerDatosPaciente, obtenerValoresFormulario, getUltimoAnalisis, getReferencias);
     
-    // HACK: Prepend <unused95> to force medGemma to skip thinking phase and output response directly
+    // El modelo medGemma espera el token <unused95> al inicio del prompt para modo respuesta directa
     if (!prompt.includes('<unused95>')) {
         prompt = '<unused95>' + prompt;
     }
     
+    // Filtra y limita a 4 imagenes por restriccion del backend de HuggingFace
     const imagenes = [...imagenesDataUrl.filter(Boolean), ...capturasMicroscopio]
         .filter(img => typeof img === 'string' && /^data:image\/(jpeg|png|gif|webp);base64,/.test(img))
         .slice(0, 4);
 
-    // DEBUG: Log exact payload for desktop vs mobile comparison
     console.log('=== MORPHOS AI REQUEST ===');
     console.log('Images count:', imagenes.length);
     console.log('Prompt length:', prompt.length);
@@ -269,7 +272,6 @@ async function _llamarSpace(salidaEl, obtenerDatosPaciente, obtenerValoresFormul
 
         const data = await res.json();
         
-        // DEBUG: Log raw response
         console.log('=== MORPHOS AI RESPONSE ===');
         console.log('Status:', res.status);
         console.log('Raw text preview:', (data.text ?? 'NO TEXT').substring(0, 300));

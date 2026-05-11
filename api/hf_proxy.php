@@ -9,6 +9,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') { http_response_code(405); exit; }
 
 $hfKey = $_ENV['HF_API_KEY'] ?? $_SERVER['HF_API_KEY'] ?? getenv('HF_API_KEY') ?? '';
 
+// Fallback a archivo .env si la variable de entorno no esta definida
 if (!$hfKey && file_exists(__DIR__ . '/.env')) {
     foreach (file(__DIR__ . '/.env', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
         if (str_starts_with($line, 'HF_API_KEY=')) { $hfKey = trim(substr($line, 11)); break; }
@@ -30,8 +31,6 @@ function hf_get(string $url, array $headers, ?string $post = null): array {
     return [curl_exec($ch), curl_getinfo($ch, CURLINFO_HTTP_CODE)];
 }
 
-// Upload a data URL to the Gradio /upload endpoint and return a FileData object,
-// or fall back to the raw data URL format if the upload fails.
 function uploadImagen(string $space, string $hfKey, string $dataUrl): ?array {
     if (!preg_match('/^data:(image\/[\w+]+);base64,(.+)$/s', $dataUrl, $m)) return null;
     $mimeType = $m[1];
@@ -39,6 +38,7 @@ function uploadImagen(string $space, string $hfKey, string $dataUrl): ?array {
     $binary = base64_decode($m[2]);
     if ($binary === false) return null;
 
+    // Construye manualmente el cuerpo multipart para enviar la imagen al upload endpoint de Gradio
     $boundary = bin2hex(random_bytes(16));
     $body = "--$boundary\r\n"
         . "Content-Disposition: form-data; name=\"files\"; filename=\"image.$ext\"\r\n"
@@ -61,8 +61,8 @@ function uploadImagen(string $space, string $hfKey, string $dataUrl): ?array {
     $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
 
+    // Si el upload falla, devuelve la imagen inline para que el modelo la procese igualmente
     if ($code >= 400 || !$result) {
-        // Fall back: pass as data URL directly (older Gradio versions accept this)
         return ['url' => $dataUrl, 'orig_name' => "image.$ext", 'mime_type' => $mimeType];
     }
 
@@ -98,6 +98,7 @@ if (!$eventId) { http_response_code(502); echo json_encode(['error' => 'No se ob
 [$stream] = hf_get("$SPACE/call/analyze/$eventId", ["Authorization: Bearer $hfKey"]);
 
 $result = $error = null; $lastEvent = '';
+// Parsea el stream SSE de Gradio buscando el evento 'complete' o 'process_completed'
 foreach (explode("\n", $stream) as $raw) {
     $line = rtrim($raw, "\r");
     if (str_starts_with($line, 'event:')) $lastEvent = trim(substr($line, 6));

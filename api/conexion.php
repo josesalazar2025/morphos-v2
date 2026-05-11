@@ -1,6 +1,6 @@
 <?php
 
-// Try MySQL first (local XAMPP), fallback to SQLite (Docker / HF Spaces)
+// Primero intenta conectar con MySQL (XAMPP), fallback a SQLite (Docker / HF Spaces)
 $dbHost = '127.0.0.1';
 $dbUsuario = 'root';
 $dbClave = '';
@@ -16,7 +16,6 @@ if (file_exists(__DIR__ . '/.env')) {
 
 $conexion = null;
 
-// Attempt MySQL only if not explicitly forced to SQLite
 $useSqlite = getenv('DB_FORCE_SQLITE') === '1';
 
 if (!$useSqlite) {
@@ -28,13 +27,12 @@ if (!$useSqlite) {
     }
 }
 
-// Fallback to SQLite
+// Fallback de SQLite
 if (!$conexion) {
     try {
         $conexion = new PDO("sqlite:$dbPath");
         $conexion->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-        // Ensure users table exists (idempotent)
         $conexion->exec("CREATE TABLE IF NOT EXISTS usuarios (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             nombre TEXT NOT NULL,

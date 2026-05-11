@@ -10,7 +10,7 @@ const DEFS_ANALITOS = [
     { campo: 'hgb', re: /\b(?:hemoglobin[ao]?\w*|hgb|hb)\b(?!a\d)/i },
     { campo: 'hct', re: /\b(?:hematocrit[oo]?\w*|hct|pcv)\b/i },
     { campo: 'vcm', re: /\b(?:v\.?c\.?m\.?|m\.?c\.?v\.?|vol(?:umen)?\s+corp\w*)\b/i },
-    // CHCM debe ir antes que HCM para evitar que MCH coincida con MCHC
+    // CHCM debe ir antes que HCM para evitar que MCH coincida con MCHC al usar lookahead negativo
     { campo: 'chcm', re: /\b(?:c\.?h\.?c\.?m\.?|m\.?c\.?h\.?c\.?|concentr\w+\s+hem\w+\s+corp\w*)\b/i },
     { campo: 'hcm', re: /\b(?:h\.?c\.?m\.?|m\.?c\.?h\.?)(?![cC]\.?)\b/i },
     { campo: 'rdw', re: /\b(?:r\.?d\.?w\.?(?:-cv)?|anch\w+\s+distrib\w+)\b/i },
@@ -201,6 +201,7 @@ function aplicarConversion(campo, claveConv, value, cadenaUnidad) {
     const key = claveConv || campo;
     const reglas = CONVERSIONES_UNIDADES[key];
     if (!reglas) return value;
+    // Aplica la primera regla cuya regex coincida con la cadena de unidad detectada
     for (const regla of reglas) {
         if (regla.re.test(cadenaUnidad)) {
             const f = regla.factor;
@@ -211,8 +212,8 @@ function aplicarConversion(campo, claveConv, value, cadenaUnidad) {
     return value;
 }
 
-// Retorna { num, unit } donde unit es la cadena de ~50 caracteres tras el valor numérico.
-// Las reglas de conversión evalúan su regex contra esta cadena.
+// Retorna { num, unit } donde unit es la cadena de ~50 caracteres tras el valor numerico.
+// Las reglas de conversion evaluan su regex contra esta cadena para decidir el factor.
 function extraerValorYUnidad(contexto) {
     const m = contexto.match(/[<>≤≥]?\s*(\d+(?:[.,]\d+)?)([\s\S]*)/);
     if (!m) return { num: null, unit: '' };
@@ -244,7 +245,7 @@ function parsearTextoLab(textoCrudo) {
         resultados[def.campo] = aplicarConversion(def.campo, def.claveConv, num, unit);
     }
 
-    // Derivar % desde conteos absolutos si el % no se encontró directamente y se conoce el WBC
+    // Derivar % desde conteos absolutos si el % no se encontro directamente y se conoce el WBC
     if (resultados.wbc && resultados.wbc > 0) {
         for (const f of ['neutro', 'linfo', 'mono', 'eosino', 'baso']) {
             if (resultados[f] === undefined && resultados[`${f}_abs`] !== undefined) {
@@ -254,8 +255,8 @@ function parsearTextoLab(textoCrudo) {
         }
     }
 
-    // Derivar % de reticulocitos desde el conteo absoluto y RBC si no se encontró directamente
-    // reti_abs (x10³/μL) ÷ (rbc (x10⁶/μL) × 10) = reti%
+    // Derivar % de reticulocitos desde el conteo absoluto y RBC si no se encontro directamente
+    // reti_abs (x10³/uL) / (rbc (x10⁶/uL) * 10) = reti%
     if (resultados.rbc && resultados.rbc > 0 && resultados.reti === undefined && resultados.reti_abs !== undefined) {
         const pct = resultados.reti_abs / (resultados.rbc * 10);
         if (pct >= 0 && pct <= 20) resultados.reti = Math.round(pct * 100) / 100;
@@ -311,7 +312,7 @@ function inferEspecie(raza) {
 function parsearTextoPaciente(textoCrudo) {
     const p = {};
 
-    // Especie — "Especie: Canino" / "Species: Dog" / "Tipo: Felino"
+    // Especie: tolera variaciones como "Canino", "Dog", "Felino", "Cat"
     const coincEsp = textoCrudo.match(/\b(?:especies?|species|tipo(?:\s+de)?\s+animal)\s*:?\s{0,4}([A-Za-záéíóúÁÉÍÓÚñÑ]{3,20})/i);
     if (coincEsp) {
         const v = coincEsp[1].toLowerCase();
@@ -319,11 +320,10 @@ function parsearTextoPaciente(textoCrudo) {
         else if (/fel[io]|gat[ao]|cat/.test(v)) p.especie = 'Felino';
     }
 
-    // Raza — "Raza: Labrador Retriever" / "Breed: Mixed"
+    // Raza: corta en la siguiente etiqueta o doble espacio para evitar absorber campos adyacentes en tablas
     const coincRaza = textoCrudo.match(/\b(?:raza|breed|race|cruce)\s*:?\s{0,4}([^\n\r;:]{2,60})/i);
     if (coincRaza) {
         const crudo = coincRaza[1];
-        // Detener en la siguiente palabra clave de etiqueta o 2+ espacios consecutivos (diseño tabular)
         const indiceParo = crudo.search(SIGUIENTE_ETIQUETA);
         const limpiado = (indiceParo > 0 ? crudo.slice(0, indiceParo) : crudo)
             .split(/\s{2,}/)[0]
@@ -331,9 +331,10 @@ function parsearTextoPaciente(textoCrudo) {
         if (limpiado.length >= 2) p.raza = limpiado.length > 40 ? limpiado.slice(0, 40).trim() : limpiado;
     }
 
+    // Si no encontro especie pero si raza, infiere la especie a partir de listas de razas conocidas
     if (!p.especie && p.raza) p.especie = inferEspecie(p.raza);
 
-    // Sexo — "Sexo: Macho" / "Sex: F" / "Género: Hembra Esterilizada"
+    // Sexo: soporta abreviaturas (M, F, H) y variantes como "Esterilizada"
     const coincSex = textoCrudo.match(/\b(?:sexo|sex[ou]?|g[eé]nero|gender)\s*:?\s{0,4}([^\n\r;:]{1,30})/i);
     if (coincSex) {
         const v = coincSex[1].trim();
@@ -341,7 +342,7 @@ function parsearTextoPaciente(textoCrudo) {
         else if (/\b(?:hembra|female|esterilizada?|spayed)\b/i.test(v) || /^[fh]\.?\s*$/i.test(v)) p.sexo = 'Hembra';
     }
 
-    // Edad — "Edad: 5 años" / "Age: 6 months" / "Edad: 2.5 años"
+    // Edad: extrae numero y unidad, normalizando comas decimales
     const coincEdad = textoCrudo.match(/\b(?:edad|age)\s*:?\s{0,4}(\d+(?:[.,]\d+)?)\s*(a[ñn]os?|years?|yr?s?|meses?|months?)\b/i);
     if (coincEdad) {
         p.edad = parseFloat(coincEdad[1].replace(',', '.'));

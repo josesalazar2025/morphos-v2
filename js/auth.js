@@ -103,6 +103,7 @@ function limpiarCampo(input) {
 }
 
 function activarValidacionCampo(input, reglaDeFalso) {
+    // Solo marca despues del primer blur para no agobiar al usuario mientras escribe
     let tocado = false;
     input.addEventListener('blur', () => { tocado = true; marcarCampo(input, !reglaDeFalso()); });
     input.addEventListener('input', () => { if (tocado) marcarCampo(input, !reglaDeFalso()); });
@@ -127,7 +128,7 @@ function inicializarValidacionRegistro() {
     activarValidacionCampo(email, () => !esEmailValido(email.value));
     activarValidacionCampo(password, () => password.value.length < 6);
 
-    // password2 depende del valor de password, se re-evalúa en ambos
+    // password2 depende del valor de password, se re-evalua en ambos campos para dar feedback inmediato
     let tocadoP2 = false;
     const validarP2 = () => password.value === password2.value && password2.value.length > 0;
     password2.addEventListener('blur', () => { tocadoP2 = true; marcarCampo(password2, validarP2()); });
@@ -173,6 +174,7 @@ formLogin.addEventListener('submit', async e => {
     estadoAuth = true;
     actualizarBtnUsuario(datos.nombre);
     cerrarModal();
+    // Ejecuta la accion que el usuario intento hacer antes de loguearse (ej. analisis IA)
     accionPendiente?.();
     accionPendiente = null;
 });
@@ -216,6 +218,7 @@ formRegistro.addEventListener('submit', async e => {
     estadoAuth = true;
     actualizarBtnUsuario(datos.nombre);
     cerrarModal();
+    // Ejecuta la accion que el usuario intento hacer antes de registrarse (ej. analisis IA)
     accionPendiente?.();
     accionPendiente = null;
 });
