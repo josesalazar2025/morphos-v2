@@ -48,53 +48,39 @@ function construirPrompt(obtenerDatosPaciente, obtenerValoresFormulario, getUlti
     const signosText = document.getElementById('signos-clinicos').value.trim();
     const refEspecie = paciente.especie ? (getReferencias()[paciente.especie] || {}) : {};
 
-    const totalImagenes = imagenesDataUrl.filter(Boolean).length + capturasMicroscopio.length;
-    const hayImagenes = totalImagenes > 0;
+    const lineasValores = Object.entries(valores).map(([clave, valor]) => {
+        const ref = refEspecie[clave];
+        const nombre = ref?.nombre || clave;
+        const unidad = ref?.unidad || '';
+        const rango = ref ? ` [ref: ${ref.inferior}-${ref.superior}]` : '';
+        const h = hallazgos.find(h => h.clave === clave);
+        const flag = h ? ` ← ${h.direccion === 'alto' ? 'ELEVADO' : 'BAJO'} (${h.gravedad})` : '';
+        return `  ${nombre}: ${valor} ${unidad}${rango}${flag}`;
+    }).join('\n') || 'Sin valores ingresados';
 
-    // SIEMPRE enviar solo hallazgos anormales para reducir razonamiento del modelo
-    const lineasValores = hallazgos.length > 0
-        ? hallazgos.map(h => `  ${h.nombre}: ${h.valor} ${h.unidad || ''} (${h.direccion} · ${h.gravedad})`).join('\n')
-        : 'Todos los valores dentro de rangos de referencia.';
+    const lineasPatrones = patrones.length > 0
+        ? patrones.map(p => `  - ${p.nombre}: ${p.descripcion}`).join('\n')
+        : '  Ninguno detectado';
 
     const edadTexto = paciente.edadMeses != null
         ? (paciente.edadMeses < 24 ? `${Math.round(paciente.edadMeses)} meses` : `${(paciente.edadMeses / 12).toFixed(1)} años`)
         : 'desconocida';
 
-    let notaImagenes = '';
-    let cierre = '';
-    if (hayImagenes) {
-        notaImagenes = `TAREA PRINCIPAL: Se adjuntan ${totalImagenes} imagen${totalImagenes > 1 ? 'es' : ''} de citología. DEBES analizarlas exhaustivamente ANTES de considerar los resultados de laboratorio. Describe morfología celular, lesiones, patrones anormales, hemoparásitos intracelulares y extracelulares (Anaplasma, Babesia, Ehrlichia, Hepatozoon, Piroplasma, Mycoplasma, etc.) e inclusiones citoplasmáticas. Luego integra los hallazgos citológicos con los resultados de laboratorio. NO omitas el análisis de las imágenes bajo ninguna circunstancia.`;
-        cierre = `Estructura tu respuesta en dos partes claras: (1) Análisis citológico detallado de las imágenes adjuntas, y (2) Integración con los resultados de laboratorio y recomendaciones diagnósticas.`;
-    } else {
-        cierre = `Proporciona una interpretación clínica breve (8-10 oraciones) destacando los hallazgos más significativos y las recomendaciones diagnósticas inmediatas.`;
-    }
+    return `IMPORTANTE: Responde ÚNICAMENTE en español. Do not write in English under any circumstance.
 
-    const ejemploRespuesta = hayImagenes
-        ? 'Las imágenes muestran neutrófilos con toxicidad moderada y presencia de cuerpos de Döhle, indicativos de respuesta inflamatoria sistémica. Los resultados de laboratorio confirman leucocitosis con desviación izquierda. Se sugiere descartar proceso infeccioso severo mediante hemocultivo y paneles diagnósticos dirigidos.'
-        : 'El paciente presenta leucocitosis con neutrofilia y linfopenia, sugestiva de respuesta inflamatoria aguda con posible compromiso inmune. Los valores de creatinina elevados indican disfunción renal que requiere evaluación adicional. Se recomienda completar el estudio con urocultivo y ecografía abdominal.';
+    Eres un médico veterinario especialista en patología clínica. Sólo responderás consultas asociadas a ésta área de conocimiento y basado en la evidencia proporcionada.
+    Si te envían imágenes de citología debes hacer una revisión exhaustiva de la morfología celular, identificar lesiones, patrones anormales, presencia de hemoparásitos intracelulares y extracelulares (Anaplasma, Babesia, Ehrlichia, Hepatozoon, Piroplasma, Mycoplasma, etc) o inclusiones citoplasmáticas.
+    Analiza los resultados y proporciona una interpretación clínica concisa.
 
-    return `Eres médico veterinario especialista en patología clínica. Interpreta los siguientes resultados de laboratorio y proporciona un análisis clínico conciso.
+    Paciente: ${paciente.especie || 'desconocido'}, raza: ${paciente.raza || 'NE'}, edad: ${edadTexto}, sexo: ${paciente.sexo || 'NE'}
 
-REGLAS DE RESPUESTA:
-- Responde ÚNICAMENTE en español
-- Máximo 10 oraciones
-- Comienza DIRECTAMENTE con la interpretación clínica, sin introducciones
-- No uses listas numeradas ni expliques tu proceso de análisis
-- Sé directo, profesional y clínico
+    Resultados de laboratorio:
+    ${lineasValores}
 
-Ejemplo de formato esperado:
-"${ejemploRespuesta}"
-
-PACIENTE:
-${paciente.especie || 'desconocido'}, raza: ${paciente.raza || 'NE'}, edad: ${edadTexto}, sexo: ${paciente.sexo || 'NE'}
-
-RESULTADOS DE LABORATORIO:
-${lineasValores}
-
-${signosText ? `SIGNOS CLÍNICOS: ${signosText}` : ''}
-
-${notaImagenes ? notaImagenes + '\n' : ''}
-${cierre}`;
+    Patrones detectados:
+    ${lineasPatrones}
+    ${signosText ? `\nSignos clínicos: ${signosText}` : ''}
+    Proporciona una interpretación clínica breve (6-8 oraciones) destacando los hallazgos más significativos y las recomendaciones diagnósticas inmediatas.`;
 }
 
 function limpiarRespuesta(text) {
