@@ -1895,14 +1895,34 @@ main {
     }
 
     #panel-hema .fila-campo input,
-    #panel-bioquim .fila-campo input {
+    #panel-bioquim .fila-campo input,
+    #panel-uri .fila-campo input,
+    #panel-endo .fila-campo input {
         padding: 3px 0.4rem;
-        width: calc(4.5rem + 1.5rem);
+        width: 3.5rem;
+        flex-shrink: 0;
     }
 
     #panel-hema .fila-campo .unidad,
-    #panel-bioquim .fila-campo .unidad {
+    #panel-bioquim .fila-campo .unidad,
+    #panel-uri .fila-campo .unidad,
+    #panel-endo .fila-campo .unidad {
         min-width: 3rem;
+    }
+
+    #panel-hema .fila-campo .estado-campo,
+    #panel-bioquim .fila-campo .estado-campo,
+    #panel-uri .fila-campo .estado-campo,
+    #panel-endo .fila-campo .estado-campo {
+        width: 5.5rem;
+        min-width: 5.5rem;
+        flex-shrink: 0;
+        text-align: right;
+    }
+
+    #panel-uri .fila-campo,
+    #panel-endo .fila-campo {
+        gap: 0.4rem;
     }
 
     #panel-bioquim .grupo-campo {
