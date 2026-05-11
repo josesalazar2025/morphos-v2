@@ -87,17 +87,18 @@ DATOS ADJUNTOS: ${totalImagenes} imagen${totalImagenes > 1 ? 'es' : ''} de citol
 ¿Qué observas en las imágenes? Describe la morfología celular, identifica lesiones, patrones anormales, hemoparásitos (Anaplasma, Babesia, Ehrlichia, Hepatozoon, Piroplasma, Mycoplasma) e inclusiones citoplasmáticas. Luego integra con los datos de laboratorio. Responde en español.`;
     }
 
+    const lineasHallazgos = hallazgos.length > 0
+        ? hallazgos.map(h => `  ${h.nombre}: ${h.valor} ${h.unidad || ''} (${h.direccion} · ${h.gravedad})`).join('\n')
+        : '  Todos los valores dentro de rangos normales';
+
     return `Responde en español.
 
 Eres médico veterinario especialista en patología clínica.
 
 Paciente: ${paciente.especie || 'desconocido'}, raza: ${paciente.raza || 'NE'}, edad: ${edadTexto}, sexo: ${paciente.sexo || 'NE'}
 
-Resultados de laboratorio:
-${lineasValores}
-
-Patrones detectados:
-${lineasPatrones}
+Hallazgos de laboratorio:
+${lineasHallazgos}
 ${signosText ? `\nSignos clínicos: ${signosText}` : ''}
 
 Proporciona una interpretación clínica breve (6-8 oraciones) destacando los hallazgos más significativos y las recomendaciones diagnósticas inmediatas.`;
@@ -241,10 +242,23 @@ async function _llamarOllama(salidaEl, obtenerDatosPaciente, obtenerValoresFormu
 // Morphos AI Space
 
 async function _llamarSpace(salidaEl, obtenerDatosPaciente, obtenerValoresFormulario, getUltimoAnalisis, getReferencias) {
-    const prompt = construirPrompt(obtenerDatosPaciente, obtenerValoresFormulario, getUltimoAnalisis, getReferencias);
+    let prompt = construirPrompt(obtenerDatosPaciente, obtenerValoresFormulario, getUltimoAnalisis, getReferencias);
+    
+    // HACK: Prepend <unused95> to force medGemma to skip thinking phase and output response directly
+    if (!prompt.includes('<unused95>')) {
+        prompt = '<unused95>' + prompt;
+    }
+    
     const imagenes = [...imagenesDataUrl.filter(Boolean), ...capturasMicroscopio]
         .filter(img => typeof img === 'string' && /^data:image\/(jpeg|png|gif|webp);base64,/.test(img))
         .slice(0, 4);
+
+    // DEBUG: Log exact payload for desktop vs mobile comparison
+    console.log('=== MORPHOS AI REQUEST ===');
+    console.log('Images count:', imagenes.length);
+    console.log('Prompt length:', prompt.length);
+    console.log('Prompt preview:', prompt.substring(0, 200) + '...');
+    console.log('==========================');
 
     try {
         const res = await fetch('api/hf_proxy.php', {
@@ -254,12 +268,20 @@ async function _llamarSpace(salidaEl, obtenerDatosPaciente, obtenerValoresFormul
         });
 
         const data = await res.json();
+        
+        // DEBUG: Log raw response
+        console.log('=== MORPHOS AI RESPONSE ===');
+        console.log('Status:', res.status);
+        console.log('Raw text preview:', (data.text ?? 'NO TEXT').substring(0, 300));
+        console.log('===========================');
+        
         if (!res.ok) {
             salidaEl.textContent = `Error: ${data?.error ?? `HTTP ${res.status}`}`;
         } else {
             salidaEl.textContent = limpiarRespuesta(data.text ?? 'Sin respuesta del modelo.');
         }
     } catch (e) {
+        console.error('Network error:', e);
         salidaEl.textContent = `Error de red: ${e.message}`;
     }
 }
