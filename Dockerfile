@@ -6,6 +6,7 @@ RUN apt-get update && apt-get install -y \
     libjpeg-dev \
     libfreetype6-dev \
     libzip-dev \
+    libsqlite3-dev \
     unzip \
     && docker-php-ext-install pdo pdo_mysql pdo_sqlite \
     && docker-php-ext-enable pdo pdo_mysql pdo_sqlite \
