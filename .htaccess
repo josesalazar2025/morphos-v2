@@ -15,7 +15,7 @@
     # HTML — short cache, content can change
     ExpiresByType text/html "access plus 1 hour"
 
-    # CSS and JS — 1 year (filenames are stable)
+    # CSS and JS — 1 year (use ?v= query param on deploys to bust cache)
     ExpiresByType text/css "access plus 1 year"
     ExpiresByType application/javascript "access plus 1 year"
     ExpiresByType text/javascript "access plus 1 year"
