@@ -17,7 +17,7 @@
     <link rel="preload" href="assets/fonts/JetBrains_Mono/JetBrainsMono-VariableFont_wght.ttf" as="font" type="font/ttf" crossorigin>
 
     <link rel="icon" href="assets/icons/favicon.ico">
-    <link rel="stylesheet" href="css/styles.css?v=3">
+    <link rel="stylesheet" href="css/styles.css?v=4">
 </head>
 <body>
 
@@ -71,7 +71,8 @@
 
     <!-- DATOS DEL PACIENTE -->
     <section class="panel" id="panel-paciente">
-        <h2 class="panel-cabecera">Datos del paciente</h2>
+        <h2 class="panel-titulo">Datos del paciente</h2>
+        <div class="panel-cabecera">Datos del paciente</div>
         <div class="panel-cuerpo panel-cuerpo--paciente">
             <div class="fila-paciente">
                 <label for="mob-pt-especie">Especie</label>
@@ -117,7 +118,8 @@
 
     <!-- HEMATOLOGÍA -->
     <section class="panel subpanel" id="panel-hema">
-        <h2 class="panel-cabecera">
+        <h2 class="panel-titulo">Hematología</h2>
+        <div class="panel-cabecera">
             Hematología
             <input type="file" id="pdf-input-hema" class="pdf-input" accept=".pdf" hidden>
             <button class="btn-limpiar-panel" type="button" data-panel="hema" aria-label="Limpiar campos Hematología" data-tooltip="Limpiar formulario">
@@ -126,7 +128,7 @@
             <button class="btn-importar-pdf" type="button" data-panel="hema" aria-label="Importar PDF Hematología" data-tooltip="Adjuntar PDF">
                 <svg viewBox="0 -960 960 960" aria-hidden="true"><path d="M720-330q0 104-73 177T470-80q-104 0-177-73t-73-177v-370q0-75 52.5-127.5T400-880q75 0 127.5 52.5T580-700v350q0 46-32 78t-78 32q-46 0-78-32t-32-78v-370h80v370q0 13 8.5 21.5T470-320q13 0 21.5-8.5T500-350v-350q-1-42-29.5-71T400-800q-42 0-71 29t-29 71v370q-1 71 49 120.5T470-160q70 0 119-49.5T640-330v-390h80v390Z"/></svg>
             </button>
-        </h2>
+        </div>
         <div class="subpanel-anim"><div class="panel-cuerpo" id="cuerpo-hema">
             <div class="cabecera-columnas" aria-hidden="true">
                 <span></span>
@@ -278,7 +280,8 @@
 
     <!-- PERFIL ENDOCRINO -->
     <section class="panel subpanel" id="panel-endo">
-        <h2 class="panel-cabecera">
+        <h2 class="panel-titulo">Perfil Endocrino</h2>
+        <div class="panel-cabecera">
             Perfil Endocrino
             <input type="file" id="pdf-input-endo" class="pdf-input" accept=".pdf" hidden>
             <button class="btn-limpiar-panel" type="button" data-panel="endo" aria-label="Limpiar campos Perfil Endocrino" data-tooltip="Limpiar formulario">
@@ -291,7 +294,7 @@
                     aria-expanded="true" aria-controls="cuerpo-endo" aria-label="Colapsar Perfil Endocrino" data-tooltip="Contraer / Expandir">
                 <svg class="icono-colapsar" viewBox="0 -960 960 960" aria-hidden="true"><path d="m296-224-56-56 240-240 240 240-56 56-184-183-184 183Zm0-240-56-56 240-240 240 240-56 56-184-183-184 183Z"/></svg><svg class="icono-expandir" viewBox="0 -960 960 960" aria-hidden="true"><path d="M480-200 240-440l56-56 184 183 184-183 56 56-240 240Zm0-240L240-680l56-56 184 183 184-183 56 56-240 240Z"/></svg>
             </button>
-        </h2>
+        </div>
         <div class="subpanel-anim"><div class="subpanel-cuerpo" id="cuerpo-endo">
             <div class="cabecera-columnas cabecera-columnas--mobile-only" aria-hidden="true">
                 <span></span>
@@ -327,7 +330,8 @@
 
     <!-- BIOQUÍMICA -->
     <section class="panel subpanel" id="panel-bioquim">
-        <h2 class="panel-cabecera">
+        <h2 class="panel-titulo">Bioquímica sanguínea</h2>
+        <div class="panel-cabecera">
             Bioquímica sanguínea
             <input type="file" id="pdf-input-bioquim" class="pdf-input" accept=".pdf" hidden>
             <button class="btn-limpiar-panel" type="button" data-panel="bioquim" aria-label="Limpiar campos Bioquímica" data-tooltip="Limpiar formulario">
@@ -336,7 +340,7 @@
             <button class="btn-importar-pdf" type="button" data-panel="bioquim" aria-label="Importar PDF Bioquímica" data-tooltip="Adjuntar PDF">
                 <svg viewBox="0 -960 960 960" aria-hidden="true"><path d="M720-330q0 104-73 177T470-80q-104 0-177-73t-73-177v-370q0-75 52.5-127.5T400-880q75 0 127.5 52.5T580-700v350q0 46-32 78t-78 32q-46 0-78-32t-32-78v-370h80v370q0 13 8.5 21.5T470-320q13 0 21.5-8.5T500-350v-350q-1-42-29.5-71T400-800q-42 0-71 29t-29 71v370q-1 71 49 120.5T470-160q70 0 119-49.5T640-330v-390h80v390Z"/></svg>
             </button>
-        </h2>
+        </div>
         <div class="subpanel-anim"><div class="panel-cuerpo" id="cuerpo-bioquim">
             <div class="cabecera-columnas" aria-hidden="true">
                 <span></span>
@@ -502,7 +506,8 @@
 
     <!-- URIANÁLISIS  -->
     <section class="panel subpanel" id="panel-uri">
-        <h2 class="panel-cabecera">
+        <h2 class="panel-titulo">Urianálisis</h2>
+        <div class="panel-cabecera">
             Urianálisis
             <input type="file" id="pdf-input-uri" class="pdf-input" accept=".pdf" hidden>
             <button class="btn-limpiar-panel" type="button" data-panel="uri" aria-label="Limpiar campos Urianálisis" data-tooltip="Limpiar formulario">
@@ -515,7 +520,7 @@
                     aria-expanded="true" aria-controls="cuerpo-uri" aria-label="Colapsar Urianálisis" data-tooltip="Contraer / Expandir">
                 <svg class="icono-colapsar" viewBox="0 -960 960 960" aria-hidden="true"><path d="m296-224-56-56 240-240 240 240-56 56-184-183-184 183Zm0-240-56-56 240-240 240 240-56 56-184-183-184 183Z"/></svg><svg class="icono-expandir" viewBox="0 -960 960 960" aria-hidden="true"><path d="M480-200 240-440l56-56 184 183 184-183 56 56-240 240Zm0-240L240-680l56-56 184 183 184-183 56 56-240 240Z"/></svg>
             </button>
-        </h2>
+        </div>
         <div class="subpanel-anim"><div class="subpanel-cuerpo" id="cuerpo-uri">
             <div class="cabecera-columnas cabecera-columnas--mobile-only" aria-hidden="true">
                 <span></span>
@@ -563,13 +568,14 @@
 
     <!-- FLUJO DE TRABAJO -->
     <section class="panel panel-flujo activo" id="panel-flujo">
-        <h2 class="panel-cabecera">
+        <h2 class="panel-titulo">Flujo de trabajo</h2>
+        <div class="panel-cabecera">
             Flujo de trabajo
             <button class="btn-colapsar-flujo" id="btn-colapsar-flujo" type="button"
                     aria-expanded="true" aria-controls="cuerpo-flujo" aria-label="Colapsar panel" data-tooltip="Contraer / Expandir">
                 <svg class="icono-colapsar" viewBox="0 -960 960 960" aria-hidden="true"><path d="m296-224-56-56 240-240 240 240-56 56-184-183-184 183Zm0-240-56-56 240-240 240 240-56 56-184-183-184 183Z"/></svg><svg class="icono-expandir" viewBox="0 -960 960 960" aria-hidden="true"><path d="M480-200 240-440l56-56 184 183 184-183 56 56-240 240Zm0-240L240-680l56-56 184 183 184-183 56 56-240 240Z"/></svg>
             </button>
-        </h2>
+        </div>
         <div class="panel-cuerpo cuerpo-flujo" id="cuerpo-flujo">
             <ol class="pasos-flujo">
                 <li>
@@ -611,9 +617,8 @@
 
         <!-- IMÁGENES / CITOLOGÍA -->
         <div class="subpanel" id="subpanel-citologia">
-        <h2 class="panel-cabecera">
-            Citologías
-        </h2>
+        <h2 class="panel-titulo">Citologías</h2>
+        <div class="panel-cabecera">Citologías</div>
         <div class="subpanel-anim"><div class="subpanel-cuerpo" id="cuerpo-citologia">
             <div class="zonas-imagen">
                 <div class="zona-imagen" data-zona="0" data-tooltip="Adjuntar citología 1">
@@ -686,7 +691,8 @@
 
     <!-- RESULTADOS -->
     <section class="panel" id="panel-resultados">
-        <h2 class="panel-cabecera">Interpretación</h2>
+        <h2 class="panel-titulo">Interpretación</h2>
+        <div class="panel-cabecera">Interpretación</div>
         <div class="panel-cuerpo">
 
             <div class="seccion-resultado seccion-patrones" id="seccion-patrones">
