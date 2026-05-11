@@ -6,15 +6,15 @@ colorTo: green
 sdk: docker
 pinned: false
 ---
-
 # Morphos — Intérprete de analíticas veterinarias asistido por I.A
+
 ## Proyecto final — Curso de Desarrollo Web 2026
 
 ---
 
 ## Descripción
 
-Morphos es una aplicación web de apoyo al diagnóstico veterinario. Detecta patrones clínicos en tiempo real a partir de valores de laboratorio usando un motor propio de JS puro con la opción de interpretarlos mediante un modelo de inteligencia artificial especializado en medicina (medGemma 1.5 4B it multimodal de Google Deep Mind).
+Morphos es una aplicación web de apoyo al diagnóstico veterinario. Detecta patrones clínicos en tiempo real a partir de valores de laboratorio usando un motor propio de JS puro con la opción de interpretarlos mediante un modelo de inteligencia artificial especializado en medicina (medGemma 1.5 4B it multimodal de Google Deep Mind), incluye una sección de búsqueda de artículos cientíticos en PubMed relacionados con los diagnósticos diferenciales del paciente.
 
 Está orientada a caninos y felinos, con ajuste automático de rangos de referencia por especie, edad, raza y sexo.
 Ataca una necesidad real del sector veterinario que actualmente no dispone de herramientas de este tipo que sean gratuitas y de fácil uso y que permitan obtener información complementaria relevante sobre sus pacientes en muy poco tiempo y sin exponer la data sensible a los LLM.
@@ -164,16 +164,46 @@ O bien con el servidor integrado de PHP desde la raiz del proyecto:
 php -S localhost:8000
 ```
 
+### 5. Despliegue con Docker (HuggingFace Spaces)
+
+El proyecto incluye un `Dockerfile` basado en `php:8.2-apache` configurado para ejecutarse en HuggingFace Spaces en el puerto `7860`.
+
+**Construir y ejecutar localmente:**
+
+```bash
+docker build -t morphos .
+docker run -p 7860:7860 morphos
+```
+
+Abrir en el navegador: `http://localhost:7860`
+
+**Variables de entorno en Docker:**
+
+La API key de HuggingFace debe estar en `api/.env` antes de construir la imagen:
+
+```text
+HF_API_KEY=tu_clave_de_huggingface
+```
+
+> En HuggingFace Spaces también puede configurarse como secreto desde *Settings → Repository secrets* para no exponerla en el repositorio.
+
+**Notas del entorno Docker:**
+
+* Apache escucha en el puerto `7860` (configurado vía `sed` sobre `ports.conf` y `000-default.conf`)
+* El script `docker-entrypoint.sh` inicializa la base de datos SQLite en `/var/www/html/data/morphos.db` al arrancar el contenedor
+* Los datos escritos en SQLite durante la ejecución **no persisten** entre reinicios del contenedor a menos que se monte un volumen externo
+* Si el Space queda en estado de error por un proceso Apache colgado, usar **Factory reboot** desde el menú del Space en HuggingFace
+
 ---
 
 ## Backend de IA
 
 El modelo de IA se configura desde la propia interfaz. La seleccion se guarda en `localStorage`.
 
-| Opcion | Descripcion |
-|---|---|
-| HuggingFace (por defecto) | Llama al Space `blackmistcode-morphos-medgemma` a traves del proxy PHP |
-| Local (Ollama) | Llama directamente a `http://localhost:11434` con `medgemma1.5:latest` |
+| Opcion                    | Descripcion                                                                |
+| ------------------------- | -------------------------------------------------------------------------- |
+| HuggingFace (por defecto) | Llama al Space `blackmistcode-morphos-medgemma` a traves del proxy PHP   |
+| Local (Ollama)            | Llama directamente a `http://localhost:11434` con `medgemma1.5:latest` |
 
 Para usar Ollama, debe estar ejecutandose con `ollama serve` y el modelo descargado.
 
@@ -205,7 +235,7 @@ La gravedad se calcula como la desviacion relativa al ancho del rango de referen
 
 ## Conceptos del curso aplicados
 
-* HTML5 semantico 
+* HTML5 semantico
 * CSS personalizado: variables, fuentes fluidas, grid, flexbox, media queries, temas claro/oscuro
 * JavaScript: ES Modules, `fetch`, `async/await`, eventos, DOM API
 * PHP: sesiones, PDO, proxy HTTP con cURL, lectura de `.env`, caché en disco
@@ -214,6 +244,7 @@ La gravedad se calcula como la desviacion relativa al ancho del rango de referen
 ---
 
 ## Mejoras futuras
+
 * Implementación de dashboard de administrador
 * Desarrollo de extensión de navegador para captar datos del DOM de PIMS y obtener los datos de los analisis de los pacientes con intervención mínima del usuario
 * Desarrollo de mobile app dedicada
@@ -221,11 +252,12 @@ La gravedad se calcula como la desviacion relativa al ancho del rango de referen
 * Rankeo de papers basado en confiabilidad y relevancia
 * Creación de Dataset específico para citologías de animales
 * Hosting del modelo en VPS serverless para finetuning y menor latencia
-* Ampliación de la base de alteraciones 
+* Ampliación de la base de alteraciones
 * Parseo con OCR de fotografías de analíticas
 * Incluir resultados de gasometría, coprologías, informes de histopatologías y tiempos de coagulación
 
 ## Retos
+
 * Por la diversidad de unidades de medición que utilizan los diferentes fabricantes de equipos de laboratorio se incorporó una detección de unidades para su conversión y normalización
 * El modelado del output de la I.A requirió muchísimas iteraciones de formateo del prompt y harness
 * Inicialmente quería usar proveedores de inferencia gratuita de medGemma (como featherless AI) pero fallaban continuamente, por eso decidí optar por hostear al modelo en Zero GPU de HF con la subscripción pro para la prueba de concepto
@@ -234,6 +266,7 @@ La gravedad se calcula como la desviacion relativa al ancho del rango de referen
 * La API de PubMed sólo admite input en inglés, así que implementó un objeto con traducciones de los patrones clínicos más comúnes para poder realizar las peticiones
 
 ## Notas
+
 * `api/setup.php` puede eliminarse una vez creada la base de datos
 * El parser de PDF funciona completamente en el navegador (sin subida al servidor) para evitar enviar información privada al modelo de IA.
 * La busqueda de literatura filtra los patrones detectados, los traduce al ingles y consulta PubMed via `esearch` + `esummary`
