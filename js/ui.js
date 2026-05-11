@@ -207,6 +207,8 @@ const GRUPOS_VINCULADOS = [
     ['panel-endo', 'panel-uri'],
 ];
 
+const PANELES_COLAPSADOS_POR_DEFECTO = new Set(['panel-uri', 'panel-endo']);
+
 document.querySelectorAll('.btn-colapsar-subpanel').forEach(btn => {
     const subpanel = btn.closest('.subpanel');
     const animEl = subpanel.querySelector('.subpanel-anim');
@@ -219,7 +221,12 @@ document.querySelectorAll('.btn-colapsar-subpanel').forEach(btn => {
             animEl.style.height = `${animEl.scrollHeight}px`;
         }
 
-        if (localStorage.getItem(claveAlmacenamiento) === '1') {
+        const valorGuardado = localStorage.getItem(claveAlmacenamiento);
+        const debeColapsar = valorGuardado !== null
+            ? valorGuardado === '1'
+            : PANELES_COLAPSADOS_POR_DEFECTO.has(subpanel.id);
+
+        if (debeColapsar) {
             subpanel.classList.add('collapsed');
             btn.setAttribute('aria-expanded', 'false');
             if (esRelleno) animEl.style.transition = 'none';

@@ -2276,6 +2276,8 @@ main {
 }
 
 .modal-campo input {
+    width: 100%;
+    box-sizing: border-box;
     padding: 8px 10px;
     border: 1px solid var(--border-1);
     border-radius: var(--radius-sm);
@@ -2604,4 +2606,15 @@ main {
 .papers-pag-btn:disabled {
     opacity: 0.35;
     cursor: not-allowed;
+}
+
+@media (max-width: 700px) {
+    .modal-papers {
+        top: var(--space-3);
+        max-height: calc(100svh - var(--space-6));
+        transform: translateX(-50%);
+    }
+    .modal-papers.visible {
+        transform: translateX(-50%);
+    }
 }
