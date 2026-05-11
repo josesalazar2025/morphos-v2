@@ -70,31 +70,21 @@ function construirPrompt(obtenerDatosPaciente, obtenerValoresFormulario, getUlti
         : 'desconocida';
 
     if (hayImagenes) {
-        return `Responde en español.
+        const lineasHallazgos = hallazgos.length > 0
+            ? hallazgos.map(h => `  ${h.nombre}: ${h.valor} ${h.unidad || ''} (${h.direccion} · ${h.gravedad})`).join('\n')
+            : '  Todos los valores normales';
 
-Eres médico veterinario especialista en patología clínica.
+        return `Eres médico veterinario especialista en patología clínica.
 
-Se adjuntan ${totalImagenes} imagen${totalImagenes > 1 ? 'es' : ''} de citología. Tu tarea principal es analizar estas imágenes.
+Paciente: ${paciente.especie || 'desconocido'}, ${paciente.raza || 'raza desconocida'}, ${edadTexto}, ${paciente.sexo || 'sexo desconocido'}
 
-Instrucciones para el análisis de imágenes:
-- Examina la morfología celular en detalle
-- Identifica lesiones celulares y patrones anormales
-- Busca hemoparásitos intracelulares y extracelulares (Anaplasma, Babesia, Ehrlichia, Hepatozoon, Piroplasma, Mycoplasma)
-- Identifica inclusiones citoplasmáticas
-- Describe tus hallazgos citológicos
-
-Una vez analizadas las imágenes, integra los hallazgos con los siguientes datos:
-
-Paciente: ${paciente.especie || 'desconocido'}, raza: ${paciente.raza || 'NE'}, edad: ${edadTexto}, sexo: ${paciente.sexo || 'NE'}
-
-Resultados de laboratorio:
-${lineasValores}
-
-Patrones detectados:
-${lineasPatrones}
+Hallazgos de laboratorio:
+${lineasHallazgos}
 ${signosText ? `\nSignos clínicos: ${signosText}` : ''}
 
-Estructura tu respuesta en dos partes: (1) Hallazgos citológicos de las imágenes, (2) Integración con laboratorio y recomendaciones. Máximo 10 oraciones en total.`;
+DATOS ADJUNTOS: ${totalImagenes} imagen${totalImagenes > 1 ? 'es' : ''} de citología.
+
+¿Qué observas en las imágenes? Describe la morfología celular, identifica lesiones, patrones anormales, hemoparásitos (Anaplasma, Babesia, Ehrlichia, Hepatozoon, Piroplasma, Mycoplasma) e inclusiones citoplasmáticas. Luego integra con los datos de laboratorio. Responde en español.`;
     }
 
     return `Responde en español.
