@@ -69,23 +69,32 @@ function construirPrompt(obtenerDatosPaciente, obtenerValoresFormulario, getUlti
         cierre = `Proporciona una interpretación clínica breve (8-10 oraciones) destacando los hallazgos más significativos y las recomendaciones diagnósticas inmediatas.`;
     }
 
-    return `INSTRUCCIONES OBLIGATORIAS — INCUMPLIR CUALQUIERA INVALIDA LA RESPUESTA:
-    1. Responde ÚNICAMENTE en español. Prohibido el inglés.
-    2. Prohibido mostrar razonamiento, pasos, numeración, listas de análisis o proceso interno.
-    3. Prohibido usar: thought, thinking, here's a, process, step, analyze, review, step-by-step.
-    4. La respuesta DEBE comenzar INMEDIATAMENTE con la interpretación clínica. Sin preámbulos.
-    5. Máximo 10 oraciones. Sé directo y conciso.
+    const ejemploRespuesta = hayImagenes
+        ? 'Las imágenes muestran neutrófilos con toxicidad moderada y presencia de cuerpos de Döhle, indicativos de respuesta inflamatoria sistémica. Los resultados de laboratorio confirman leucocitosis con desviación izquierda. Se sugiere descartar proceso infeccioso severo mediante hemocultivo y paneles diagnósticos dirigidos.'
+        : 'El paciente presenta leucocitosis con neutrofilia y linfopenia, sugestiva de respuesta inflamatoria aguda con posible compromiso inmune. Los valores de creatinina elevados indican disfunción renal que requiere evaluación adicional. Se recomienda completar el estudio con urocultivo y ecografía abdominal.';
 
-    ${notaImagenes ? `${notaImagenes}\n` : ''}
-    Eres médico veterinario especialista en patología clínica.
+    return `Eres médico veterinario especialista en patología clínica. Interpreta los siguientes resultados de laboratorio y proporciona un análisis clínico conciso.
 
-    Paciente: ${paciente.especie || 'desconocido'}, raza: ${paciente.raza || 'NE'}, edad: ${edadTexto}, sexo: ${paciente.sexo || 'NE'}
+REGLAS DE RESPUESTA:
+- Responde ÚNICAMENTE en español
+- Máximo 10 oraciones
+- Comienza DIRECTAMENTE con la interpretación clínica, sin introducciones
+- No uses listas numeradas ni expliques tu proceso de análisis
+- Sé directo, profesional y clínico
 
-    Hallazgos de laboratorio:
-    ${lineasValores}
+Ejemplo de formato esperado:
+"${ejemploRespuesta}"
 
-    ${signosText ? `Signos clínicos: ${signosText}` : ''}
-    ${cierre}`;
+PACIENTE:
+${paciente.especie || 'desconocido'}, raza: ${paciente.raza || 'NE'}, edad: ${edadTexto}, sexo: ${paciente.sexo || 'NE'}
+
+RESULTADOS DE LABORATORIO:
+${lineasValores}
+
+${signosText ? `SIGNOS CLÍNICOS: ${signosText}` : ''}
+
+${notaImagenes ? notaImagenes + '\n' : ''}
+${cierre}`;
 }
 
 function limpiarRespuesta(text) {
