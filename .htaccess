@@ -8,32 +8,25 @@
     AddOutputFilterByType DEFLATE text/html text/css text/javascript application/javascript application/json font/ttf font/woff font/woff2
 </IfModule>
 
-# Cache-Control headers
-<IfModule mod_expires.c>
-    ExpiresActive On
-
-    # HTML — short cache, content can change
-    ExpiresByType text/html "access plus 1 hour"
-
-    # CSS and JS — 1 year (use ?v= query param on deploys to bust cache)
-    ExpiresByType text/css "access plus 1 year"
-    ExpiresByType application/javascript "access plus 1 year"
-    ExpiresByType text/javascript "access plus 1 year"
-
-    # Fonts — 1 year
-    ExpiresByType font/ttf "access plus 1 year"
-    ExpiresByType font/woff "access plus 1 year"
-    ExpiresByType font/woff2 "access plus 1 year"
-
-    # JSON data files
-    ExpiresByType application/json "access plus 1 day"
-</IfModule>
-
 <IfModule mod_headers.c>
-    <FilesMatch "\.(css|js|ttf|woff|woff2)$">
-        Header set Cache-Control "public, max-age=31536000, immutable"
+    # JS and HTML — always revalidate so code changes are visible immediately.
+    # The script tag ?v= param busts the cache on intentional deploys.
+    <FilesMatch "\.(js|html)$">
+        Header set Cache-Control "no-cache, must-revalidate"
     </FilesMatch>
+
+    # JSON data files — same: revalidate on every request
     <FilesMatch "\.json$">
-        Header set Cache-Control "public, max-age=86400"
+        Header set Cache-Control "no-cache, must-revalidate"
+    </FilesMatch>
+
+    # CSS — revalidate (style changes need to show immediately too)
+    <FilesMatch "\.css$">
+        Header set Cache-Control "no-cache, must-revalidate"
+    </FilesMatch>
+
+    # Fonts — truly immutable; safe to cache for 1 year
+    <FilesMatch "\.(ttf|woff|woff2)$">
+        Header set Cache-Control "public, max-age=31536000, immutable"
     </FilesMatch>
 </IfModule>

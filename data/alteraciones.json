@@ -67,6 +67,21 @@
     "nombre": "Hiperbilirrubinemia",
     "descripcion": "Clasificar en prehepática (hemólisis — suele acompañarse de anemia y esferocitosis), hepática (hepatopatía grave, lipidosis) o posthepática (obstrucción biliar — colelitiasis, colangiocarcinoma, pancreatitis compresiva). Correlacionar con bilirrubina directa/indirecta y hallazgos ecográficos."
   },
+  "hiperamylasemia": {
+    "nombre": "Hiperamylasemia",
+    "descripcion": "Amilasa elevada. En perros tiene baja especificidad diagnóstica para pancreatitis (se produce en riñón, intestino, hígado y músculo). En gatos tiene especificidad ligeramente superior pero sigue siendo inespecífica. Correlacionar con PLI específica (cPLI/fPLI), signos clínicos y ecografía abdominal para confirmar pancreatitis. También puede elevarse en insuficiencia renal (reducción de aclaramiento) y enfermedades intestinales."
+  },
+  "ldh_elevada": {
+    "nombre": "LDH elevada",
+    "descripcion": "La lactatodeshidrogenasa es un marcador de daño tisular inespecífico presente en músculo (cardíaco y esquelético), eritrocitos, hígado, riñón y pulmón. Su elevación orienta hacia necrosis tisular, hemólisis, miopatías, hepatopatía o neoplasia activa. Tiene escaso valor diagnóstico aislada; interpretar siempre junto al resto del perfil bioquímico y CK para diferenciar daño muscular de otras causas."
+  },
+  "pancreatitis": {
+    "nombre": "Pancreatitis — PLI elevada",
+    "descripcion": {
+      "canino": "cPLI (Spec cPL) elevada compatible con pancreatitis aguda o crónica activa. Valores 200–400 μg/L constituyen zona gris (indeterminada); > 400 μg/L son consistentes con pancreatitis. Correlacionar con signos clínicos (vómito, dolor abdominal, anorexia), hallazgos ecográficos (hipoecogenicidad pancreática, efusión peripancreática) y elevación de lipasa y amilasa. Monitorear glucosa y calcio por riesgo de diabetes mellitus e hipocalcemia secundarias.",
+      "felino": "fPLI (Spec fPL) elevada compatible con pancreatitis felina. Valores 3.5–5.3 μg/L constituyen zona gris; > 5.3 μg/L son consistentes con pancreatitis. La pancreatitis felina frecuentemente forma parte de triaditis (colangiohepatitis + pancreatitis + EII concurrentes). Correlacionar con ALT, GGT, bilirrubina y ecografía abdominal. Los signos clínicos en gatos suelen ser más sutiles (letargia, anorexia) que en perros."
+    }
+  },
   "azotemia": {
     "nombre": "Azotemia",
     "descripcion": "Elevación de BUN y creatinina. Clasificar en prerrenal (deshidratación, hipoperfusión), renal (ERC o IRA) o posrenal (obstrucción, rotura urinaria). Estadificar según criterios IRIS si se sospecha ERC. Correlacionar con densidad urinaria, urianálisis y presión arterial."
@@ -138,6 +153,22 @@
     "nombre": "Hiperfosforemia",
     "descripcion": "Frecuente en enfermedad renal crónica (ERC); la retención de fósforo contribuye al hiperparatiroidismo renal secundario y acelera la progresión del daño tubular. Considerar también hipoparatiroidismo, hipervitaminosis D, lisis tumoral o hemólisis artefactual. Clave en estadiaje IRIS y planificación dietética (restricción de fósforo en ERC estadio ≥ II)."
   },
+  "hipomagnesemia": {
+    "nombre": "Hipomagnesemia",
+    "descripcion": "Magnesio sérico disminuido. Compatible con malabsorción intestinal (enteropatías crónicas), pérdidas renales (diuréticos de asa, tubulonefropatías), vómito/diarrea prolongados, cetoacidosis diabética o síndrome de realimentación. La hipomagnesemia perpetúa la hipocalcemia e hipopotasemia refractarias (el magnesio es cofactor de la PTH y la bomba Na/K-ATPasa). Sospechar en pacientes con hipocalcemia resistente a tratamiento."
+  },
+  "hipermagnesemia": {
+    "nombre": "Hipermagnesemia",
+    "descripcion": "Magnesio sérico elevado. Compatible con insuficiencia renal (causa más frecuente — reducción de aclaramiento), hipoadrenocorticismo o administración iatrogénica de sales de magnesio. Puede causar hipotensión, depresión neuromuscular y, en concentraciones graves (> 5 mg/dL), bloqueo de conducción cardíaca. Monitorear ECG en casos moderados-graves."
+  },
+  "ferropenia_hierro": {
+    "nombre": "Déficit de hierro sérico",
+    "descripcion": "Hierro sérico disminuido. Compatible con hemorragia crónica (parasitosis, úlcera gastrointestinal, neoplasia hemorrágica, pulgas en cachorros), malabsorción o dieta deficiente. Correlacionar con MCV (microcitosis), MCHC (hipocromia), RDW aumentado y reticulocitos. El hierro sérico aislado tiene limitaciones; valorar TIBC o ferritina sérica para confirmar depleción de reservas. En cachorros de razas toy con anemia microcítica hipocrómica, la ferropenia es la etiología más frecuente."
+  },
+  "ac_urico_elevado": {
+    "nombre": "Hiperuricemia",
+    "descripcion": "Ácido úrico sérico elevado. En perros y gatos, el ácido úrico se metaboliza normalmente a alantoína por la uricasa, por lo que la hiperuricemia es infrecuente en estas especies. Descartar hepatopatía grave con disfunción del ciclo de la urea (incluido shunt portosistémico), enfermedad renal o raza con déficit parcial de uricasa (Dálmata, Bulldog inglés, Bulldog americano — predispostos a urolitiasis por urato). En Dálmatas, valores > 2 mg/dL son relevantes clínicamente y justifican acidificación de orina y dieta baja en purinas."
+  },
   "hiposthenuria": {
     "nombre": "Hiposthenuria (USG < 1.008) — concentración muy disminuida",
     "descripcion": "Densidad urinaria muy baja. Compatible con diabetes insípida central o nefrogénica, hiperadrenocorticismo (HAC), hipercalcemia, hipopotasemia o administración de diuréticos. En felinos, considerar acromegalia y HAC. Requiere prueba de privación de agua o test de vasopresina para diferenciar los subtipos de diabetes insípida."
@@ -150,6 +181,27 @@
     "nombre": "Hipotiroidismo — T4 disminuida",
     "descripcion": {
       "canino": "T4 total disminuida. El hipotiroidismo canino es la endocrinopatía más frecuente en perros adultos de mediana edad. Signos clásicos: letargia, obesidad, alopecia bilateral simétrica, intolerancia al frío. Confirmar con T4 libre por diálisis de equilibrio. Los fármacos (glucocorticoides, fenobarbital, sulfonamidas) y la enfermedad sistémica pueden suprimir T4 falsamente (síndrome del enfermo eutiroideo)."
+    }
+  },
+  "t4_libre_baja": {
+    "nombre": "T4 libre (fT4) disminuida",
+    "descripcion": {
+      "canino": "T4 libre por diálisis de equilibrio disminuida. Es la prueba de mayor especificidad para confirmar hipotiroidismo verdadero en caninos, especialmente cuando la T4 total se encuentra en zona limítrofe o ante sospecha de síndrome del enfermo eutiroideo. Un valor bajo de fT4 junto con TSH elevado constituye el gold standard diagnóstico para hipotiroidismo primario canino. Iniciar levotiroxina a 0.02 mg/kg/12h y reevaluar T4 post-dosis a las 4 semanas.",
+      "felino": "T4 libre disminuida en felinos sugiere hipotiroidismo iatrogénico (post-tiroidectomía, tratamiento con radioyodo o metimazol) o síndrome del enfermo eutiroideo. El hipotiroidismo espontáneo primario es raro en gatos; descartar siempre causa secundaria a tratamiento de hipertiroidismo. Correlacionar con signos clínicos de hipotiroidismo y reevaluar función renal."
+    }
+  },
+  "tsh_elevado": {
+    "nombre": "TSH elevado — hipotiroidismo primario",
+    "descripcion": {
+      "canino": "TSH canino (cTSH) elevado compatible con hipotiroidismo primario (tiroiditis linfocítica idiopática o atrofia tiroidea idiopática — causas más frecuentes). La combinación de TSH elevado + T4 total y/o fT4 bajos tiene sensibilidad del 60–85% y especificidad > 95% para hipotiroidismo canino. Un TSH elevado con T4 normal puede indicar hipotiroidismo subclínico compensado; repetir en 3–6 meses. Los fármacos como las sulfonamidas pueden causar hipotiroidismo iatrogénico reversible.",
+      "felino": "TSH elevado en felinos es inusual; el hipotiroidismo espontáneo primario es infrecuente. Si se confirma con T4 y fT4 bajos, sospechar tiroiditis linfocítica, aplasia tiroidea (congénita) o hipotiroidismo iatrogénico. Correlacionar con signos clínicos (letargia, ganancia de peso, mixedema, bradicardia)."
+    }
+  },
+  "tsh_suprimido": {
+    "nombre": "TSH suprimido — posible hipertiroidismo",
+    "descripcion": {
+      "canino": "TSH canino suprimido (< 0.01 ng/mL). En caninos un TSH indetectable con T4 normal puede ser hallazgo sin significado clínico. Si acompaña a T4 elevada, considerar hipertiroidismo (carcinoma tiroideo funcional, suplementación exógena). Evaluar masa cervical palpable y ecografía tiroidea.",
+      "felino": "TSH suprimido (< 0.03 ng/mL) en felinos es altamente sugestivo de hipertiroidismo. La supresión de TSH precede a la elevación de T4 total, siendo útil como marcador temprano o en casos borderline. Correlacionar con T4 total y fT4. Si TSH indetectable con T4 en zona limítrofe, la T4 libre confirma el diagnóstico. La supresión de TSH es casi universal en gatos hipertiroideos no tratados."
     }
   },
   "hipertiroidismo": {
@@ -174,8 +226,129 @@
     "nombre": "Cortisol basal bajo — posible hipoadrenocorticismo",
     "descripcion": "Cortisol basal disminuido. Un valor < 1 μg/dL (canino) o < 0,5 μg/dL (felino) es altamente sugestivo de hipoadrenocorticismo; confirmar con test de estimulación con ACTH. Valores basales < 2 μg/dL justifican la realización del test. Evaluar junto a electrolitos y ratio Na:K."
   },
+  "progesterona_elevada": {
+    "nombre": "Progesterona elevada",
+    "descripcion": {
+      "canino": "Progesterona sérica elevada (> 1 ng/mL en contexto basal). Valores de 2–5 ng/mL coinciden con la ovulación en hembras intactas; valores > 5 ng/mL indican fase luteal activa o gestación. En hembras clínicamente enfermas con progesterona elevada, descartar piómetra (fase luteal) o quiste luteal ovárico. En machos, valores elevados pueden indicar neoplasia testicular secretora de progesterona (tumor de células de Leydig o Sertoli). La progesterona alta sostiene el endometrio y puede favorecer infección uterina o hiperplasia endometrial quística.",
+      "felino": "Progesterona elevada en gatas compatibles con gestación (> 2 ng/mL), pseudogestación, quiste luteal o neoplasia ovárica funcional. La gata es ovuladora inducida; la progesterona elevada sin apareamiento sugiere ovulación espontánea o quiste. En felinos macho con progesterona elevada, considerar neoplasia testicular o adrenocortical."
+    }
+  },
+  "dano_miocardico": {
+    "nombre": "Daño miocárdico — Troponina I elevada",
+    "descripcion": "Troponina I cardíaca (cTnI) elevada. Marcador altamente sensible y específico de necrosis/lesión cardiomiocitaria. Compatible con cardiomiopatía dilatada (DCM — especialmente caninos de razas grandes), cardiomiopatía hipertrófica (HCM — principalmente felinos), miocarditis (viral, bacteriana, toxoplasma), trauma torácico, taquiarritmias sostenidas, contusión miocárdica o lesión isquémica perioperatoria. En perros: considerar también DCM por deficiencia de taurina/carnitina o DCM asociada a dietas grain-free. Correlacionar con NT-proBNP, radiografía torácica y ecocardiografía. La cinética de la troponina (elevación aguda vs. crónica) ayuda a diferenciar lesión aguda de cardiomiopatía establecida."
+  },
+  "cardiopatia_bnp": {
+    "nombre": "NT-proBNP elevado — cardiopatía",
+    "descripcion": {
+      "canino": "NT-proBNP elevado (> 900 pmol/L) compatible con cardiopatía estructural o funcional con sobrecarga de presión o volumen. La causa más frecuente en perros es la enfermedad valvular degenerativa mitral (EVDM). También compatible con cardiomiopatía dilatada (DCM), pericarditis, hipertensión pulmonar o insuficiencia cardíaca congestiva (ICC). Estadificar según criterios ACVIM (estadios A–D). Correlacionar con radiografía torácica (silueta cardíaca, patrón vascular pulmonar), ECG y ecocardiografía. Valores muy elevados (> 1500 pmol/L) predicen ICC inminente en perros con EVDM preclínica.",
+      "felino": "NT-proBNP elevado (> 100 pmol/L) en felinos sugestivo de cardiomiopatía hipertrófica (CMH — causa más frecuente), cardiomiopatía restrictiva o dilatada. La CMH felina es la cardiopatía más prevalente en gatos domésticos. Valores > 200 pmol/L tienen alta sensibilidad para detectar CMH clínicamente significativa. Correlacionar con ecocardiografía (grosor pared posterior del VI, ratio AI/Ao) y cTnI. Descartar hipertiroidismo e hipertensión sistémica como causas secundarias de hipertrofia ventricular."
+    }
+  },
+  "inflamacion_aguda": {
+    "nombre": "Respuesta de fase aguda — PCR/SAA elevada",
+    "descripcion": {
+      "canino": "PCR (Proteína C Reactiva) y/o SAA (Amiloide A Sérico) elevadas. Son las principales proteínas de fase aguda positivas en el perro; aumentan rápidamente (4–6 horas) ante inflamación, infección o necrosis tisular, con pico a las 24–48 horas. Valores > 10 mg/L indican respuesta inflamatoria sistémica activa; > 100 mg/L sugieren inflamación grave (sepsis, peritonitis, trauma extenso). Son marcadores sensibles para monitorizar respuesta al tratamiento y detectar recidivas. La PCR canina no distingue causa bacteriana de viral o estéril; interpretar en contexto clínico. La normalización post-tratamiento confirma resolución del proceso inflamatorio.",
+      "felino": "SAA (Amiloide A Sérico) felino es la principal proteína de fase aguda en gatos, siendo más sensible que la PCR. Valores > 10 mg/L indican inflamación sistémica activa; incluso aumentos leves son clínicamente relevantes. Útil para detectar infecciones subclínicas, monitorizar peritonitis infecciosa felina (PIF), pancreatitis, colangiohepatitis y trauma. La PCR felina tiene menor utilidad diagnóstica que el SAA. En el contexto de PIF, la SAA puede alcanzar valores muy elevados (> 500 mg/L)."
+    }
+  },
+  "fenobarbital_subterapeutico": {
+    "nombre": "Fenobarbital — nivel subterapéutico",
+    "descripcion": "Nivel sérico de fenobarbital por debajo del rango terapéutico (< 20 μg/mL). Indica dosificación insuficiente para el control de epilepsia/convulsiones. Las convulsiones mal controladas con niveles subterapéuticos requieren ajuste de dosis o revisión de la adherencia al tratamiento. Recordar que el fenobarbital induce su propio metabolismo (autoinducción enzimática del CYP450); tras iniciar o aumentar la dosis, esperar 2–4 semanas antes de remedir para obtener niveles en estado estacionario. También puede observarse con interacciones farmacológicas (rifampicina, ketoconazol) que aceleren el metabolismo."
+  },
+  "fenobarbital_toxico": {
+    "nombre": "Fenobarbital — nivel tóxico",
+    "descripcion": "Nivel sérico de fenobarbital por encima del rango terapéutico (> 40 μg/mL). Niveles elevados aumentan el riesgo de hepatotoxicidad (principal efecto adverso a largo plazo), sedación excesiva, ataxia, polifagia, poliuria/polidipsia y trombocitopenia. Monitorizar ALT, FAL y función hepática de forma periódica (cada 6 meses). Si ALT > 5× el límite superior de referencia o aparecen signos clínicos de hepatopatía, reducir dosis y considerar bromuro potásico como antiepiléptico alternativo o coadyuvante. Medir siempre niveles en el punto de mínima concentración (valle, 12–24h post-dosis)."
+  },
+  "ciclosporina_subterapeutica": {
+    "nombre": "Ciclosporina — nivel subterapéutico",
+    "descripcion": "Nivel sérico de ciclosporina por debajo del rango terapéutico (< 100 ng/mL en muestras de valle/trough). Indica biodisponibilidad o absorción insuficiente para lograr efecto inmunosupresor adecuado. En dermatología veterinaria (atopia canina, estomatitis linfocítica felina), los niveles subterapéuticos se correlacionan con falta de respuesta clínica. Verificar horario de administración (ciclosporina oral debe darse con el estómago vacío o consistentemente con/sin alimento para minimizar variabilidad), interacciones farmacológicas (ketoconazol puede aumentar significativamente los niveles) y formulación utilizada (Atopica® o genéricos)."
+  },
+  "ciclosporina_toxica": {
+    "nombre": "Ciclosporina — nivel potencialmente tóxico",
+    "descripcion": "Nivel sérico de ciclosporina por encima del rango terapéutico recomendado (> 400 ng/mL en trough). Niveles elevados aumentan el riesgo de nefrotoxicidad (principal toxicidad en perros y gatos), inmunosupresión excesiva con infecciones oportunistas, hipertrofia gingival, vómito/diarrea, hipertricosis y, raramente, neoplasias. Reducir dosis o aumentar el intervalo de dosificación. La nefrotoxicidad puede ser reversible si se detecta tempranamente; monitorizar BUN, creatinina y SDMA. El ketoconazol oral se usa deliberadamente para aumentar los niveles de ciclosporina y reducir la dosis necesaria (y el costo), pero requiere un control cuidadoso del nivel sérico."
+  },
   "deficit_insulina": {
     "nombre": "Posible déficit de insulina — hiperglucemia con insulina baja",
     "descripcion": "Insulinemia baja en presencia de hiperglucemia sugiere déficit insulínico relativo o absoluto compatible con diabetes mellitus tipo 1 (destrucción de células β) o pancreatitis crónica con afectación exocrina y endocrina. Correlacionar con fructosamina para confirmar cronicidad. En felinos, la diabetes mellitus tipo 2 (resistencia insulínica) es más frecuente y puede cursar con insulina normal o alta."
+  },
+  "coagulopatia_extrinseca": {
+    "nombre": "Coagulopatía — vía extrínseca (TP prolongado)",
+    "descripcion": "TP/PT prolongado con TTPa normal. Compatible con deficiencia del factor VII (el único factor exclusivo de la vía extrínseca y de semivida más corta — primero en agotarse en intoxicación por rodenticidas de segunda generación), hepatopatía aguda, estadio precoz de intoxicación por antagonistas de vitamina K (ADKA — brodifacoum, bromadiolona) o deficiencia dietética de vitamina K. El TTPa normal indica integridad de la vía intrínseca. En sospecha de rodenticidas, iniciar vitamina K₁ parenteral sin esperar confirmación analítica. Realizar perfil hepático completo si no hay exposición conocida."
+  },
+  "coagulopatia_intrinseca": {
+    "nombre": "Coagulopatía — vía intrínseca (TTPa prolongado)",
+    "descripcion": "TTPa/aPTT prolongado con TP normal. Compatible con hemofilia A (deficiencia de factor VIII — la coagulopatía hereditaria más frecuente en perros, ligada al X), hemofilia B (factor IX), deficiencia de factores de contacto (XII, XI — habitualmente sin sangrado clínico significativo), enfermedad de von Willebrand (deficiencia del vWF que actúa como cofactor del FVIII), heparinización sistémica o lupus anticoagulante. La hemofilia en caninos produce sangrado articular, muscular y post-quirúrgico grave. Solicitar actividad específica de factores VIII y IX; medir vWF Ag si hay sospecha de vWD."
+  },
+  "coagulopatia_mixta": {
+    "nombre": "Coagulopatía de vías múltiples (TP y TTPa prolongados)",
+    "descripcion": "TP y TTPa prolongados simultáneamente. Compatible con: (1) Intoxicación por antagonistas de vitamina K (rodenticidas de segunda generación — causa más frecuente en perros; los factores dependientes de Vit.K son II, VII, IX y X); los signos aparecen 3–5 días post-ingesta. Tratamiento: vitamina K₁ SC/oral por 4–6 semanas. (2) CID (coagulación intravascular diseminada) — consumo de factores y plaquetas. (3) Hepatopatía grave — reducción de síntesis de todos los factores excepto el VIII. (4) Deficiencia de factores comunes (X, V, II, I). Solicitar dímeros D, FDP, fibrinógeno y recuento plaquetario para descartar CID; ecografía abdominal y perfil hepático."
+  },
+  "cid": {
+    "nombre": "CID — Coagulación Intravascular Diseminada",
+    "descripcion": "Patrón compatible con CID: dímeros D elevados + FDP elevados + fibrinógeno disminuido (consumo), habitualmente acompañados de trombocitopenia y tiempos de coagulación prolongados. El CID es un síndrome secundario a activación sistémica de la coagulación. Desencadenantes frecuentes en veterinaria: sepsis/SIRS, hemangiosarcoma (principal neoplasia asociada), pancreatitis grave, trauma masivo, golpe de calor, enfermedad hemolítica inmunomediada, mordedura de serpiente y toxemia por piometra. Puede manifestarse como fase trombótica (microtrombos y fallo orgánico) o hemorrágica (hemorragias difusas). Tratamiento de la causa subyacente es prioritario; la transfusión de plasma fresco congelado (PFC), crioprecipitado y concentrado de plaquetas se indica en la fase hemorrágica grave."
+  },
+  "hiperfibrinogenemia": {
+    "nombre": "Hiperfibrinogenemia",
+    "descripcion": "Fibrinógeno elevado. El fibrinógeno es una proteína de fase aguda positiva en perros y gatos; aumenta en respuesta a inflamación sistémica, infección, trauma o neoplasia activa. En bovinos es el marcador de fase aguda más usado clínicamente. En pequeños animales su elevación confirma respuesta inflamatoria sistémica activa junto con PCR y SAA. Valores muy elevados (> 600 mg/dL) pueden aumentar la viscosidad sanguínea y el riesgo trombótico. Correlacionar con cuadro clínico, leucograma y otros marcadores inflamatorios."
+  },
+  "hipofibrinogenemia": {
+    "nombre": "Hipofibrinogenemia",
+    "descripcion": "Fibrinógeno disminuido. Compatible con: (1) CID activo — consumo por activación sistémica de la coagulación (causa más frecuente; asociar dímeros D y FDP). (2) Insuficiencia hepática grave — el fibrinógeno se sintetiza exclusivamente en el hígado; su reducción indica fallo sintético avanzado. (3) Hiperfibrinolisis primaria — rara; puede ocurrir en neoplasia esplénica (hemangiosarcoma), cirugía extensa o posttrasplante. (4) Coagulopatía dilucional post-transfusión masiva. En CID, el fibrinógeno bajo se correlaciona con gravedad del síndrome y riesgo de hemorragia incontrolable; valorar administración de crioprecipitado (rico en fibrinógeno)."
+  },
+  "deficit_vwf": {
+    "nombre": "Déficit de vWF — Enfermedad de von Willebrand",
+    "descripcion": "vWF (antígeno del factor von Willebrand) disminuido. La enfermedad de von Willebrand es la coagulopatía hereditaria más frecuente en perros. Razas predispuestas a vWD tipo I (deficiencia cuantitativa leve-moderada): Dobermann Pinscher, Pastor de Shetland, Caniche, Scottie, Golden Retriever, Labrador. Razas con vWD tipo III (ausencia total de vWF — grave): Scottish Terrier, Chesapeake Bay Retriever. Signos clínicos: epistaxis, sangrado de mucosas, hematomas, hemorragia excesiva post-quirúrgica. El TTPa puede estar prolongado en casos graves (el vWF estabiliza el FVIII). El TP es normal. Confirmar con actividad funcional del vWF (vWF:RCo). Tratamiento: desmopresina (DDAVP) en tipo I, transfusión de PFC o crioprecipitado en tipos II y III."
+  },
+  "antitrombina_baja": {
+    "nombre": "Antitrombina (AT-III) disminuida — estado protrombótico",
+    "descripcion": "Antitrombina (AT-III) reducida. La AT-III es el principal inhibidor fisiológico de la trombina, factor Xa y otros factores activados; su deficiencia crea un estado protrombótico con riesgo elevado de tromboembolismo. Compatible con: (1) Pérdida renal — síndrome nefrótico (glomerulonefritis, amiloidosis) es la causa más frecuente en perros; la AT-III se pierde junto a la albumina por proteinuria glomerular. (2) Enteropatía con pérdida de proteínas (EPP). (3) CID — consumo de anticoagulantes naturales. (4) Hepatopatía grave — síntesis reducida. (5) Sepsis. Pacientes con AT-III < 70% tienen alto riesgo de tromboembolismo pulmonar (TEP) y trombosis venosa. Monitorear UPC, albumina y función hepática. Considerar anticoagulación profiláctica (heparina de bajo peso molecular) cuando AT-III < 60–70% con hipoalbuminemia."
+  },
+  "acidosis_respiratoria": {
+    "nombre": "Acidosis respiratoria",
+    "descripcion": "pH disminuido con pCO₂ elevado (hipercarbia). La hipercapnia resulta de hipoventilación alveolar. Causas frecuentes: parálisis o debilidad muscular (miastenia gravis, polirradiculoneuritis, botulismo), obstrucción de vías aéreas superiores (cuerpo extraño, síndrome braquicefálico grave, colapso traqueal), enfermedad pulmonar grave (bronconeumonía, edema pulmonar, efusión pleural masiva), depresión del centro respiratorio (opiáceos, anestesia, encefalitis, trauma craneoencefálico) o neumotórax a tensión. La compensación metabólica (elevación de HCO₃⁻) se establece en 24–48h (forma crónica: HCO₃⁻ puede alcanzar 28–30 mEq/L). Priorizar asegurar vía aérea permeable y ventilación adecuada; si pCO₂ > 60 mmHg con pH < 7.25 → ventilación mecánica urgente."
+  },
+  "alcalosis_respiratoria": {
+    "nombre": "Alcalosis respiratoria",
+    "descripcion": "pH elevado con pCO₂ disminuido (hipocarbia/hipocapnia). Resulta de hiperventilación alveolar. Causas: dolor agudo, ansiedad/estrés, fiebre alta, hipoxemia grave (hiperventilación compensatoria — buscar pO₂ bajo), sepsis/SIRS en fase inicial, trastornos del SNC (lesión en centro respiratorio), hiperventilación mecánica iatrogénica o anemia grave. La alcalosis respiratoria grave puede causar hipocalcemia ionizada (tetania) por aumento de la unión del Ca²⁺ a proteínas plasmáticas. La compensación metabólica (reducción de HCO₃⁻ por excreción renal) es lenta (días). Identificar y tratar la causa primaria; si hipoxemia → oxigenoterapia."
+  },
+  "acidosis_metabolica": {
+    "nombre": "Acidosis metabólica",
+    "descripcion": "pH disminuido con HCO₃⁻ bajo y/o exceso de base negativo (BE < −4 mEq/L). Trastorno ácido-base más frecuente en urgencias veterinarias. Clasificar por anión gap: (1) AG elevado (> 16 mEq/L canino; > 18 mEq/L felino) — indica acumulación de ácidos orgánicos: cetoacidosis diabética (DKA — glucosa + cetonuria), acidosis láctica (shock, sepsis, hipoperfusión tisular — lactato > 5 mmol/L), uremia (ERC avanzada — ácidos orgánicos retenidos), intoxicación por etilenglicol (ácidos oxálico y glicólico), salicilatos. (2) AG normal (hiperclorémica) — indica pérdida de bicarbonato: diarrea osmótica/secretora crónica (causa más frecuente), hipoadrenocorticismo, acidosis tubular renal (RTA), dilución por fluidos hipotónicos. La compensación respiratoria (hiperventilación — reducción de pCO₂) es inmediata. Tratar causa subyacente; bicarbonato IV solo si pH < 7.10 con manifestaciones graves."
+  },
+  "alcalosis_metabolica": {
+    "nombre": "Alcalosis metabólica",
+    "descripcion": "pH elevado con HCO₃⁻ alto y/o exceso de base positivo (BE > +4 mEq/L). Compatible con pérdida de protones: vómito de contenido gástrico (causa más frecuente — estenosis pilórica, obstrucción proximal, vómito crónico persistente con pérdida de HCl), administración de bicarbonato, hipercortisolismo (aldosterona retiene HCO₃⁻ y excreta K⁺ y H⁺), hipopotasemia grave (el K⁺ intracelular se intercambia por H⁺ extracellular para compensar) o diuréticos de asa. La alcalosis metabólica grave puede producir hipocalcemia ionizada (tetania, convulsiones) por aumento de la unión Ca²⁺-albúmina. La compensación respiratoria (hipoventilación, aumento de pCO₂) es limitada (el organismo no hipercapnia más allá de 55 mmHg). Evaluar electrolitos especialmente Cl⁻ y K⁺."
+  },
+  "hipoxemia": {
+    "nombre": "Hipoxemia",
+    "descripcion": "pO₂ arterial disminuido. Hipoxemia significativa: pO₂ < 80 mmHg; grave: < 60 mmHg (equivalente a SO₂ ~90%). Mecanismos: (1) Hipoventilación: pCO₂ elevado concomitante — obstrucción respiratoria, sedación, neuromuscular. (2) Desequilibrio V/Q (ventilación/perfusión): causa más frecuente — bronconeumonía, edema pulmonar, atelectasia, contusión pulmonar. (3) Shunt intrapulmonar derecha→izquierda: hipoxemia grave no responsiva a O₂ suplementario — ARDS. (4) Alteración de difusión: rara en veterinaria. (5) Hipoxia hipobárica (altitud elevada). En el paciente anestesiado, pO₂ < 80 mmHg con FiO₂ al 100% indica shunt o atelectasia grave. Oxigenoterapia inmediata si pO₂ < 70 mmHg; ventilación mecánica con PEEP si no mejora con FiO₂ alta."
+  },
+  "hiperlactatemia": {
+    "nombre": "Hiperlactatemia",
+    "descripcion": "Lactato sanguíneo elevado. Marcador de hipoperfusión tisular y metabolismo anaeróbico. Clasificar por mecanismo: (1) Tipo A — hipóxica (más frecuente en urgencias): shock (hipovolémico, cardiogénico, distributivo-séptico, obstructivo — dilatación-vólvulo gástrico), hipoxemia grave, anemia severa, bajo gasto cardíaco. (2) Tipo B — no hipóxica: neoplasia con alta glucólisis (linfoma, hemangiosarcoma), insuficiencia hepática grave (reducción del aclaramiento de lactato), diabetes mellitus, ejercicio exhaustivo, convulsiones, fármacos (metformina, propilenglicol), intoxicación por etilenglicol o salicilatos. Niveles > 2.5 mmol/L: iniciar resucitación; > 5 mmol/L: pronóstico reservado; > 10 mmol/L: pronóstico grave. La reducción del lactato > 10% en 1–2h tras resucitación (aclaración de lactato) es un indicador positivo de respuesta al tratamiento."
+  },
+  "ca_ionizado_bajo": {
+    "nombre": "Hipocalcemia ionizada",
+    "descripcion": "Calcio ionizado (iCa) disminuido. El iCa es la fracción biológicamente activa; los valores de calcio total pueden ser normales con iCa bajo (especialmente en alcalosis, que aumenta la unión a albumina, o en hipoalbuminemia). Compatible con hipoparatiroidismo (idiopático o postquirúrgico — tiroidectomía bilateral en felinos), pancreatitis aguda grave (saponificación de calcio por ácidos grasos libres liberados), eclampsia puerperal (hipocalcemia periparturienta), sepsis grave, hipomagnesemia (inhibe la secreción de PTH y la respuesta tisular a la misma — sospechar si hipocalcemia refractaria al tratamiento), quelación masiva (EDTA, citrato por transfusiones masivas), alcalosis respiratoria. Signos clínicos: espasmo muscular, temblores, tetania, convulsiones, arritmias. iCa < 0.8 mmol/L requiere calcio IV urgente (gluconato cálcico)."
+  },
+  "ca_ionizado_alto": {
+    "nombre": "Hipercalcemia ionizada",
+    "descripcion": "Calcio ionizado (iCa) elevado. Más específico que el calcio total (no influenciado por cambios en albúmina). Compatible con hipercalcemia de malignidad (PTHrP producida por linfoma, carcinoma apocrino de sacos anales, tumores sólidos), hiperparatiroidismo primario (adenoma o hiperplasia paratiroidea), hipervitaminosis D (intoxicación por rodenticidas tipo calciferol, suplementos, psoriasis tópicos), granulomatosis sistémica (hongos, micobacterias), hipoadrenocorticismo (mecanismo aún debatido). Un iCa elevado con calcio total normal puede reflejar acidosis (que desplaza el calcio de las proteínas). Monitorizar función renal (la hipercalcemia crónica causa nefrocalcinosis y ERC progresiva) y ECG (acortamiento del intervalo QT). Confirmar con PTH y PTHrP."
+  },
+  "anion_gap_elevado": {
+    "nombre": "Anión gap elevado",
+    "descripcion": "Anión gap elevado (> 16 mEq/L en perros; > 18 mEq/L en gatos). Indica acumulación de aniones no medidos. En el contexto de acidosis metabólica, un AG elevado orienta hacia ácidos orgánicos o inorgánicos acumulados: (1) Cetoacidosis diabética (DKA) — cetoácidos (β-hidroxibutirato, acetoacetato); correlacionar con glucosa y cetonas urinarias. (2) Acidosis láctica — hipoperfusión tisular, sepsis, shock; medir lactato. (3) Uremia — retención de ácidos orgánicos en ERC avanzada; correlacionar con BUN y creatinina. (4) Intoxicación por etilenglicol — ácido glicólico y oxálico; buscar oxalatos en sedimento urinario y cristales. (5) Salicilatos (aspirina). Aplicar corrección por albúmina: AG corregido = AG + 2.5 × (4 − albúmina en g/dL). AG normal en acidosis metabólica sugiere acidosis hiperclorémica (pérdida digestiva de HCO₃⁻, RTA, hipoadrenocorticismo)."
+  },
+  "hematuria_uri": {
+    "nombre": "Hematuria — eritrocitos elevados en orina",
+    "descripcion": "Eritrocitos en sedimento urinario > 5/μL. Compatible con: (1) Cistitis hemorrágica (infecciosa o estéril — cistitis idiopática felina es la causa más frecuente en gatos); (2) Urolitiasis (cristales de estruvita, oxalato cálcico, urato — rasar urolitiasis Dálmatas); (3) Neoplasia del tracto urinario — carcinoma de células de transición (TCC) de vejiga en perros mayores; (4) Trauma/coagulopatía sistémica; (5) Prostatitis o hiperplasia prostática en machos (contaminación urinaria). Distinguir hematuria (eritrocitos en sedimento) de hemoglobinuria (orina roja sin eritrocitos — hemólisis intravascular) y mioglobinuria (orina oscura en rabdomiólisis — sin eritrocitos). Cistocentesis para muestras libres de contaminación. Ecografía de vejiga y radiografía abdominal para descartar urolitiasis y neoplasia."
+  },
+  "piuria": {
+    "nombre": "Piuria — leucocitos elevados en orina",
+    "descripcion": "Leucocitos en sedimento urinario > 5/μL. La piuria indica inflamación del tracto urinario (ITU) o inflamación estéril. Compatible con: infección urinaria bacteriana (E. coli — más frecuente en hembras, Staphylococcus, Proteus, Klebsiella, Pseudomonas), pielonefritis (piuria + cilindros + signos sistémicos), cistitis estéril idiopática (felinos jóvenes estresados), cálculos urinarios irritantes o neoplasia vesical. La piuria sin bacteriuria en muestra por cistocentesis puede indicar inflamación estéril, antibioticoterapia reciente o contaminación. El cultivo urinario con antibiograma es el gold standard diagnóstico para ITU. En machos, descartar prostatitis (piuria + secreción prepucial). En felinos, la FUS (feline urological syndrome) suele cursar con piuria estéril."
+  },
+  "proteinuria_upc": {
+    "nombre": "Proteinuria — UPC elevado",
+    "descripcion": "Cociente Proteína/Creatinina Urinaria (UPC) elevado. UPC > 0.2 en perros o > 0.4 en gatos indica proteinuria anormal persistente. Clasificar según localización: (1) Glomerular — UPC > 2.0, hipoalbuminemia, edemas, ascitis; glomerulonefritis (inmunomediada, infecciosa), amiloidosis renal (Shar Pei, Beagle — acumulo de SAA en glomérulos), nefropatía diabética. (2) Tubular — UPC modesto, pérdida de proteínas de bajo peso molecular; nefrotoxicidad (aminoglucósidos, cisplatino, AINES), síndrome de Fanconi (Basenji). (3) Post-renal — cistitis, prostatitis, vaginitis; confirmar con cistocentesis para excluir contaminación. (4) Prerrenal — hiperglobulinemia extrema, hemoglobinuria. La proteinuria glomerular crónica asocia riesgo elevado de tromboembolismo (pérdida de AT-III y proteína C). Estadificar según IRIS (proteinuria substadios P0–P3). Iniciar IECA o ARA-II si UPC persistente > 0.5 con hipoalbuminemia."
   }
 }

@@ -64,6 +64,8 @@
     <button class="tab-examenes" data-subtab-target="panel-bioquim" data-tooltip="Bioquímica sanguínea">Bioq.</button>
     <button class="tab-examenes" data-subtab-target="panel-uri" data-tooltip="Urianálisis">Uri.</button>
     <button class="tab-examenes" data-subtab-target="panel-endo" data-tooltip="Perfil endocrino">Endo.</button>
+    <button class="tab-examenes" data-subtab-target="panel-coag" data-tooltip="Factores de coagulación">Coag.</button>
+    <button class="tab-examenes" data-subtab-target="panel-gas" data-tooltip="Gasometría (iStat)">Gas.</button>
 </div>
 
 <!-- GRID -->
@@ -321,9 +323,44 @@
                 <span class="unidad">nmol/L</span>
             </div>
             <div class="fila-campo">
+                <label for="endo-t4-libre">T4 libre (fT4)</label>
+                <input id="endo-t4-libre" name="t4_libre" type="number" min="0" step="0.1" placeholder="—">
+                <span class="unidad">pmol/L</span>
+            </div>
+            <div class="fila-campo">
+                <label for="endo-tsh">TSH</label>
+                <input id="endo-tsh" name="tsh" type="number" min="0" step="0.01" placeholder="—">
+                <span class="unidad">ng/mL</span>
+            </div>
+            <div class="fila-campo">
                 <label for="endo-ins">Insulina basal</label>
                 <input id="endo-ins" name="insulina" type="number" min="0" step="0.1" placeholder="—">
                 <span class="unidad">μIU/mL</span>
+            </div>
+            <div class="fila-campo">
+                <label for="endo-prog">Progesterona</label>
+                <input id="endo-prog" name="progesterona" type="number" min="0" step="0.1" placeholder="—">
+                <span class="unidad">ng/mL</span>
+            </div>
+            <div class="fila-campo">
+                <label for="endo-ctni">Troponina I (cTnI)</label>
+                <input id="endo-ctni" name="ctni" type="number" min="0" step="0.001" placeholder="—">
+                <span class="unidad">ng/mL</span>
+            </div>
+            <div class="fila-campo">
+                <label for="endo-nt-probnp">NT-proBNP</label>
+                <input id="endo-nt-probnp" name="nt_probnp" type="number" min="0" placeholder="—">
+                <span class="unidad">pmol/L</span>
+            </div>
+            <div class="fila-campo">
+                <label for="endo-fenobarbital">Fenobarbital (sérico)</label>
+                <input id="endo-fenobarbital" name="fenobarbital" type="number" min="0" step="0.1" placeholder="—">
+                <span class="unidad">μg/mL</span>
+            </div>
+            <div class="fila-campo">
+                <label for="endo-ciclosporina">Ciclosporina (sérica)</label>
+                <input id="endo-ciclosporina" name="ciclosporina" type="number" min="0" placeholder="—">
+                <span class="unidad">ng/mL</span>
             </div>
         </div></div>
     </section>
@@ -496,9 +533,58 @@
                     <span class="unidad">U/L</span>
                 </div>
                 <div class="fila-campo">
+                    <label for="bio-amylasa">Amilasa (AMY)</label>
+                    <input id="bio-amylasa" name="amylasa" type="number" min="0" placeholder="—">
+                    <span class="unidad">U/L</span>
+                </div>
+                <div class="fila-campo">
                     <label for="bio-ck">Creatina Kinasa (CK)</label>
                     <input id="bio-ck" name="ck" type="number" min="0" placeholder="—">
                     <span class="unidad">U/L</span>
+                </div>
+                <div class="fila-campo">
+                    <label for="bio-ldh">LDH</label>
+                    <input id="bio-ldh" name="ldh" type="number" min="0" placeholder="—">
+                    <span class="unidad">U/L</span>
+                </div>
+            </div>
+            <div class="grupo-campo">
+                <h3 class="titulo-grupo">Páncreas exocrino</h3>
+                <div class="fila-campo">
+                    <label for="bio-pli">cPLI / fPLI</label>
+                    <input id="bio-pli" name="pli" type="number" min="0" step="0.1" placeholder="—">
+                    <span class="unidad">μg/L</span>
+                </div>
+            </div>
+            <div class="grupo-campo">
+                <h3 class="titulo-grupo">Minerales</h3>
+                <div class="fila-campo">
+                    <label for="bio-magnesio">Magnesio</label>
+                    <input id="bio-magnesio" name="magnesio" type="number" min="0" step="0.1" placeholder="—">
+                    <span class="unidad">mg/dL</span>
+                </div>
+                <div class="fila-campo">
+                    <label for="bio-hierro">Hierro sérico (Fe)</label>
+                    <input id="bio-hierro" name="hierro" type="number" min="0" placeholder="—">
+                    <span class="unidad">μg/dL</span>
+                </div>
+                <div class="fila-campo">
+                    <label for="bio-ac-urico">Ácido úrico (UA)</label>
+                    <input id="bio-ac-urico" name="ac_urico" type="number" min="0" step="0.1" placeholder="—">
+                    <span class="unidad">mg/dL</span>
+                </div>
+            </div>
+            <div class="grupo-campo">
+                <h3 class="titulo-grupo">Proteínas de Fase Aguda</h3>
+                <div class="fila-campo">
+                    <label for="bio-crp">PCR (Proteína C Reactiva)</label>
+                    <input id="bio-crp" name="crp" type="number" min="0" step="0.1" placeholder="—">
+                    <span class="unidad">mg/L</span>
+                </div>
+                <div class="fila-campo">
+                    <label for="bio-saa">Amiloide A sérico (SAA)</label>
+                    <input id="bio-saa" name="saa" type="number" min="0" step="0.1" placeholder="—">
+                    <span class="unidad">mg/L</span>
                 </div>
             </div>
         </div></div>
@@ -546,6 +632,7 @@
                 <select id="uri-prot" name="uri-prot">
                     <option value="">—</option>
                     <option value="neg">Negativo</option>
+                    <option value="trazas">Trazas</option>
                     <option value="+">+</option>
                     <option value="++">++</option>
                     <option value="+++">+++</option>
@@ -562,6 +649,232 @@
                     <option value="+++">+++</option>
                 </select>
                 <span class="unidad"></span>
+            </div>
+            <div class="fila-campo">
+                <label for="uri-cetonas">Cetonas</label>
+                <select id="uri-cetonas" name="uri-cetonas">
+                    <option value="">—</option>
+                    <option value="neg">Negativo</option>
+                    <option value="trazas">Trazas</option>
+                    <option value="+">+</option>
+                    <option value="++">++</option>
+                    <option value="+++">+++</option>
+                </select>
+                <span class="unidad"></span>
+            </div>
+            <div class="fila-campo">
+                <label for="uri-sangre">Sangre / Hb</label>
+                <select id="uri-sangre" name="uri-sangre">
+                    <option value="">—</option>
+                    <option value="neg">Negativo</option>
+                    <option value="trazas">Trazas</option>
+                    <option value="+">+</option>
+                    <option value="++">++</option>
+                    <option value="+++">+++</option>
+                </select>
+                <span class="unidad"></span>
+            </div>
+            <div class="fila-campo">
+                <label for="uri-bili">Bilirrubina</label>
+                <select id="uri-bili" name="uri-bili">
+                    <option value="">—</option>
+                    <option value="neg">Negativo</option>
+                    <option value="+">+</option>
+                    <option value="++">++</option>
+                    <option value="+++">+++</option>
+                </select>
+                <span class="unidad"></span>
+            </div>
+            <div class="fila-campo">
+                <label for="uri-urobi">Urobilinógeno</label>
+                <select id="uri-urobi" name="uri-urobi">
+                    <option value="">—</option>
+                    <option value="normal">Normal</option>
+                    <option value="+">+</option>
+                    <option value="++">++</option>
+                    <option value="+++">+++</option>
+                </select>
+                <span class="unidad"></span>
+            </div>
+            <div class="fila-campo">
+                <label for="uri-nitritos">Nitritos</label>
+                <select id="uri-nitritos" name="uri-nitritos">
+                    <option value="">—</option>
+                    <option value="neg">Negativo</option>
+                    <option value="pos">Positivo</option>
+                </select>
+                <span class="unidad"></span>
+            </div>
+            <div class="fila-campo">
+                <label for="uri-leuco-est">Leucocitos (esterasa)</label>
+                <select id="uri-leuco-est" name="uri-leuco-est">
+                    <option value="">—</option>
+                    <option value="neg">Negativo</option>
+                    <option value="+">+</option>
+                    <option value="++">++</option>
+                    <option value="+++">+++</option>
+                </select>
+                <span class="unidad"></span>
+            </div>
+            <div class="fila-campo">
+                <label for="uri-rbc">Eritrocitos (sedimento)</label>
+                <input id="uri-rbc" name="rbc_uri" type="number" min="0" placeholder="—">
+                <span class="unidad">/μL</span>
+            </div>
+            <div class="fila-campo">
+                <label for="uri-wbc">Leucocitos (sedimento)</label>
+                <input id="uri-wbc" name="wbc_uri" type="number" min="0" placeholder="—">
+                <span class="unidad">/μL</span>
+            </div>
+            <div class="fila-campo">
+                <label for="uri-upc">Cociente P/C (UPC)</label>
+                <input id="uri-upc" name="upc" type="number" min="0" step="0.01" placeholder="—">
+                <span class="unidad"></span>
+            </div>
+        </div></div>
+    </section>
+
+    <!-- FACTORES DE COAGULACIÓN -->
+    <section class="panel subpanel" id="panel-coag">
+        <h2 class="panel-titulo">Factores de Coagulación</h2>
+        <div class="panel-cabecera">
+            Factores de Coagulación
+            <input type="file" id="pdf-input-coag" class="pdf-input" accept=".pdf" hidden>
+            <button class="btn-limpiar-panel" type="button" data-panel="coag" aria-label="Limpiar campos Coagulación" data-tooltip="Limpiar formulario">
+                <svg viewBox="0 -960 960 960" aria-hidden="true"><path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z"/></svg>
+            </button>
+            <button class="btn-importar-pdf" type="button" data-panel="coag" aria-label="Importar PDF Coagulación" data-tooltip="Adjuntar PDF">
+                <svg viewBox="0 -960 960 960" aria-hidden="true"><path d="M720-330q0 104-73 177T470-80q-104 0-177-73t-73-177v-370q0-75 52.5-127.5T400-880q75 0 127.5 52.5T580-700v350q0 46-32 78t-78 32q-46 0-78-32t-32-78v-370h80v370q0 13 8.5 21.5T470-320q13 0 21.5-8.5T500-350v-350q-1-42-29.5-71T400-800q-42 0-71 29t-29 71v370q-1 71 49 120.5T470-160q70 0 119-49.5T640-330v-390h80v390Z"/></svg>
+            </button>
+            <button class="btn-colapsar-subpanel" id="btn-colapsar-coag" type="button"
+                    aria-expanded="true" aria-controls="cuerpo-coag" aria-label="Colapsar Coagulación" data-tooltip="Contraer / Expandir">
+                <svg class="icono-colapsar" viewBox="0 -960 960 960" aria-hidden="true"><path d="m296-224-56-56 240-240 240 240-56 56-184-183-184 183Zm0-240-56-56 240-240 240 240-56 56-184-183-184 183Z"/></svg><svg class="icono-expandir" viewBox="0 -960 960 960" aria-hidden="true"><path d="M480-200 240-440l56-56 184 183 184-183 56 56-240 240Zm0-240L240-680l56-56 184 183 184-183 56 56-240 240Z"/></svg>
+            </button>
+        </div>
+        <div class="subpanel-anim"><div class="subpanel-cuerpo" id="cuerpo-coag">
+            <div class="cabecera-columnas cabecera-columnas--mobile-only" aria-hidden="true">
+                <span></span>
+                <button class="btn-limpiar-panel" type="button" data-panel="coag" aria-label="Limpiar campos Coagulación" data-tooltip="Limpiar formulario">
+                    <svg viewBox="0 -960 960 960" aria-hidden="true"><path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z"/></svg>
+                </button>
+                <button class="btn-importar-pdf" type="button" data-panel="coag" aria-label="Importar PDF Coagulación" data-tooltip="Adjuntar PDF">
+                    <svg viewBox="0 -960 960 960" aria-hidden="true"><path d="M720-330q0 104-73 177T470-80q-104 0-177-73t-73-177v-370q0-75 52.5-127.5T400-880q75 0 127.5 52.5T580-700v350q0 46-32 78t-78 32q-46 0-78-32t-32-78v-370h80v370q0 13 8.5 21.5T470-320q13 0 21.5-8.5T500-350v-350q-1-42-29.5-71T400-800q-42 0-71 29t-29 71v370q-1 71 49 120.5T470-160q70 0 119-49.5T640-330v-390h80v390Z"/></svg>
+                </button>
+            </div>
+            <div class="fila-campo">
+                <label for="coag-pt">TP / PT</label>
+                <input id="coag-pt" name="pt" type="number" min="0" step="0.1" placeholder="—">
+                <span class="unidad">s</span>
+            </div>
+            <div class="fila-campo">
+                <label for="coag-aptt">TTPa / aPTT</label>
+                <input id="coag-aptt" name="aptt" type="number" min="0" step="0.1" placeholder="—">
+                <span class="unidad">s</span>
+            </div>
+            <div class="fila-campo">
+                <label for="coag-act">ACT</label>
+                <input id="coag-act" name="act" type="number" min="0" placeholder="—">
+                <span class="unidad">s</span>
+            </div>
+            <div class="fila-campo">
+                <label for="coag-fibrinogeno">Fibrinógeno</label>
+                <input id="coag-fibrinogeno" name="fibrinogeno" type="number" min="0" placeholder="—">
+                <span class="unidad">mg/dL</span>
+            </div>
+            <div class="fila-campo">
+                <label for="coag-ddimeros">Dímeros D</label>
+                <input id="coag-ddimeros" name="ddimeros" type="number" min="0" placeholder="—">
+                <span class="unidad">ng/mL</span>
+            </div>
+            <div class="fila-campo">
+                <label for="coag-fdp">FDP / PDF</label>
+                <input id="coag-fdp" name="fdp" type="number" min="0" step="0.1" placeholder="—">
+                <span class="unidad">μg/mL</span>
+            </div>
+            <div class="fila-campo">
+                <label for="coag-antitrombina">Antitrombina (AT-III)</label>
+                <input id="coag-antitrombina" name="antitrombina" type="number" min="0" placeholder="—">
+                <span class="unidad">%</span>
+            </div>
+            <div class="fila-campo">
+                <label for="coag-vwf">vWF (antígeno)</label>
+                <input id="coag-vwf" name="vwf" type="number" min="0" placeholder="—">
+                <span class="unidad">%</span>
+            </div>
+        </div></div>
+    </section>
+
+    <!-- GASOMETRÍA -->
+    <section class="panel subpanel" id="panel-gas">
+        <h2 class="panel-titulo">Gasometría</h2>
+        <div class="panel-cabecera">
+            Gasometría
+            <input type="file" id="pdf-input-gas" class="pdf-input" accept=".pdf" hidden>
+            <button class="btn-limpiar-panel" type="button" data-panel="gas" aria-label="Limpiar campos Gasometría" data-tooltip="Limpiar formulario">
+                <svg viewBox="0 -960 960 960" aria-hidden="true"><path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z"/></svg>
+            </button>
+            <button class="btn-importar-pdf" type="button" data-panel="gas" aria-label="Importar PDF Gasometría" data-tooltip="Adjuntar PDF">
+                <svg viewBox="0 -960 960 960" aria-hidden="true"><path d="M720-330q0 104-73 177T470-80q-104 0-177-73t-73-177v-370q0-75 52.5-127.5T400-880q75 0 127.5 52.5T580-700v350q0 46-32 78t-78 32q-46 0-78-32t-32-78v-370h80v370q0 13 8.5 21.5T470-320q13 0 21.5-8.5T500-350v-350q-1-42-29.5-71T400-800q-42 0-71 29t-29 71v370q-1 71 49 120.5T470-160q70 0 119-49.5T640-330v-390h80v390Z"/></svg>
+            </button>
+            <button class="btn-colapsar-subpanel" id="btn-colapsar-gas" type="button"
+                    aria-expanded="true" aria-controls="cuerpo-gas" aria-label="Colapsar Gasometría" data-tooltip="Contraer / Expandir">
+                <svg class="icono-colapsar" viewBox="0 -960 960 960" aria-hidden="true"><path d="m296-224-56-56 240-240 240 240-56 56-184-183-184 183Zm0-240-56-56 240-240 240 240-56 56-184-183-184 183Z"/></svg><svg class="icono-expandir" viewBox="0 -960 960 960" aria-hidden="true"><path d="M480-200 240-440l56-56 184 183 184-183 56 56-240 240Zm0-240L240-680l56-56 184 183 184-183 56 56-240 240Z"/></svg>
+            </button>
+        </div>
+        <div class="subpanel-anim"><div class="subpanel-cuerpo" id="cuerpo-gas">
+            <div class="cabecera-columnas cabecera-columnas--mobile-only" aria-hidden="true">
+                <span></span>
+                <button class="btn-limpiar-panel" type="button" data-panel="gas" aria-label="Limpiar campos Gasometría" data-tooltip="Limpiar formulario">
+                    <svg viewBox="0 -960 960 960" aria-hidden="true"><path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z"/></svg>
+                </button>
+                <button class="btn-importar-pdf" type="button" data-panel="gas" aria-label="Importar PDF Gasometría" data-tooltip="Adjuntar PDF">
+                    <svg viewBox="0 -960 960 960" aria-hidden="true"><path d="M720-330q0 104-73 177T470-80q-104 0-177-73t-73-177v-370q0-75 52.5-127.5T400-880q75 0 127.5 52.5T580-700v350q0 46-32 78t-78 32q-46 0-78-32t-32-78v-370h80v370q0 13 8.5 21.5T470-320q13 0 21.5-8.5T500-350v-350q-1-42-29.5-71T400-800q-42 0-71 29t-29 71v370q-1 71 49 120.5T470-160q70 0 119-49.5T640-330v-390h80v390Z"/></svg>
+                </button>
+            </div>
+            <div class="fila-campo">
+                <label for="gas-ph">pH (sangre)</label>
+                <input id="gas-ph" name="ph_sangre" type="number" min="6.5" max="8.0" step="0.001" placeholder="—">
+                <span class="unidad"></span>
+            </div>
+            <div class="fila-campo">
+                <label for="gas-pco2">pCO₂</label>
+                <input id="gas-pco2" name="pco2" type="number" min="0" step="0.1" placeholder="—">
+                <span class="unidad">mmHg</span>
+            </div>
+            <div class="fila-campo">
+                <label for="gas-po2">pO₂</label>
+                <input id="gas-po2" name="po2" type="number" min="0" step="0.1" placeholder="—">
+                <span class="unidad">mmHg</span>
+            </div>
+            <div class="fila-campo">
+                <label for="gas-hco3">HCO₃⁻</label>
+                <input id="gas-hco3" name="hco3" type="number" min="0" step="0.1" placeholder="—">
+                <span class="unidad">mEq/L</span>
+            </div>
+            <div class="fila-campo">
+                <label for="gas-be">Exceso de base (BE)</label>
+                <input id="gas-be" name="exceso_base" type="number" min="-30" max="30" step="0.1" placeholder="—">
+                <span class="unidad">mEq/L</span>
+            </div>
+            <div class="fila-campo">
+                <label for="gas-so2">Saturación O₂ (SO₂)</label>
+                <input id="gas-so2" name="so2" type="number" min="0" max="100" step="0.1" placeholder="—">
+                <span class="unidad">%</span>
+            </div>
+            <div class="fila-campo">
+                <label for="gas-ca-ion">Calcio ionizado (iCa)</label>
+                <input id="gas-ca-ion" name="ca_ion" type="number" min="0" step="0.01" placeholder="—">
+                <span class="unidad">mmol/L</span>
+            </div>
+            <div class="fila-campo">
+                <label for="gas-lactato">Lactato</label>
+                <input id="gas-lactato" name="lactato" type="number" min="0" step="0.1" placeholder="—">
+                <span class="unidad">mmol/L</span>
+            </div>
+            <div class="fila-campo">
+                <label for="gas-ag">Anión Gap</label>
+                <input id="gas-ag" name="anion_gap" type="number" min="0" step="0.1" placeholder="—">
+                <span class="unidad">mEq/L</span>
             </div>
         </div></div>
     </section>
@@ -852,7 +1165,7 @@
     </div>
 </div>
 
-<script type="module" src="js/main.js?v=2"></script>
+<script type="module" src="js/main.js?v=3"></script>
 
 </body>
 </html>

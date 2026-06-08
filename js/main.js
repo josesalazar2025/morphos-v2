@@ -145,8 +145,9 @@ const evaluar = () => {
 
 document.addEventListener('input', e => {
     if (e.target.type !== 'number') return;
-    // Impide valores negativos y limita a 4 digitos significativos para mantener la UI limpia
-    if (e.target.value < 0) e.target.value = 0;
+    // Impide valores por debajo del mínimo del campo; permite negativos cuando min lo indica
+    const minPermitido = e.target.min !== '' ? parseFloat(e.target.min) : 0;
+    if (parseFloat(e.target.value) < minPermitido) e.target.value = minPermitido;
     if (e.target.value.replace('.', '').length > 4) e.target.value = e.target.value.slice(0, 4);
     e.target.classList.toggle('max-chars', e.target.value.replace('.', '').length >= 4);
     evaluar();

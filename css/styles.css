@@ -328,10 +328,11 @@ textarea::placeholder {
 main {
     display: grid;
     grid-template-columns: 1fr 1fr 40rem 30rem;
-    grid-template-rows: 1fr auto auto;
+    grid-template-rows: 1fr auto auto auto;
     grid-template-areas:
         "hema    bioquim  col3 resultados"
         "endo    uri      col3 resultados"
+        "coag    gas      col3 resultados"
         "flujo   flujo    col3 resultados";
     gap: 1px;
     background: var(--border-1);
@@ -344,6 +345,8 @@ main {
 #panel-bioquim    { grid-area: bioquim; }
 #panel-endo       { grid-area: endo; }
 #panel-uri        { grid-area: uri; }
+#panel-coag       { grid-area: coag; }
+#panel-gas        { grid-area: gas; }
 #panel-resultados { grid-area: resultados; }
 .panel-flujo      { grid-area: flujo; }
 

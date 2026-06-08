@@ -457,6 +457,329 @@ const detectarPatrones = (hallazgos, especie, alt) => {
         parametros: ['insulina', 'gluc'].filter(presente)
     });
 
+    // Páncreas exocrino (PLI)
+
+    if (esAlto('pli')) agregar({
+        nombre: alt.pancreatitis.nombre,
+        descripcion: alt.pancreatitis.descripcion[especie] ?? alt.pancreatitis.descripcion.canino,
+        gravedad: gravedadDe('pli'),
+        parametros: ['pli', ...(presente('lipasa') ? ['lipasa'] : []), ...(presente('amylasa') ? ['amylasa'] : [])].filter(presente)
+    });
+
+    if (esAlto('amylasa') && !presente('pli')) agregar({
+        nombre: alt.hiperamylasemia.nombre,
+        descripcion: alt.hiperamylasemia.descripcion,
+        gravedad: gravedadDe('amylasa'),
+        parametros: ['amylasa']
+    });
+
+    // Tiroides — TSH
+
+    if (esAlto('tsh')) agregar({
+        nombre: alt.tsh_elevado.nombre,
+        descripcion: alt.tsh_elevado.descripcion[especie] ?? alt.tsh_elevado.descripcion.canino,
+        gravedad: gravedadDe('tsh'),
+        parametros: ['tsh', ...(presente('t4_total') ? ['t4_total'] : []), ...(presente('t4_libre') ? ['t4_libre'] : [])].filter(presente)
+    });
+
+    if (esBajo('tsh')) agregar({
+        nombre: alt.tsh_suprimido.nombre,
+        descripcion: alt.tsh_suprimido.descripcion[especie] ?? alt.tsh_suprimido.descripcion.canino,
+        gravedad: gravedadDe('tsh'),
+        parametros: ['tsh', ...(presente('t4_total') ? ['t4_total'] : [])].filter(presente)
+    });
+
+    if (esBajo('t4_libre') && !presente('tsh')) agregar({
+        nombre: alt.t4_libre_baja.nombre,
+        descripcion: alt.t4_libre_baja.descripcion[especie] ?? alt.t4_libre_baja.descripcion.canino,
+        gravedad: gravedadDe('t4_libre'),
+        parametros: ['t4_libre', ...(presente('t4_total') ? ['t4_total'] : [])].filter(presente)
+    });
+
+    // Biomarcadores cardíacos
+
+    if (esAlto('ctni')) agregar({
+        nombre: alt.dano_miocardico.nombre,
+        descripcion: alt.dano_miocardico.descripcion,
+        gravedad: gravedadDe('ctni'),
+        parametros: ['ctni', ...(presente('nt_probnp') ? ['nt_probnp'] : [])].filter(presente)
+    });
+
+    if (esAlto('nt_probnp')) agregar({
+        nombre: alt.cardiopatia_bnp.nombre,
+        descripcion: alt.cardiopatia_bnp.descripcion[especie] ?? alt.cardiopatia_bnp.descripcion.canino,
+        gravedad: gravedadDe('nt_probnp'),
+        parametros: ['nt_probnp', ...(presente('ctni') ? ['ctni'] : [])].filter(presente)
+    });
+
+    // Proteínas de fase aguda
+
+    if (esAlto('crp') || esAlto('saa')) agregar({
+        nombre: alt.inflamacion_aguda.nombre,
+        descripcion: alt.inflamacion_aguda.descripcion[especie] ?? alt.inflamacion_aguda.descripcion.canino,
+        gravedad: gravedadDe('crp', 'saa'),
+        parametros: ['crp', 'saa'].filter(presente)
+    });
+
+    // Progesterona
+
+    if (esAlto('progesterona')) agregar({
+        nombre: alt.progesterona_elevada.nombre,
+        descripcion: alt.progesterona_elevada.descripcion[especie] ?? alt.progesterona_elevada.descripcion.canino,
+        gravedad: gravedadDe('progesterona'),
+        parametros: ['progesterona']
+    });
+
+    // Magnesio
+
+    if (esBajo('magnesio')) agregar({
+        nombre: alt.hipomagnesemia.nombre,
+        descripcion: alt.hipomagnesemia.descripcion,
+        gravedad: gravedadDe('magnesio'),
+        parametros: ['magnesio']
+    });
+
+    if (esAlto('magnesio')) agregar({
+        nombre: alt.hipermagnesemia.nombre,
+        descripcion: alt.hipermagnesemia.descripcion,
+        gravedad: gravedadDe('magnesio'),
+        parametros: ['magnesio']
+    });
+
+    // Hierro
+
+    if (esBajo('hierro')) agregar({
+        nombre: alt.ferropenia_hierro.nombre,
+        descripcion: alt.ferropenia_hierro.descripcion,
+        gravedad: gravedadDe('hierro'),
+        parametros: ['hierro']
+    });
+
+    // Ácido úrico
+
+    if (esAlto('ac_urico')) agregar({
+        nombre: alt.ac_urico_elevado.nombre,
+        descripcion: alt.ac_urico_elevado.descripcion,
+        gravedad: gravedadDe('ac_urico'),
+        parametros: ['ac_urico']
+    });
+
+    // LDH
+
+    if (esAlto('ldh')) agregar({
+        nombre: alt.ldh_elevada.nombre,
+        descripcion: alt.ldh_elevada.descripcion,
+        gravedad: gravedadDe('ldh'),
+        parametros: ['ldh']
+    });
+
+    // Monitorización de fármacos (TDM)
+
+    if (esBajo('fenobarbital')) agregar({
+        nombre: alt.fenobarbital_subterapeutico.nombre,
+        descripcion: alt.fenobarbital_subterapeutico.descripcion,
+        gravedad: gravedadDe('fenobarbital'),
+        parametros: ['fenobarbital']
+    });
+
+    if (esAlto('fenobarbital')) agregar({
+        nombre: alt.fenobarbital_toxico.nombre,
+        descripcion: alt.fenobarbital_toxico.descripcion,
+        gravedad: gravedadDe('fenobarbital'),
+        parametros: ['fenobarbital']
+    });
+
+    if (esBajo('ciclosporina')) agregar({
+        nombre: alt.ciclosporina_subterapeutica.nombre,
+        descripcion: alt.ciclosporina_subterapeutica.descripcion,
+        gravedad: gravedadDe('ciclosporina'),
+        parametros: ['ciclosporina']
+    });
+
+    if (esAlto('ciclosporina')) agregar({
+        nombre: alt.ciclosporina_toxica.nombre,
+        descripcion: alt.ciclosporina_toxica.descripcion,
+        gravedad: gravedadDe('ciclosporina'),
+        parametros: ['ciclosporina']
+    });
+
+    // Coagulación
+
+    if (esAlto('pt') && !esAlto('aptt')) agregar({
+        nombre: alt.coagulopatia_extrinseca.nombre,
+        descripcion: alt.coagulopatia_extrinseca.descripcion,
+        gravedad: gravedadDe('pt'),
+        parametros: ['pt']
+    });
+
+    if (esAlto('aptt') && !esAlto('pt')) agregar({
+        nombre: alt.coagulopatia_intrinseca.nombre,
+        descripcion: alt.coagulopatia_intrinseca.descripcion,
+        gravedad: gravedadDe('aptt'),
+        parametros: ['aptt']
+    });
+
+    if (esAlto('pt') && esAlto('aptt')) agregar({
+        nombre: alt.coagulopatia_mixta.nombre,
+        descripcion: alt.coagulopatia_mixta.descripcion,
+        gravedad: gravedadDe('pt', 'aptt', 'act'),
+        parametros: ['pt', 'aptt', ...(presente('act') ? ['act'] : [])].filter(presente)
+    });
+
+    if ((esAlto('ddimeros') || esAlto('fdp')) && esBajo('fibrinogeno')) agregar({
+        nombre: alt.cid.nombre,
+        descripcion: alt.cid.descripcion,
+        gravedad: 'grave',
+        parametros: ['ddimeros', 'fdp', 'fibrinogeno', 'plt'].filter(presente)
+    });
+
+    if (esAlto('fibrinogeno') && !esAlto('ddimeros') && !esAlto('fdp')) agregar({
+        nombre: alt.hiperfibrinogenemia.nombre,
+        descripcion: alt.hiperfibrinogenemia.descripcion,
+        gravedad: gravedadDe('fibrinogeno'),
+        parametros: ['fibrinogeno']
+    });
+
+    if (esBajo('fibrinogeno') && !esAlto('ddimeros') && !esAlto('fdp')) agregar({
+        nombre: alt.hipofibrinogenemia.nombre,
+        descripcion: alt.hipofibrinogenemia.descripcion,
+        gravedad: gravedadDe('fibrinogeno'),
+        parametros: ['fibrinogeno']
+    });
+
+    if (esBajo('vwf')) agregar({
+        nombre: alt.deficit_vwf.nombre,
+        descripcion: alt.deficit_vwf.descripcion,
+        gravedad: gravedadDe('vwf'),
+        parametros: ['vwf', ...(presente('aptt') ? ['aptt'] : [])].filter(presente)
+    });
+
+    if (esBajo('antitrombina')) agregar({
+        nombre: alt.antitrombina_baja.nombre,
+        descripcion: alt.antitrombina_baja.descripcion,
+        gravedad: gravedadDe('antitrombina'),
+        parametros: ['antitrombina']
+    });
+
+    // Urianálisis — sedimento / UPC
+
+    if (esAlto('rbc_uri')) agregar({
+        nombre: alt.hematuria_uri.nombre,
+        descripcion: alt.hematuria_uri.descripcion,
+        gravedad: gravedadDe('rbc_uri'),
+        parametros: ['rbc_uri']
+    });
+
+    if (esAlto('wbc_uri')) agregar({
+        nombre: alt.piuria.nombre,
+        descripcion: alt.piuria.descripcion,
+        gravedad: gravedadDe('wbc_uri'),
+        parametros: ['wbc_uri']
+    });
+
+    if (esAlto('upc')) agregar({
+        nombre: alt.proteinuria_upc.nombre,
+        descripcion: alt.proteinuria_upc.descripcion,
+        gravedad: gravedadDe('upc'),
+        parametros: ['upc']
+    });
+
+    // Gasometría — ácido-base
+
+    if (presente('ph_sangre')) {
+        const phBajo = esBajo('ph_sangre');
+        const phAlto = esAlto('ph_sangre');
+        const hipercarbia = esAlto('pco2');
+        const hipocarbia = esBajo('pco2');
+        const componenteAcidMet = esBajo('hco3') || esBajo('exceso_base');
+        const componenteAlcalMet = esAlto('hco3') || esAlto('exceso_base');
+
+        if (phBajo) {
+            if (hipercarbia && componenteAcidMet) {
+                agregar({
+                    nombre: alt.acidosis_respiratoria.nombre + ' + ' + alt.acidosis_metabolica.nombre,
+                    descripcion: alt.acidosis_metabolica.descripcion,
+                    gravedad: 'grave',
+                    parametros: ['ph_sangre', 'pco2', 'hco3', 'exceso_base'].filter(presente)
+                });
+            } else if (hipercarbia) {
+                agregar({
+                    nombre: alt.acidosis_respiratoria.nombre,
+                    descripcion: alt.acidosis_respiratoria.descripcion,
+                    gravedad: gravedadDe('ph_sangre', 'pco2'),
+                    parametros: ['ph_sangre', 'pco2'].filter(presente)
+                });
+            } else if (componenteAcidMet) {
+                agregar({
+                    nombre: alt.acidosis_metabolica.nombre,
+                    descripcion: alt.acidosis_metabolica.descripcion,
+                    gravedad: gravedadDe('ph_sangre', 'hco3', 'exceso_base'),
+                    parametros: ['ph_sangre', 'hco3', 'exceso_base', 'anion_gap'].filter(presente)
+                });
+            }
+        }
+
+        if (phAlto) {
+            if (hipocarbia && componenteAlcalMet) {
+                agregar({
+                    nombre: alt.alcalosis_respiratoria.nombre + ' + ' + alt.alcalosis_metabolica.nombre,
+                    descripcion: alt.alcalosis_metabolica.descripcion,
+                    gravedad: 'grave',
+                    parametros: ['ph_sangre', 'pco2', 'hco3', 'exceso_base'].filter(presente)
+                });
+            } else if (hipocarbia) {
+                agregar({
+                    nombre: alt.alcalosis_respiratoria.nombre,
+                    descripcion: alt.alcalosis_respiratoria.descripcion,
+                    gravedad: gravedadDe('ph_sangre', 'pco2'),
+                    parametros: ['ph_sangre', 'pco2'].filter(presente)
+                });
+            } else if (componenteAlcalMet) {
+                agregar({
+                    nombre: alt.alcalosis_metabolica.nombre,
+                    descripcion: alt.alcalosis_metabolica.descripcion,
+                    gravedad: gravedadDe('ph_sangre', 'hco3', 'exceso_base'),
+                    parametros: ['ph_sangre', 'hco3', 'exceso_base'].filter(presente)
+                });
+            }
+        }
+    }
+
+    if (esBajo('po2')) agregar({
+        nombre: alt.hipoxemia.nombre,
+        descripcion: alt.hipoxemia.descripcion,
+        gravedad: gravedadDe('po2', 'so2'),
+        parametros: ['po2', ...(presente('so2') ? ['so2'] : [])].filter(presente)
+    });
+
+    if (esAlto('lactato')) agregar({
+        nombre: alt.hiperlactatemia.nombre,
+        descripcion: alt.hiperlactatemia.descripcion,
+        gravedad: gravedadDe('lactato'),
+        parametros: ['lactato']
+    });
+
+    if (esBajo('ca_ion')) agregar({
+        nombre: alt.ca_ionizado_bajo.nombre,
+        descripcion: alt.ca_ionizado_bajo.descripcion,
+        gravedad: gravedadDe('ca_ion'),
+        parametros: ['ca_ion']
+    });
+
+    if (esAlto('ca_ion')) agregar({
+        nombre: alt.ca_ionizado_alto.nombre,
+        descripcion: alt.ca_ionizado_alto.descripcion,
+        gravedad: gravedadDe('ca_ion'),
+        parametros: ['ca_ion']
+    });
+
+    if (esAlto('anion_gap')) agregar({
+        nombre: alt.anion_gap_elevado.nombre,
+        descripcion: alt.anion_gap_elevado.descripcion,
+        gravedad: gravedadDe('anion_gap'),
+        parametros: ['anion_gap', ...(presente('lactato') ? ['lactato'] : [])].filter(presente)
+    });
+
     return patrones;
 };
 

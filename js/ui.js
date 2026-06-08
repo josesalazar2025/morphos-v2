@@ -4,11 +4,11 @@ const tabs = document.querySelectorAll('.tab-nav');
 const paneles = document.querySelectorAll('main > .panel, .col3-wrapper > .panel');
 const examenesSubtabsBar = document.getElementById('examenes-subtabs-bar');
 
-const EXAMENES_SUBTAB_PANELS = new Set(['panel-hema', 'panel-bioquim', 'panel-uri', 'panel-endo']);
+const EXAMENES_SUBTAB_PANELS = new Set(['panel-hema', 'panel-bioquim', 'panel-uri', 'panel-endo', 'panel-coag', 'panel-gas']);
 let panelExamenActivo = 'panel-hema';
 let panelActivo = 'panel-flujo';
 
-const SWIPE_ORDER = ['panel-flujo', 'panel-paciente', 'panel-hema', 'panel-bioquim', 'panel-uri', 'panel-endo', 'panel-imagenes', 'panel-resultados'];
+const SWIPE_ORDER = ['panel-flujo', 'panel-paciente', 'panel-hema', 'panel-bioquim', 'panel-uri', 'panel-endo', 'panel-coag', 'panel-gas', 'panel-imagenes', 'panel-resultados'];
 
 export function activarTab(targetId) {
     const esSubpanelExamenes = EXAMENES_SUBTAB_PANELS.has(targetId);
@@ -122,7 +122,7 @@ const esGridEscritorio = () => window.innerWidth > 1100;
 
 function inicializarFilasGrid() {
     if (!esGridEscritorio()) return;
-    mainEl.style.gridTemplateRows = '1fr auto auto';
+    mainEl.style.gridTemplateRows = '1fr auto auto auto';
 
     // Mide el panel de flujo expandido y colapsado para animar grid-template-rows con precision
     const alturaPanel = panelFlujo.getBoundingClientRect().height;
@@ -130,15 +130,15 @@ function inicializarFilasGrid() {
     if (alturaPanel > 0) filaExpandida = `${alturaPanel}px`;
     if (alturaEncabezado > 0) filaColapsada = `${alturaEncabezado}px`;
 
-    mainEl.style.gridTemplateRows = `1fr auto ${filaExpandida || 'auto'}`;
+    mainEl.style.gridTemplateRows = `1fr auto auto ${filaExpandida || 'auto'}`;
 }
 
 function establecerFilasGrid(colapsado, animar) {
     if (!esGridEscritorio()) return;
     if (!animar) mainEl.style.transition = 'none';
     mainEl.style.gridTemplateRows = colapsado
-        ? `1fr auto ${filaColapsada}`
-        : `1fr auto ${filaExpandida}`;
+        ? `1fr auto auto ${filaColapsada}`
+        : `1fr auto auto ${filaExpandida}`;
     if (!animar) {
         mainEl.offsetHeight;
         mainEl.style.transition = '';
@@ -160,7 +160,7 @@ btnColapsar.addEventListener('click', () => {
     establecerFilasGrid(colapsado, true);
     localStorage.setItem('mx-flujo-collapsed', colapsado ? '1' : '0');
     if (!colapsado) {
-        ['panel-endo', 'panel-uri'].forEach(id => {
+        ['panel-endo', 'panel-uri', 'panel-coag', 'panel-gas'].forEach(id => {
             const sp = document.getElementById(id);
             if (sp) establecerSubpanelColapsado(sp, true);
         });
@@ -209,9 +209,10 @@ function establecerSubpanelColapsado(subpanel, debeColapsar) {
 
 const GRUPOS_VINCULADOS = [
     ['panel-endo', 'panel-uri'],
+    ['panel-coag', 'panel-gas'],
 ];
 
-const PANELES_COLAPSADOS_POR_DEFECTO = new Set(['panel-uri', 'panel-endo']);
+const PANELES_COLAPSADOS_POR_DEFECTO = new Set(['panel-uri', 'panel-endo', 'panel-coag', 'panel-gas']);
 
 document.querySelectorAll('.btn-colapsar-subpanel').forEach(btn => {
     const subpanel = btn.closest('.subpanel');
