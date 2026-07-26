@@ -320,7 +320,16 @@ FastAPI backend.
    send `Access-Control-Allow-Origin: *`, no session check). Anyone can call them directly
    and burn the HF key / abuse PubMed. → Require an authenticated session on `/api/interpret`
    (and rate-limit papers); lock CORS to the app origin.
-   — *`Depends(usuario_actual)` en interpret/papers (401 verificado); CORS a orígenes fijos.*
+   — *`Depends(usuario_actual)` en **interpret** (401 verificado en producción). **Corrección
+   (2026-07-26): papers NO lleva guarda de auth** — `/api/papers?query=…` responde 200 sin
+   sesión; sólo está limitado a 30/min por IP. Coincide con lo que pide el punto («auth en
+   interpret, rate-limit en papers»), pero la anotación anterior decía «interpret/papers» y era
+   falsa. No hay clave de API en juego (eutils se consulta sin credencial), así que el riesgo se
+   limita a abuso del proxy. CORS a orígenes fijos: verificado en local — un origen no listado no
+   recibe `Access-Control-Allow-Origin`. **Ojo en producción**: el proxy de HF Spaces añade por su
+   cuenta `Access-Control-Allow-Origin: <origen>` y `expose-headers: *` por encima de la app, así
+   que el bloqueo de CORS queda neutralizado en la plataforma. Lo que sostiene la defensa ahí es
+   `SameSite=Strict` en las cookies de sesión y CSRF: una petición cross-site no las lleva.*
 2. ✅ **Password-hash DB may be web-served.** SQLite fallback writes `data/morphos.db` under the
    web root; `.htaccess` only denies `.env`/`setup.php`, so `/data/morphos.db` may be
    downloadable, and `.htaccess` is Apache-only. → Move the DB **outside** the served root;
