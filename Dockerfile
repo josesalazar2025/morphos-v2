@@ -65,10 +65,19 @@ snapshot_download(repo_id='$HF_INDEX_REPO', repo_type='dataset', local_dir='/app
 # petición intentaría descargarlos de huggingface.co en caliente: lento en CPU-basic y, si la
 # red falla, el reranker cae en silencio a orden RRF. Con HF_HUB_OFFLINE=1 en runtime, una
 # descarga que faltase falla de forma ruidosa en vez de degradar sin avisar.
+#
+# Se monta el mismo secreto que en la descarga del índice: los dos modelos son públicos y la
+# descarga funciona sin credencial, pero anónima cae en el límite de tasa del Hub — y son 6.4 GB,
+# justo el caso donde eso muerde. `required=false` mantiene la build funcionando sin el secreto.
+# El montaje sólo existe durante este RUN: el token no queda en ninguna capa de la imagen.
 ARG RAG_EMBED_MODEL=BAAI/bge-m3
 ARG RAG_RERANKER_MODEL=BAAI/bge-reranker-v2-m3
 ENV HF_HOME=/opt/hf
-RUN if [ "$WITH_RAG" = "1" ]; then \
+RUN --mount=type=secret,id=hf_token,required=false \
+    if [ "$WITH_RAG" = "1" ]; then \
+      if [ -f /run/secrets/hf_token ]; then \
+        HF_TOKEN="$(cat /run/secrets/hf_token)"; export HF_TOKEN; \
+      fi; \
       backend/.venv/bin/python -c "\
 from sentence_transformers import SentenceTransformer, CrossEncoder; \
 SentenceTransformer('$RAG_EMBED_MODEL'); CrossEncoder('$RAG_RERANKER_MODEL')"; \
