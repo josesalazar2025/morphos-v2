@@ -1,0 +1,33 @@
+[project]
+name = "morphos-bridge"
+version = "0.1.0"
+description = "Puente local Morphos: lee analizadores de laboratorio (ASTM/HL7 v2) y reenvía resultados normalizados a la API por HTTPS."
+requires-python = ">=3.11"
+dependencies = [
+    "httpx>=0.28",
+    "pyserial>=3.5",         # transporte serie (Abaxis/Horiba ASTM)
+    "pydantic>=2.10",
+    "pydantic-settings>=2.7",
+]
+
+# El puente es un proyecto uv SEPARADO del backend: sus deps de serie/HL7 no entran en la
+# imagen de HF Spaces. Se instala en la máquina de la clínica, en la LAN del analizador.
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.25",
+]
+
+[tool.uv]
+default-groups = ["dev"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["bridge"]

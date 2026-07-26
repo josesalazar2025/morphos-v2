@@ -1,0 +1,54 @@
+name: evals
+
+# Puerta de calidad: bloquea el merge si el motor determinista regresa o si la suite
+# de evaluación clínica cae bajo sus umbrales o registra violaciones de seguridad.
+
+on:
+  pull_request:
+    paths:
+      - "frontend/src/**"
+      - "backend/app/ai/**"
+      - "backend/app/rag/**"
+      - "evals/**"
+      - "data/**"
+  push:
+    branches: [main]
+
+jobs:
+  motor-regresion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Instalar frontend
+        working-directory: frontend
+        run: npm ci
+      - name: Suite de regresión del motor (vitest)
+        working-directory: frontend
+        run: npm test
+
+  evals-clinicas:
+    runs-on: ubuntu-latest
+    needs: motor-regresion
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: astral-sh/setup-uv@v5
+      - name: Sincronizar backend
+        working-directory: backend
+        run: uv sync
+      - name: Instalar deps del motor (para el puente Node)
+        working-directory: frontend
+        run: npm ci
+      # En CI real, sustituir --simular por --modelo medgemma apuntando a un endpoint,
+      # o subir un archivo de predicciones generado en un job con GPU. El juez clínico
+      # LLM se activa si ANTHROPIC_API_KEY está en los secrets del repo.
+      - name: Ejecutar evals (puerta de CI)
+        working-directory: backend
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: uv run python ../evals/run_evals.py --simular

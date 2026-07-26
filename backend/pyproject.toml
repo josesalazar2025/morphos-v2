@@ -1,0 +1,82 @@
+[project]
+name = "morphos-backend"
+version = "1.0.0"
+description = "Morphos — servicio FastAPI de interpretación clínica (IA + RAG) con evals"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.34",
+    "pydantic>=2.10",
+    "pydantic-settings>=2.7",
+    "httpx>=0.28",
+    "python-multipart>=0.0.20",
+    "slowapi>=0.1.9",
+    "itsdangerous>=2.2",
+    "anthropic>=0.42",
+    "email-validator>=2.2",
+]
+
+# Dependencias pesadas del RAG: sólo se instalan para ingesta/consulta con documentos.
+# El servicio degrada a modo sin-RAG si no están presentes.
+[dependency-groups]
+rag = [
+    "llama-index-core>=0.12",
+    "lancedb>=0.17",
+    "sentence-transformers>=3.3",
+    "pymupdf4llm>=0.0.17",
+    "pypdf>=5.1",
+]
+evals = [
+    "ragas>=0.2",
+    "deepeval>=2.0",
+    "pandas>=2.2",
+]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.25",
+    "ruff>=0.9",
+]
+
+[tool.uv]
+# Grupos que uv instala por defecto en `uv sync`. Los pesados quedan opt-in
+# vía `uv sync --group rag` / `--group evals`.
+default-groups = ["dev"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+
+[tool.ruff.lint]
+# Por defecto ruff sólo aplica E4/E7/E9/F. Se añaden las familias que atrapan los fallos reales
+# vistos en revisión: imports desordenados (I), modernización de tipos (UP), bugs probables como
+# `except` sin `from` o `assert` en producción (B), y comprehensions redundantes (C4).
+select = ["E4", "E7", "E9", "F", "I", "UP", "B", "C4"]
+
+[tool.ruff.lint.per-file-ignores]
+# Los tests usan asserts y fixtures con nombres largos; B011 no aporta ahí.
+"tests/*" = ["B011"]
+
+[tool.ruff.lint.flake8-bugbear]
+# `Depends(...)`/`Header(...)`/`Cookie(...)` en un argumento por defecto es EL idiom de FastAPI,
+# no el bug que B008 busca (un valor mutable compartido entre llamadas). Sin esta lista B008
+# marca cada endpoint del proyecto como falso positivo.
+extend-immutable-calls = [
+    "fastapi.Depends",
+    "fastapi.Header",
+    "fastapi.Cookie",
+    "fastapi.Query",
+    "fastapi.Body",
+    "fastapi.File",
+    "fastapi.Form",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]

@@ -1,0 +1,21 @@
+{
+  "_comentario": "Scil/Horiba hematología (ABX Micros / scil Vet abc). Diferencial de 3 partes: GRA (granulocitos) ≈ neutrófilos; MID (células medias) se aproxima a monocitos. Verifica con una corrida real y ajusta.",
+
+  "wbc": { "codigos": ["WBC"], "unidad_defecto": "x10^3/uL" },
+  "rbc": { "codigos": ["RBC"], "unidad_defecto": "x10^6/uL" },
+  "hgb": { "codigos": ["HGB", "HB"], "unidad_defecto": "g/dL" },
+  "hct": { "codigos": ["HCT"], "unidad_defecto": "%" },
+  "vcm": { "codigos": ["MCV"], "unidad_defecto": "fL" },
+  "hcm": { "codigos": ["MCH"], "unidad_defecto": "pg" },
+  "chcm": { "codigos": ["MCHC"], "unidad_defecto": "g/dL" },
+  "rdw": { "codigos": ["RDW"], "unidad_defecto": "%" },
+  "plt": { "codigos": ["PLT"], "unidad_defecto": "x10^3/uL" },
+  "mpv": { "codigos": ["MPV"], "unidad_defecto": "fL" },
+  "pct": { "codigos": ["PCT"], "unidad_defecto": "%" },
+  "linfo": { "codigos": ["LYM%", "LY%"], "unidad_defecto": "%" },
+  "mono": { "codigos": ["MON%", "MO%", "MID%"], "unidad_defecto": "%" },
+  "neutro": { "codigos": ["GRA%", "GR%"], "unidad_defecto": "%" },
+  "linfo_abs": { "codigos": ["LYM#", "LY#"], "unidad_defecto": "x10^3/uL" },
+  "mono_abs": { "codigos": ["MON#", "MO#", "MID#"], "unidad_defecto": "x10^3/uL" },
+  "neutro_abs": { "codigos": ["GRA#", "GR#"], "unidad_defecto": "x10^3/uL" }
+}

@@ -995,6 +995,97 @@ footer {
     fill: currentColor;
 }
 
+/*  IMPORTACIÓN DESDE ANALIZADOR DE LABORATORIO  */
+.fila-importar-lab {
+    margin-top: var(--space-4);
+}
+
+#lab-muestra-id {
+    letter-spacing: 0.02em;
+}
+
+.btn-importar-lab {
+    display: block;
+    width: 100%;
+    margin-top: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    background: var(--accent);
+    color: var(--text-on-accent);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-md);
+    font: inherit;
+    cursor: pointer;
+    text-align: center;
+}
+
+.btn-importar-lab:hover {
+    background: var(--accent-hover);
+    border-color: var(--accent-hover);
+}
+
+.btn-importar-lab.buscando {
+    background: var(--monitor);
+    border-color: var(--monitor);
+    cursor: progress;
+}
+
+.btn-pendientes-lab {
+    background: transparent;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+}
+
+.btn-pendientes-lab:hover {
+    background: var(--accent);
+    color: var(--text-on-accent);
+}
+
+.lab-pendientes {
+    list-style: none;
+    margin: var(--space-2) 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+}
+
+.lab-pendiente-item {
+    width: 100%;
+    text-align: left;
+    padding: var(--space-2) var(--space-3);
+    background: var(--surface-2, transparent);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font: inherit;
+    font-size: 0.85em;
+    cursor: pointer;
+}
+
+.lab-pendiente-item:hover {
+    border-color: var(--accent);
+}
+
+.lab-pendientes-vacio {
+    padding: var(--space-2) var(--space-3);
+    font-size: 0.85em;
+    opacity: 0.7;
+}
+
+/* Destello transitorio de los campos rellenados por importación */
+.campo-importado {
+    animation: destello-importado 2.5s ease-out;
+}
+
+@keyframes destello-importado {
+    0% {
+        box-shadow: 0 0 0 3px var(--focus-ring);
+        background: var(--monitor-bg);
+    }
+    100% {
+        box-shadow: none;
+    }
+}
+
 #aviso-mob {
     display: none;
     font-size: var(--fs-xs);

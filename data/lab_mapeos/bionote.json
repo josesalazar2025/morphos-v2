@@ -1,0 +1,15 @@
+{
+  "_comentario": "Bionote Vcheck V200 (inmunoensayos). Códigos OBX-3 del perfil PCD-01. unidad_defecto = unidad típica del equipo, para que la conversión a unidad nativa de la app se dispare aunque el mensaje omita la unidad (p. ej. T4 en ug/dL → nmol/L). Verifica con captura real.",
+
+  "cortisol_bas": { "codigos": ["CORTISOL", "CORT"], "unidad_defecto": "ug/dL" },
+  "t4_total": { "codigos": ["T4", "TT4", "TOTAL T4"], "unidad_defecto": "ug/dL" },
+  "crp": { "codigos": ["CRP", "CCRP", "C-RP"], "unidad_defecto": "mg/L" },
+  "pli": { "codigos": ["CPL", "FPL", "PL", "VPL"], "unidad_defecto": "ug/L" },
+  "progesterona": { "codigos": ["PROG", "P4", "PROGESTERONE"], "unidad_defecto": "ng/mL" },
+  "nt_probnp": { "codigos": ["NT-PROBNP", "PROBNP", "BNP"], "unidad_defecto": "pmol/L" },
+  "tsh": { "codigos": ["TSH", "CTSH"], "unidad_defecto": "ng/mL" },
+  "fruc": { "codigos": ["FRUCTOSAMINE", "FRU"], "unidad_defecto": "umol/L" },
+  "saa": { "codigos": ["SAA"], "unidad_defecto": "mg/L" },
+  "ddimeros": { "codigos": ["D-DIMER", "DDIMER"], "unidad_defecto": "ng/mL" },
+  "acidos_bil": { "codigos": ["TBA", "BILE ACIDS"], "unidad_defecto": "umol/L" }
+}

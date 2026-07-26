@@ -1,0 +1,28 @@
+{
+  "_comentario": "Abaxis VetScan VS2 (química). Códigos de rotor tal como los imprime el equipo. Verifica con una corrida real (revisa los no_mapeados de la ingesta) y ajusta aquí. Sobrescribe/confirma generico.json.",
+
+  "alb": { "codigos": ["ALB"], "unidad_defecto": "g/dL" },
+  "fal": { "codigos": ["ALP", "ALKP"], "unidad_defecto": "U/L" },
+  "alt": { "codigos": ["ALT"], "unidad_defecto": "U/L" },
+  "ast": { "codigos": ["AST"], "unidad_defecto": "U/L" },
+  "amylasa": { "codigos": ["AMY"], "unidad_defecto": "U/L" },
+  "bili": { "codigos": ["TBIL"], "unidad_defecto": "mg/dL" },
+  "bun": { "codigos": ["BUN"], "claveConv": "bun", "unidad_defecto": "mg/dL" },
+  "calc": { "codigos": ["CA", "CA++"], "unidad_defecto": "mg/dL" },
+  "fosf": { "codigos": ["PHOS"], "unidad_defecto": "mg/dL" },
+  "creat": { "codigos": ["CRE"], "unidad_defecto": "mg/dL" },
+  "gluc": { "codigos": ["GLU"], "unidad_defecto": "mg/dL" },
+  "potasio": { "codigos": ["K+", "K"], "unidad_defecto": "mEq/L" },
+  "sodio": { "codigos": ["NA+", "NA"], "unidad_defecto": "mEq/L" },
+  "cloro": { "codigos": ["CL-", "CL"], "unidad_defecto": "mEq/L" },
+  "tco2": { "codigos": ["TCO2"], "unidad_defecto": "mEq/L" },
+  "prot": { "codigos": ["TP"], "unidad_defecto": "g/dL" },
+  "glob": { "codigos": ["GLOB"], "unidad_defecto": "g/dL" },
+  "ggt": { "codigos": ["GGT"], "unidad_defecto": "U/L" },
+  "colest": { "codigos": ["CHOL"], "unidad_defecto": "mg/dL" },
+  "trigli": { "codigos": ["TRIG"], "unidad_defecto": "mg/dL" },
+  "magnesio": { "codigos": ["MG"], "unidad_defecto": "mg/dL" },
+  "ac_urico": { "codigos": ["UA"], "unidad_defecto": "mg/dL" },
+  "ck": { "codigos": ["CK"], "unidad_defecto": "U/L" },
+  "lipasa": { "codigos": ["LIPA", "LIP"], "unidad_defecto": "U/L" }
+}
