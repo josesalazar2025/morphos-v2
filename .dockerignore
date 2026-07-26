@@ -1,6 +1,11 @@
-# Sensitive files
+# Secretos. Los patrones `**/` son IMPRESCINDIBLES, no redundantes: .dockerignore usa la
+# semántica de filepath.Match de Go, donde `*` NO cruza el separador de ruta. Con sólo `.env` y
+# `*.env` se excluía el .env de la raíz pero NO backend/.env, que contiene HF_API_KEY y acabaría
+# horneado en la imagen vía `COPY backend/ backend/`.
 .env
 *.env
+**/.env
+**/*.env
 
 # SQLite database (will be created at runtime). NUNCA hornear la BD de usuarios en la
 # imagen: sólo el índice RAG (instance/rag_index) debe copiarse. Excluye la BD del contexto
@@ -23,8 +28,35 @@ Thumbs.db
 .git/
 .gitignore
 
-# Node / build tools (none used, but just in case)
+# Node / build tools. Hace falta el patrón `**/` además del suelto: los patrones de
+# .dockerignore se casan contra la ruta relativa a la raíz del contexto, así que `node_modules/`
+# por sí solo NO cubre frontend/node_modules (96 MB), que la etapa 1 reinstala con `npm ci`.
 node_modules/
+**/node_modules/
+
+# CRÍTICO — entornos virtuales de Python.
+# `RUN uv sync` construye el venv de Linux en /app/backend/.venv, y el `COPY backend/ backend/`
+# posterior lo SOBRESCRIBÍA con el venv local de macOS (binarios Mach-O, 1.3 GB). El resultado
+# era un /app/backend/.venv/bin/python inejecutable en Linux: la build reventaba al precargar
+# los modelos y, de haber llegado a arrancar, el CMD de uvicorn habría fallado igual.
+.venv/
+**/.venv/
+__pycache__/
+**/__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# Corpus con licencia: 226 MB que no se copian a ninguna capa, sólo engordan el contexto.
+books/
+
+# Artefactos y código que la imagen no usa. dist/ se toma de la etapa `frontend`, no del host.
+dist/
+evals/
+bridge/
+.github/
+.agents/
+scripts/
 
 # Documentation not needed in the image
 README.md
