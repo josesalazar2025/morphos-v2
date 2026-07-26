@@ -44,7 +44,9 @@ class ClaudeClient:
     def __init__(self) -> None:
         cfg = obtener_config()
         if not cfg.anthropic_api_key:
-            raise ErrorModelo("ANTHROPIC_API_KEY no configurada para la ruta Claude.")
+            raise ErrorModelo(
+                "ANTHROPIC_API_KEY no configurada para la ruta Claude.", reintentable=False
+            )
         # Import perezoso para no exigir el SDK cuando sólo se usa medGemma.
         from anthropic import AsyncAnthropic
 
@@ -75,7 +77,8 @@ class ClaudeClient:
             raise ErrorModelo(
                 "El modelo rechazó la petición por sus filtros de seguridad"
                 + (f" (categoría: {categoria})" if categoria else "")
-                + ". Reformula el caso o usa la ruta medGemma."
+                + ". Reformula el caso o usa la ruta medGemma.",
+                reintentable=False,
             )
 
         for bloque in resp.content:
@@ -95,7 +98,9 @@ class ClaudeClient:
             messages=[{"role": "user", "content": mensaje}],
         )
         if resp.stop_reason == "refusal":
-            raise ErrorModelo("El juez rechazó el caso por sus filtros de seguridad.")
+            raise ErrorModelo(
+                "El juez rechazó el caso por sus filtros de seguridad.", reintentable=False
+            )
         texto = "".join(b.text for b in resp.content if getattr(b, "type", None) == "text")
         try:
             return json.loads(texto)

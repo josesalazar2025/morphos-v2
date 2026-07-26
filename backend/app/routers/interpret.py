@@ -17,7 +17,7 @@ from ..ai.service import interpretar
 from ..config import obtener_config
 from ..schemas import PeticionInterpretacion, RespuestaInterpretacion
 from ..security.authz import usuario_actual, verificar_csrf
-from ..security.rate_limit import limiter
+from ..security.rate_limit import clave_usuario, limiter
 
 router = APIRouter()
 
@@ -44,6 +44,9 @@ def _validar_imagenes(imagenes: list[str]) -> None:
 
 @router.post("/interpret", response_model=RespuestaInterpretacion)
 @limiter.limit(obtener_config().limite_interpret)
+# Segundo límite, con clave por usuario: el de arriba (por IP) frena ráfagas puntuales, éste
+# impide que una sola cuenta consuma la cuota de GPU compartida a lo largo del día.
+@limiter.limit(obtener_config().limite_interpret_usuario, key_func=clave_usuario)
 async def post_interpret(
     request: Request,
     pet: PeticionInterpretacion,
@@ -54,4 +57,13 @@ async def post_interpret(
     try:
         return await interpretar(pet)
     except ErrorModelo as exc:
+        if exc.saturado:
+            # 503 + Retry-After y no 502: al cliente le sirve saber que es transitorio y cuándo
+            # reintentar. Un 502 genérico invita a recargar en bucle, que es lo peor que puede
+            # hacerse contra una cuota agotada.
+            raise HTTPException(
+                status.HTTP_503_SERVICE_UNAVAILABLE,
+                str(exc),
+                headers={"Retry-After": "300"},
+            ) from exc
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"Error del modelo: {exc}") from exc

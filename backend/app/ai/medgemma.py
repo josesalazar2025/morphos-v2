@@ -64,7 +64,11 @@ class MedGemmaClient:
             raise ErrorModelo(f"No se pudo conectar con medGemma en {self._url}: {exc}") from exc
 
         if resp.status_code >= 400:
-            raise ErrorModelo(f"medGemma devolvió HTTP {resp.status_code}: {resp.text[:200]}")
+            raise ErrorModelo(
+                f"medGemma devolvió HTTP {resp.status_code}: {resp.text[:200]}",
+                reintentable=resp.status_code >= 500,
+                saturado=resp.status_code == 429,
+            )
 
         contenido = resp.json().get("message", {}).get("content", "")
         try:

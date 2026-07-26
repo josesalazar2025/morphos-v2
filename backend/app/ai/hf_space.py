@@ -107,7 +107,9 @@ class HFSpaceClient:
     def __init__(self) -> None:
         cfg = obtener_config()
         if not cfg.hf_space_url:
-            raise ErrorModelo("MORPHOS_HF_SPACE_URL no configurada para la ruta HF Space.")
+            raise ErrorModelo(
+                "MORPHOS_HF_SPACE_URL no configurada para la ruta HF Space.", reintentable=False
+            )
         self._space = cfg.hf_space_url.rstrip("/")
         self._key = cfg.hf_api_key
 
@@ -164,8 +166,21 @@ class HFSpaceClient:
                 )
             except httpx.HTTPError as exc:
                 raise ErrorModelo(f"No se pudo contactar el HF Space: {exc}") from exc
+            if r.status_code == 429:
+                # Cuota de ZeroGPU agotada o límite de tasa del router de HF. Reintentar aquí
+                # sería contraproducente: gasta otra reserva de GPU del mismo pozo agotado.
+                raise ErrorModelo(
+                    "El modelo está saturado (cuota de GPU agotada). Inténtalo de nuevo en unos "
+                    "minutos, o configura la ruta local de Ollama.",
+                    reintentable=False,
+                    saturado=True,
+                )
             if r.status_code >= 400:
-                raise ErrorModelo(f"HF Space devolvió HTTP {r.status_code}")
+                # 5xx puede ser transitorio; 4xx (auth, petición mal formada) no se arregla solo.
+                raise ErrorModelo(
+                    f"HF Space devolvió HTTP {r.status_code}",
+                    reintentable=r.status_code >= 500,
+                )
 
             event_id = (r.json() or {}).get("event_id")
             if not event_id:
@@ -180,7 +195,12 @@ class HFSpaceClient:
 
         texto, error = self._parsear_sse(stream.text)
         if error:
-            raise ErrorModelo(f"HF Space: {error}")
+            # El Space suele reportar aquí la cuota de ZeroGPU agotada; eso no se arregla
+            # reintentando (gastaría otra reserva del mismo pozo).
+            sin_cuota = bool(re.search(r"quota|gpu|exceed|limit", error, re.I))
+            raise ErrorModelo(
+                f"HF Space: {error}", reintentable=not sin_cuota, saturado=sin_cuota
+            )
         if texto is None:
             raise ErrorModelo("Sin respuesta del modelo (HF Space).")
 

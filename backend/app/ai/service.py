@@ -62,6 +62,11 @@ async def interpretar(pet: PeticionInterpretacion) -> RespuestaInterpretacion:
             break
         except ErrorModelo as exc:
             ultimo_error = exc
+            if not exc.reintentable:
+                # 429/cuota, rechazo por seguridad o configuración ausente: reintentar no puede
+                # ayudar y, en el caso de la cuota, gasta otra reserva de GPU del pozo agotado.
+                log.warning("Interpretación fallida sin reintento: %s", exc)
+                break
             log.warning("Interpretación fallida (intento %d): %s", intento + 1, exc)
 
     if resultado is None:

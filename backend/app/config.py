@@ -107,6 +107,10 @@ class Configuracion(BaseSettings):
 
     # --- Rate limiting ---
     limite_interpret: str = Field(default="10/minute")
+    # Techo por USUARIO además del de IP. La cuota de ZeroGPU es por cuenta y compartida entre
+    # todos los veterinarios que usan la instancia pública: sin este límite, uno solo puede
+    # agotar la capacidad del día. Ajustar según la cuota real del plan.
+    limite_interpret_usuario: str = Field(default="20/hour")
     limite_login: str = Field(default="5/minute")
     limite_papers: str = Field(default="30/minute")
     limite_lab_ingesta: str = Field(default="120/minute")  # el analizador puede enviar en ráfaga
