@@ -27,3 +27,27 @@ Temporary Items
 
 
 .env
+backend/.env
+
+# Node / frontend
+node_modules/
+dist/
+
+# Python / backend (uv)
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# Datos de ejecución (fuera del webroot): BD de usuarios e índice RAG
+instance/
+
+# Herramientas locales del asistente (skills instaladas con `hf skills add`), no son del proyecto
+.agents/
+
+# Corpus con licencia (no versionar contenido con copyright).
+# Se ignora todo el contenido de books/ salvo el README que documenta el layout de entrada,
+# para que un formato nuevo (.txt, .docx, texto extraido) no se cuele por no estar listado.
+books/*
+!books/README.md

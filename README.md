@@ -8,6 +8,15 @@ pinned: false
 ---
 # Morphos — Intérprete de analíticas veterinarias asistido por I.A
 
+> ⚠️ **Este README describe la entrega original del curso (stack XAMPP: PHP + JS sin build).**
+> Ese stack ya no existe en el repo: `js/*.js`, `api/*.php` y `.htaccess` se eliminaron el
+> 2026-07-26 al completarse la migración a **Vite + TypeScript (`frontend/`) + FastAPI
+> (`backend/`)**. Las secciones de estructura, instalación (`setup.php`, XAMPP, MySQL) y
+> seguridad de abajo son **históricas, no instrucciones válidas**.
+>
+> Para ejecutar el proyecto hoy: `CLAUDE.md` (arquitectura actual) y `MIGRACION.md` (estado y
+> comandos). En resumen: `make frontend-install && make frontend-build && make backend-sync && make dev`.
+
 ## Proyecto final — Curso de Desarrollo Web 2026
 
 ---
