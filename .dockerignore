@@ -2,8 +2,12 @@
 .env
 *.env
 
-# SQLite database (will be created at runtime)
+# SQLite database (will be created at runtime). NUNCA hornear la BD de usuarios en la
+# imagen: sólo el índice RAG (instance/rag_index) debe copiarse. Excluye la BD del contexto
+# de build para que `COPY instance*` no la arrastre a la imagen distribuida.
 data/*.db
+instance/*.db
+instance/morphos.db
 
 # OS
 .DS_Store

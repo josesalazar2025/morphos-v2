@@ -1,36 +1,16 @@
-#!/bin/bash
+#!/bin/sh
 set -e
 
-DATA_DIR="/var/www/html/data"
-DB_FILE="$DATA_DIR/morphos.db"
+# La BD de usuarios y el índice RAG viven en instance/ (fuera del webroot).
+# El backend crea el esquema al arrancar (lifespan). Aquí sólo garantizamos el
+# directorio y avisamos si falta configuración de producción crítica.
+mkdir -p /app/instance
 
-# Ensure data directory exists with correct ownership
-mkdir -p "$DATA_DIR"
-chown www-data:www-data "$DATA_DIR"
-
-# Ensure SQLite database file exists so PDO can connect
-touch "$DB_FILE"
-chown www-data:www-data "$DB_FILE"
-chmod 664 "$DB_FILE"
-
-# Initialize SQLite schema if the table does not exist
-php -r "
-\$dbPath = '$DB_FILE';
-try {
-    \$pdo = new PDO('sqlite:' . \$dbPath);
-    \$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    \$pdo->exec('CREATE TABLE IF NOT EXISTS usuarios (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        nombre TEXT NOT NULL,
-        apellido TEXT NOT NULL,
-        email TEXT NOT NULL UNIQUE,
-        password TEXT NOT NULL,
-        creado_en DATETIME DEFAULT CURRENT_TIMESTAMP
-    )');
-} catch (PDOException \$e) {
-    error_log('SQLite init error: ' . \$e->getMessage());
-    exit(1);
-}
-"
+if [ "${MORPHOS_ENTORNO}" = "prod" ]; then
+  if [ -z "${MORPHOS_SESSION_SECRET}" ]; then
+    echo "ERROR: MORPHOS_SESSION_SECRET no está definido en prod. Aborta." >&2
+    exit 1
+  fi
+fi
 
 exec "$@"
