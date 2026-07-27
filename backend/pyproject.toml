@@ -26,9 +26,16 @@ rag = [
     "pymupdf4llm>=0.0.17",
     "pypdf>=5.1",
 ]
+# Evals: Ragas mide groundedness (faithfulness / context precision-recall) y langchain-ollama
+# le da el LLM y los embeddings LOCALES con los que juzga, para que la capa de evaluación no
+# dependa de ninguna clave de pago. Ver evals/run_ragas.py.
+# Los topes de langchain NO son cosmética: ragas 0.4 importa `langchain_community.chat_models
+# .vertexai`, ruta que desapareció en langchain-community 0.4, así que sin el tope el grupo
+# se instala y falla al importar ragas. langchain-ollama va atado al mismo langchain-core 0.3.
 evals = [
-    "ragas>=0.2",
-    "deepeval>=2.0",
+    "ragas>=0.4,<0.5",
+    "langchain-community<0.4",
+    "langchain-ollama<1",
     "pandas>=2.2",
 ]
 dev = [

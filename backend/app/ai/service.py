@@ -13,6 +13,7 @@ from ..config import obtener_config
 from ..rag.retriever import construir_consulta, recuperar
 from ..schemas import InterpretacionClinica, PeticionInterpretacion, RespuestaInterpretacion
 from .base import ClienteModelo, ErrorModelo
+from .citas import aplicar_atribucion
 from .prompt import SISTEMA, SISTEMA_PROSA, construir_mensaje_usuario
 
 log = logging.getLogger("morphos.ia")
@@ -72,6 +73,11 @@ async def interpretar(pet: PeticionInterpretacion) -> RespuestaInterpretacion:
     if resultado is None:
         raise ultimo_error or ErrorModelo("Fallo desconocido de interpretación.")
 
+    # 4) Atribución: las fuentes salen de la recuperación, no del modelo, y las citas que no
+    # se resuelven contra un fragmento real se descartan. Es lo que da citas verificables
+    # también en la ruta de prosa del HF Space, que no puede rellenar `citas[]`.
+    resultado, fuentes = aplicar_atribucion(resultado, fragmentos)
+
     if backend == "claude":
         etiqueta = cfg.claude_model
     elif cliente.nombre == "medgemma-hf":
@@ -83,4 +89,5 @@ async def interpretar(pet: PeticionInterpretacion) -> RespuestaInterpretacion:
         resultado=resultado,
         modelo=f"{cliente.nombre}:{etiqueta}",
         fuentes_rag=len(fragmentos),
+        fuentes=fuentes,
     )

@@ -19,7 +19,8 @@ backend/           FastAPI (uv). IA estructurada, RAG, seguridad.
   app/routers/       interpret.py, papers.py, auth.py.
   app/security/      authz, rate_limit, session, headers.
   tests/             15 pruebas (esquema, prompt, RAG, API+seguridad).
-evals/             Dataset dorado + run_evals.py (puerta CI) + juez LLM + promptfoo.
+evals/             Dataset dorado (split dev/test + firma veterinaria) + run_evals.py
+                   (puerta CI) + juez LLM local gratuito + Ragas + promptfoo.
 books/             Corpus con licencia (gitignored). Ver books/README.md.
 instance/          BD de usuarios + índice RAG (fuera del webroot; gitignored).
 bridge/            Puente local (proyecto uv aparte): lee analizadores (ASTM/HL7 v2) en la
@@ -48,7 +49,10 @@ make backend-test           # 15/15
 make dev                    # uvicorn en :8000
 
 # Evals (puerta de CI)
-make evals                  # run_evals.py --simular → ✅/❌ + exit code
+make evals                  # split dev, sólo casos con validación veterinaria
+make evals-test             # split reservado
+make revision               # hoja de revisión de los casos pendientes
+make ragas ARGS="--predicciones preds.jsonl"   # groundedness (juez local)
 
 # RAG (cuando haya libros en books/)
 make ingest                 # construye instance/rag_index con el grupo 'rag'
@@ -71,8 +75,18 @@ make docker-build
 - ✅ **RAG**: pipeline de ingesta + recuperador con citas que **degrada a modo sin-RAG**
   si faltan deps o índice (probado). Índice horneado en la imagen.
 - ✅ **Evals**: dataset dorado, comprobaciones deterministas (recall diferenciales,
-  cobertura, derivación, idioma, **seguridad tolerancia-cero**), juez LLM (Claude),
-  promptfoo y **puerta de CI** (exit≠0 ante regresión) — verificado que bloquea.
+  cobertura, derivación, idioma, **seguridad tolerancia-cero**), promptfoo y **puerta de CI**
+  (exit≠0 ante regresión) — verificado que bloquea.
+- ✅ **Juez LLM sin coste**: la rúbrica clínica y el juez de relevancia de la eval de
+  recuperación corren sobre Ollama con salida estructurada (`judge/ollama_local.py`). Claude
+  queda como opción explícita. Antes el juez exigía `ANTHROPIC_API_KEY` y por eso nunca
+  llegó a cablearse en `run_evals.py`; ahora forma parte de la puerta.
+- ✅ **Atribución verificable en las tres rutas** (`app/ai/citas.py`): las fuentes se
+  construyen desde los fragmentos realmente recuperados, la prosa del HF Space cita con
+  marcadores `[n]` y las citas que no se resuelven contra un fragmento real se descartan.
+- ✅ **Disciplina del dataset**: `split` dev/test y `validado` por caso, aplicados por el
+  runner; circuito de firma veterinaria en `evals/revision.py`.
+- ✅ **Ragas** (`evals/run_ragas.py`) sobre el índice real, con LLM y embeddings locales.
 - ✅ **Puente Node** que reusa `analisis.ts` como única fuente de verdad para generar los
   hallazgos deterministas en las evals.
 
@@ -95,7 +109,9 @@ make docker-build
   config: Ollama local si se vacía `MORPHOS_HF_SPACE_URL`, o Claude con API key.)
 - **Config ESLint/Prettier** (falta el archivo de configuración; ya está la dependencia).
 - **Retriever RAG**: añadir búsqueda híbrida BM25 + rerank.
-- **Ingesta real** de los libros con licencia (`make ingest`) y activar Ragas sobre el
-  índice poblado.
+- **Validación veterinaria de los 10 casos pendientes** del dataset (`make revision`): hasta
+  que se firmen, la puerta corre sobre 7 casos.
 - **Aumentar el dataset** de evals con más casos validados por veterinario.
+- **Calibrar el juez local** contra un juez Claude sobre el mismo conjunto, para saber
+  cuánto se desvía qwen2.5:7b y ajustar `UMBRALES_JUEZ` con datos.
 - Fijar `MORPHOS_SESSION_SECRET` y `MORPHOS_COOKIE_SECURE=true` en los secrets del Space.

@@ -45,10 +45,24 @@ interface InterpretacionClinica {
   idioma: string;
 }
 
+// Las fuentes las construye el servidor a partir de lo que la recuperación entregó de
+// verdad (no las escribe el modelo), así que se pueden mostrar en las tres rutas —incluida
+// la del HF Space, que sólo devuelve prosa con marcadores [n].
+interface Fuente {
+  indice: number;
+  libro: string;
+  edicion: string;
+  capitulo: string;
+  pagina: string;
+  cita: string;
+  citada: boolean;
+}
+
 interface RespuestaInterpretacion {
   resultado: InterpretacionClinica;
   modelo: string;
   fuentes_rag: number;
+  fuentes: Fuente[];
 }
 
 function leerCookie(nombre: string): string | null {
@@ -92,13 +106,30 @@ function renderizar(resp: RespuestaInterpretacion): string {
     ? `<div class="ia-pruebas"><strong>Siguientes pruebas:</strong> ${esc(r.siguientes_pruebas.join(', '))}</div>`
     : '';
 
-  const meta = `<div class="ia-meta">Modelo: ${esc(resp.modelo)} · Fuentes citadas: ${resp.fuentes_rag} · Confianza: ${r.confianza}</div>`;
+  // Se listan todas las fuentes recuperadas y se distingue cuáles sostienen la respuesta:
+  // en la ruta de prosa, los marcadores [n] del texto apuntan a esta numeración.
+  const listaFuentes = resp.fuentes ?? [];
+  const citadas = listaFuentes.filter((f) => f.citada).length;
+  const fuentes = listaFuentes.length
+    ? `<details class="ia-fuentes"><summary>Literatura consultada (${citadas} de ${listaFuentes.length} citadas)</summary>
+        <ol class="ia-fuentes-lista">${listaFuentes
+          .map(
+            (f) =>
+              `<li value="${f.indice}" class="${f.citada ? 'ia-fuente-citada' : 'ia-fuente-no-citada'}">
+                <cite>${esc(f.cita)}</cite>${f.capitulo ? ` — ${esc(f.capitulo)}` : ''}
+              </li>`,
+          )
+          .join('')}</ol></details>`
+    : '';
+
+  const meta = `<div class="ia-meta">Modelo: ${esc(resp.modelo)} · Fragmentos recuperados: ${resp.fuentes_rag} · Confianza: ${r.confianza}</div>`;
 
   return `${aviso}
     <p class="ia-interpretacion">${esc(r.interpretacion)}</p>
     ${hallazgos}
     ${diferenciales ? `<h4>Diagnósticos diferenciales</h4>${diferenciales}` : ''}
     ${pruebas}
+    ${fuentes}
     ${meta}`;
 }
 

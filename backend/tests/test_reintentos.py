@@ -89,3 +89,34 @@ async def test_el_reintento_no_es_infinito(sin_rag, monkeypatch):
     with pytest.raises(ErrorModelo):
         await _interpretar_con(cliente, monkeypatch)
     assert cliente.llamadas == 2
+
+
+class ClienteProsa:
+    """Ruta HF Space: devuelve prosa con marcadores [n], sin `diferenciales`."""
+
+    nombre = "medgemma-hf"
+
+    def __init__(self, texto: str):
+        self.texto = texto
+
+    async def interpretar(self, *_a, **_k):
+        return InterpretacionClinica(interpretacion=self.texto, requiere_derivacion=True)
+
+
+async def test_la_ruta_de_prosa_devuelve_fuentes_verificables(monkeypatch):
+    """La ruta por defecto en producción no puede rellenar `citas[]`, así que su atribución
+    depende de que el servicio adjunte las fuentes recuperadas y resuelva los marcadores."""
+    from app.rag.retriever import Fragmento
+
+    fragmento = Fragmento(
+        texto="…", libro="Thrall Veterinary Hematology", edicion="3.ª ed.",
+        capitulo="Anemia", pagina="210", score=0.9,
+    )
+    monkeypatch.setattr(service, "recuperar", lambda *_a, **_k: [fragmento])
+    cliente = ClienteProsa("Anemia arregenerativa compatible con proceso crónico [1]. " * 3)
+
+    resp = await _interpretar_con(cliente, monkeypatch)
+
+    assert [f.cita for f in resp.fuentes] == ["Thrall Veterinary Hematology, 3.ª ed., p. 210"]
+    assert resp.fuentes[0].citada
+    assert resp.fuentes_rag == 1

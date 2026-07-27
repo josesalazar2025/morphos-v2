@@ -45,10 +45,22 @@ jobs:
         working-directory: frontend
         run: npm ci
       # En CI real, sustituir --simular por --modelo medgemma apuntando a un endpoint,
-      # o subir un archivo de predicciones generado en un job con GPU. El juez clínico
-      # LLM se activa si ANTHROPIC_API_KEY está en los secrets del repo.
-      - name: Ejecutar evals (puerta de CI)
+      # o subir un archivo de predicciones generado en un job con GPU.
+      #
+      # Sobre el juez: con --simular se omite a propósito (juzgaría el simulador, no el
+      # modelo). Sobre salidas reales se activa solo: juez local gratuito si el runner tiene
+      # Ollama, y Claude si ANTHROPIC_API_KEY está en los secrets. Sin ninguno de los dos la
+      # puerta sigue siendo válida, sólo más ciega.
+      - name: Ejecutar evals (puerta de CI — split dev)
         working-directory: backend
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: uv run python ../evals/run_evals.py --simular
+        run: uv run python ../evals/run_evals.py --simular --split dev
+
+      # El split reservado no se usa para iterar, pero sí tiene que seguir verde antes de
+      # llegar a main: si sólo se mirara en el despliegue, se descubriría demasiado tarde.
+      - name: Ejecutar evals sobre el split reservado
+        working-directory: backend
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: uv run python ../evals/run_evals.py --simular --split test

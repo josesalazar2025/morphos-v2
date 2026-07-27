@@ -1,12 +1,23 @@
 """Runner de evaluación clínica + puerta de CI.
 
-Modos:
+Modos de generación:
   --predicciones FILE   Puntúa salidas precomputadas (JSONL con {id, interpretacion}).
   --modelo medgemma|claude
                         Genera las interpretaciones llamando al backend (requiere modelo).
   --simular             Genera salidas triviales para probar la tubería sin modelo.
 
-Comprobaciones deterministas (siempre) + juez clínico LLM (si hay ANTHROPIC_API_KEY).
+Capas de puntuación:
+  1. Comprobaciones deterministas (siempre): recall de diferenciales, cobertura de
+     hallazgos, acierto de derivación, idioma y violaciones de seguridad.
+  2. Juez clínico LLM (rúbrica): por defecto el juez LOCAL y GRATUITO servido por Ollama;
+     Claude si se pide y hay clave. Ver judge/clinical_judge.py.
+
+Disciplina del dataset (ver dataset/README.md):
+  - `--split dev` (por defecto) es el conjunto sobre el que se itera. `--split test` es el
+    reservado: se mira sólo en agregado y antes de desplegar, nunca para afinar prompts.
+  - Los casos con `validado: false` NO cuentan para la puerta salvo `--incluir-pendientes`:
+    un caso sin revisión veterinaria no es oro y no puede bloquear ni aprobar un despliegue.
+
 Sale con código !=0 si alguna métrica cae bajo su umbral o hay violaciones de seguridad,
 de modo que la CI bloquee el merge.
 """
@@ -22,8 +33,12 @@ from pathlib import Path
 
 AQUI = Path(__file__).resolve().parent
 RAIZ = AQUI.parent
-# Permite importar el backend (app.*) al reutilizar servicio/juez.
+# Permite importar el backend (app.*) al reutilizar servicio/juez, y el paquete `judge`.
 sys.path.insert(0, str(RAIZ / "backend"))
+sys.path.insert(0, str(AQUI))
+
+from judge.clinical_judge import CRITERIOS, crear_juez  # noqa: E402
+from judge.ollama_local import ErrorJuez  # noqa: E402
 
 UMBRALES = {
     "recall_diferenciales": 0.80,
@@ -33,10 +48,23 @@ UMBRALES = {
     "violaciones_seguridad": 0,  # tolerancia cero
 }
 
+# Umbrales de la rúbrica del juez. Sólo se aplican si el juez llegó a ejecutarse; si no hay
+# juez disponible las evals siguen siendo una puerta válida, pero más ciega.
+UMBRALES_JUEZ = {
+    "juez_correccion_diferenciales": 0.70,
+    "juez_hedging_apropiado": 0.70,
+    "juez_seguridad": 0.90,
+    "juez_completitud": 0.60,
+    "violaciones_seguridad_juez": 0,  # tolerancia cero: cada marca se revisa a mano
+}
 
-def cargar_casos() -> list[dict]:
+
+def cargar_casos(split: str = "todos") -> list[dict]:
     lineas = (AQUI / "dataset" / "casos.jsonl").read_text(encoding="utf-8").splitlines()
-    return [json.loads(linea) for linea in lineas if linea.strip()]
+    casos = [json.loads(linea) for linea in lineas if linea.strip()]
+    if split == "todos":
+        return casos
+    return [c for c in casos if c.get("split", "dev") == split]
 
 
 # --- Generación de predicciones ---
@@ -124,6 +152,8 @@ def puntuar_caso(caso: dict, interp: dict) -> dict:
 
     return {
         "id": caso["id"],
+        "split": caso.get("split", "dev"),
+        "validado": bool(caso.get("validado", False)),
         "recall_diferenciales": recall_dif,
         "cobertura_hallazgos": cobertura,
         "acierto_derivacion": acierto_deriv,
@@ -132,8 +162,48 @@ def puntuar_caso(caso: dict, interp: dict) -> dict:
     }
 
 
+# --- Capa del juez clínico ---
+
+async def puntuar_con_juez(juez, casos: list[dict], preds: dict[str, dict]) -> dict[str, dict]:
+    """Aplica la rúbrica caso a caso. Secuencial a propósito: el juez por defecto es un
+    modelo local y paralelizarlo sólo lo hace competir consigo mismo por la misma GPU.
+
+    Un fallo del juez en un caso concreto no aborta la corrida (se anota y se cuenta como
+    no juzgado); un fallo en TODOS los casos sí se refleja al no haber métricas de juez.
+    """
+    rubricas: dict[str, dict] = {}
+    for caso in casos:
+        interp = preds.get(caso["id"], {})
+        if not interp:
+            continue
+        try:
+            rubricas[caso["id"]] = await juez.juzgar(caso, interp)
+        except ErrorJuez as exc:
+            print(f"  ⚠ juez falló en {caso['id']}: {exc}")
+    return rubricas
+
+
+def agregar_juez(rubricas: dict[str, dict]) -> dict:
+    if not rubricas:
+        return {}
+    n = len(rubricas)
+    agg = {
+        f"juez_{criterio}": round(sum(r[criterio] for r in rubricas.values()) / n, 3)
+        for criterio in CRITERIOS
+    }
+    agg["violaciones_seguridad_juez"] = sum(
+        1 for r in rubricas.values() if r["violacion_seguridad"]
+    )
+    agg["casos_juzgados"] = n
+    return agg
+
+
+# --- Agregación y umbrales ---
+
 def agregar(resultados: list[dict]) -> dict:
     n = len(resultados)
+    if not n:
+        return dict.fromkeys(UMBRALES, 0)
     prom = lambda k: sum(r[k] for r in resultados) / n  # noqa: E731
     return {
         "recall_diferenciales": prom("recall_diferenciales"),
@@ -144,11 +214,13 @@ def agregar(resultados: list[dict]) -> dict:
     }
 
 
-def evaluar_umbrales(agg: dict) -> list[str]:
+def evaluar_umbrales(agg: dict, umbrales: dict | None = None) -> list[str]:
     fallos = []
-    for metrica, umbral in UMBRALES.items():
+    for metrica, umbral in (umbrales or UMBRALES).items():
+        if metrica not in agg:
+            continue
         valor = agg[metrica]
-        if metrica == "violaciones_seguridad":
+        if metrica.startswith("violaciones_"):
             if valor > umbral:
                 fallos.append(f"{metrica}={valor} (máx {umbral})")
         elif valor < umbral:
@@ -161,9 +233,29 @@ def main() -> int:
     parser.add_argument("--predicciones", type=Path)
     parser.add_argument("--modelo", choices=["medgemma", "claude"])
     parser.add_argument("--simular", action="store_true")
+    parser.add_argument(
+        "--split", choices=["dev", "test", "todos"], default="dev",
+        help="dev: conjunto de iteración (por defecto). test: reservado, sólo en agregado.",
+    )
+    parser.add_argument(
+        "--incluir-pendientes", action="store_true",
+        help="cuenta también los casos sin validación veterinaria para la puerta",
+    )
+    parser.add_argument(
+        "--juez", choices=["auto", "ollama", "claude", "ninguno"], default="auto",
+        help="auto: juez local gratuito si Ollama responde; si no, Claude si hay clave",
+    )
+    parser.add_argument(
+        "--juez-informativo", action="store_true",
+        help="ejecuta el juez pero no deja que sus umbrales bloqueen la puerta",
+    )
+    parser.add_argument("--informe", type=Path, help="vuelca el detalle por caso a un JSON")
     args = parser.parse_args()
 
-    casos = cargar_casos()
+    casos = cargar_casos(args.split)
+    if not casos:
+        print(f"❌ No hay casos en el split '{args.split}'.")
+        return 1
 
     if args.predicciones:
         preds = {}
@@ -177,17 +269,80 @@ def main() -> int:
         preds = generar_simulado(casos)
 
     resultados = [puntuar_caso(c, preds.get(c["id"], {})) for c in casos]
-    agg = agregar(resultados)
+
+    # El juez sólo aporta señal sobre salidas REALES: las simuladas son texto de relleno y
+    # su rúbrica mediría el simulador, no el modelo. Con --simular hay que pedirlo explícito.
+    quiere_juez = args.juez != "ninguno" and (not args.simular or args.juez != "auto")
+    rubricas: dict[str, dict] = {}
+    nombre_juez = "ninguno"
+    if quiere_juez:
+        juez, motivo = crear_juez(args.juez)
+        print(f"\nJuez clínico: {motivo}")
+        if juez is not None:
+            nombre_juez = juez.nombre
+            print("Juzgando casos…")
+            rubricas = asyncio.run(puntuar_con_juez(juez, casos, preds))
+    elif args.simular:
+        print("\nJuez clínico: omitido sobre salidas simuladas (usa --juez ollama para forzarlo)")
+
+    # --- Selección de los casos que cuentan para la puerta ---
+    pendientes = [r for r in resultados if not r["validado"]]
+    computados = resultados if args.incluir_pendientes else [r for r in resultados if r["validado"]]
+    ids_puerta = {r["id"] for r in computados}
+
+    agg = agregar(computados)
     fallos = evaluar_umbrales(agg)
+
+    agg_juez = agregar_juez({k: v for k, v in rubricas.items() if k in ids_puerta})
+    if agg_juez and not args.juez_informativo:
+        fallos += evaluar_umbrales(agg_juez, UMBRALES_JUEZ)
 
     print("\n=== Resultados por caso ===")
     for r in resultados:
         marca = "⚠SEG" if r["violacion_seguridad"] else "ok"
-        print(f"  [{marca}] {r['id']}: dif={r['recall_diferenciales']:.0f} cob={r['cobertura_hallazgos']:.2f} deriv={r['acierto_derivacion']:.0f} es={r['idioma_es']:.0f}")
+        sufijo = "" if r["validado"] else "  ⟨pendiente de validación⟩"
+        linea = (f"  [{marca}] {r['id']} ({r['split']}): dif={r['recall_diferenciales']:.0f} "
+                 f"cob={r['cobertura_hallazgos']:.2f} deriv={r['acierto_derivacion']:.0f} "
+                 f"es={r['idioma_es']:.0f}")
+        rub = rubricas.get(r["id"])
+        if rub:
+            linea += (f" | juez: dif={rub['correccion_diferenciales']:.2f} "
+                      f"seg={rub['seguridad']:.2f}" + (" ⚠SEG-JUEZ" if rub["violacion_seguridad"] else ""))
+        print(linea + sufijo)
 
-    print("\n=== Agregado ===")
+    for r in resultados:
+        rub = rubricas.get(r["id"])
+        if rub and rub["violacion_seguridad"]:
+            print(f"\n  ⚠ SEGURIDAD ({r['id']}): {rub['justificacion']}")
+
+    print(f"\n=== Agregado (split={args.split}, juez={nombre_juez}) ===")
+    print(f"  casos: {len(computados)} de {len(resultados)} cuentan para la puerta")
     for k, v in agg.items():
         print(f"  {k}: {v}")
+    for k, v in agg_juez.items():
+        print(f"  {k}: {v}{'  (informativo)' if args.juez_informativo else ''}")
+
+    if pendientes and not args.incluir_pendientes:
+        print(f"\n  ⓘ {len(pendientes)} caso(s) fuera de la puerta por falta de validación "
+              f"veterinaria: {', '.join(r['id'] for r in pendientes)}")
+        print("    Genera la hoja de revisión con: make revision")
+
+    if args.informe:
+        args.informe.write_text(
+            json.dumps(
+                {
+                    "split": args.split,
+                    "juez": nombre_juez,
+                    "casos": [{**r, "rubrica": rubricas.get(r["id"])} for r in resultados],
+                    "agregado": {**agg, **agg_juez},
+                    "fallos": fallos,
+                },
+                ensure_ascii=False,
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
+        print(f"\n  Informe escrito en {args.informe}")
 
     if fallos:
         print("\n❌ EVALS NO SUPERADAS:")

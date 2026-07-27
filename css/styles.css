@@ -949,6 +949,38 @@ main {
     padding: var(--space-3) var(--space-4);
 }
 
+/* Literatura consultada: secundaria al texto clínico, pero siempre presente cuando hubo
+   recuperación. Las no citadas se atenúan para que se lea de un vistazo en qué se apoyó
+   realmente la respuesta. */
+.ia-fuentes {
+    margin-top: var(--space-3);
+    padding-top: var(--space-2);
+    border-top: 1px solid var(--border-1);
+    white-space: normal;
+    font-size: var(--fs-sm);
+}
+
+.ia-fuentes summary {
+    cursor: pointer;
+    color: var(--text-4);
+}
+
+.ia-fuentes-lista {
+    margin: var(--space-2) 0 0;
+    padding-left: var(--space-5);
+}
+
+.ia-fuente-no-citada {
+    color: var(--text-4);
+    opacity: 0.75;
+}
+
+.ia-meta {
+    margin-top: var(--space-2);
+    font-size: var(--fs-sm);
+    color: var(--text-4);
+}
+
 /*  FOOTER  */
 footer {
     display: flex;

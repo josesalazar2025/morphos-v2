@@ -113,10 +113,35 @@ class InterpretacionClinica(BaseModel):
         return v.strip()
 
 
+class Fuente(BaseModel):
+    """Un fragmento de literatura realmente recuperado, con su numeración del prompt.
+
+    NO forma parte del esquema que ve el modelo: lo rellena el servidor desde la salida de
+    la recuperación. Así la atribución es verificable en las tres rutas —incluida la del HF
+    Space, que sólo devuelve prosa y no puede rellenar `Diferencial.citas`— y el modelo no
+    puede inventarse una fuente que no se le dio.
+    """
+
+    indice: int = Field(description="Número con el que se presentó al modelo, base 1")
+    libro: str
+    edicion: str = ""
+    capitulo: str = ""
+    pagina: str = ""
+    cita: str = Field(description="Cita formateada lista para mostrar")
+    citada: bool = Field(
+        default=False,
+        description="El modelo se apoyó explícitamente en esta fuente ([n] o cita resuelta)",
+    )
+
+
 class RespuestaInterpretacion(BaseModel):
     resultado: InterpretacionClinica
     modelo: str
     fuentes_rag: int = 0
+    fuentes: list[Fuente] = Field(
+        default_factory=list,
+        description="Literatura recuperada para esta respuesta, marcando cuál se citó",
+    )
 
 
 class ErrorRespuesta(BaseModel):

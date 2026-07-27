@@ -43,6 +43,10 @@ __pycache__/
 # Datos de ejecución (fuera del webroot): BD de usuarios e índice RAG
 instance/
 
+# Hoja de trabajo de la revisión veterinaria del dataset: se regenera con `make revision` y
+# el resultado de la revisión se persiste en casos.jsonl, no aquí.
+evals/dataset/revision_pendiente.md
+
 # Herramientas locales del asistente (skills instaladas con `hf skills add`), no son del proyecto
 .agents/
 

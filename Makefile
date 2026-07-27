@@ -1,7 +1,7 @@
 # Morphos — tareas de desarrollo y despliegue
 
 .PHONY: help frontend-install frontend-test frontend-build backend-sync backend-test \
-        ingest dev lint evals retrieval-eval docker-build \
+        ingest dev lint evals evals-test ragas revision retrieval-eval docker-build \
         publish-index fetch-index publish-books
 
 # Los repos del Hub se declaran en scripts/hub.py (y deben coincidir con rag_index_repo /
@@ -18,7 +18,10 @@ help:
 	@echo "  publish-index     Sube instance/rag_index al dataset privado del Hub"
 	@echo "  fetch-index       Descarga el índice del Hub a instance/rag_index"
 	@echo "  publish-books     Sube books/*.pdf al dataset privado (sólo para reingerir)"
-	@echo "  evals             Ejecuta la suite de evaluación clínica"
+	@echo "  evals             Suite de evaluación clínica (split dev, casos validados)"
+	@echo "  evals-test        Igual sobre el split reservado (sólo antes de desplegar)"
+	@echo "  ragas             Groundedness RAG con juez local gratuito (ARGS=--modelo …)"
+	@echo "  revision          Hoja de revisión veterinaria de los casos pendientes"
 	@echo "  dev               Levanta el backend FastAPI en local"
 	@echo "  lint              Ruff (backend) + eslint (frontend)"
 	@echo "  docker-build      Construye la imagen de despliegue"
@@ -64,13 +67,31 @@ publish-books:
 # imagen con las dependencias del grupo rag); no es un one-liner. Como reingerir sólo hace falta
 # cuando cambia el corpus (dos veces al año), `make ingest` en local cubre el caso hoy.
 
+# Los objetivos de evals se ejecutan DESDE backend/: es donde vive el proyecto uv, y sólo ahí
+# `--group` instala algo (fuera de un proyecto uv lo ignora con un warning y las evals corren
+# sin ragas ni langchain).
+#
+# Puerta por defecto: split de iteración (dev) y sólo casos con validación veterinaria.
 evals:
-	cd evals && uv run --group evals python run_evals.py
+	cd backend && uv run python ../evals/run_evals.py --simular
+
+# Split reservado. Se mira en agregado antes de desplegar, NO para afinar prompts.
+evals-test:
+	cd backend && uv run python ../evals/run_evals.py --simular --split test
 
 # Eval de recuperación RAG (A/B de embeddings × idioma de consulta). Requiere índice
 # construido para la config activa (MORPHOS_RAG_EMBED_MODEL / MORPHOS_RAG_QUERY_LANG).
 retrieval-eval:
-	cd evals && uv run --group evals python run_retrieval_eval.py
+	cd backend && uv run --group rag python ../evals/run_retrieval_eval.py
+
+# Groundedness con Ragas (faithfulness / context precision-recall). Juez local gratuito;
+# necesita el índice RAG y un archivo de predicciones reales (o --modelo).
+ragas:
+	cd backend && uv run --group rag --group evals python ../evals/run_ragas.py $(ARGS)
+
+# Hoja de revisión veterinaria de los casos aún no validados del dataset dorado.
+revision:
+	cd backend && uv run python ../evals/revision.py
 
 dev:
 	cd backend && uv run uvicorn app.main:app --reload --port 8000
