@@ -43,11 +43,35 @@ def _asegurar_repo(api: HfApi, repo_id: str) -> None:
         )
 
 
+def _comprobar_manifiesto(manifiesto: dict) -> None:
+    """Aborta si `manifest.json` no coincide con la tabla que se va a publicar.
+
+    El manifiesto lo escribe la ingesta, pero `curar_indice.py` cambia el número de filas
+    después. Publicar uno desfasado no rompe nada visible —y por eso es peligroso—: el mensaje
+    de commit del Hub y lo que imprime `fetch-index` anuncian un recuento que no es el del
+    índice que sirve, y a partir de ahí nadie sabe qué hay publicado.
+    """
+    try:
+        import lancedb
+    except ImportError:
+        print("AVISO: sin lancedb no se puede verificar el manifiesto; se publica a ciegas.")
+        return
+    tabla = lancedb.connect(str(DIR_INDICE)).open_table("literatura")
+    reales = tabla.count_rows()
+    declarados = manifiesto.get("n_fragmentos")
+    if declarados != reales:
+        sys.exit(
+            f"ABORTADO: manifest.json declara {declarados} fragmentos y la tabla tiene {reales}.\n"
+            f"Ejecuta 'make curar-indice ARGS=--aplicar' para reconciliarlo antes de publicar."
+        )
+
+
 def publicar_indice() -> None:
     if not DIR_INDICE.exists():
         sys.exit(f"ERROR: no existe {DIR_INDICE}. Ejecuta 'make ingest' primero.")
     manifiesto = json.loads((DIR_INDICE / "manifest.json").read_text(encoding="utf-8"))
     hash_corpus = manifiesto.get("hash_corpus", "desconocido")
+    _comprobar_manifiesto(manifiesto)
     api = HfApi()
     _asegurar_repo(api, REPO_INDICE)
     api.upload_folder(
@@ -55,6 +79,11 @@ def publicar_indice() -> None:
         repo_type="dataset",
         folder_path=str(DIR_INDICE),
         commit_message=f"Índice RAG · corpus {hash_corpus} · {manifiesto.get('n_fragmentos')} fragmentos",
+        # El remoto debe ser un ESPEJO del local, no una acumulación. LanceDB versiona por
+        # ficheros: al compactar desaparecen los datos viejos, y sin esto se quedarían en el Hub
+        # para siempre. Medido: el repo tenía 2 ficheros de datos y 2 índices FTS huérfanos de
+        # versiones anteriores — 73 MB para servir 33 MB, que además se hornean en la imagen.
+        delete_patterns="*",
     )
     print(f"OK: índice publicado en {REPO_INDICE} (corpus {hash_corpus})")
 

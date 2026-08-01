@@ -19,6 +19,7 @@ demás máquinas se lo lleven; si no, sólo queda arreglado en local.
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from collections import Counter
 from pathlib import Path
@@ -33,6 +34,20 @@ from app.rag.alcance_corpus import (  # noqa: E402
     debe_descartarse,
     especie_de,
 )
+
+
+def actualizar_manifiesto(ruta: Path, n_fragmentos: int) -> None:
+    """Deja `manifest.json` de acuerdo con lo que hay realmente en la tabla."""
+    destino = ruta / "manifest.json"
+    if not destino.exists():
+        print("⚠ Sin manifest.json: no se puede dejar constancia del recuento.")
+        return
+    datos = json.loads(destino.read_text(encoding="utf-8"))
+    antes = datos.get("n_fragmentos")
+    datos["n_fragmentos"] = n_fragmentos
+    datos["curado"] = "data/rag_alcance.json"
+    destino.write_text(json.dumps(datos, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    print(f"manifest.json actualizado: n_fragmentos {antes} → {n_fragmentos}")
 
 
 def main() -> int:
@@ -83,7 +98,19 @@ def main() -> int:
     print(f"  cambian de especie:                     {reetiquetados}")
     print(f"  especies tras curar:                    {dict(Counter(nueva))}")
 
+    manifiesto = ruta / "manifest.json"
+    if manifiesto.exists():
+        declarado = json.loads(manifiesto.read_text(encoding="utf-8")).get("n_fragmentos")
+        if declarado != len(df_quedan):
+            print(f"\n⚠ manifest.json declara {declarado} fragmentos y quedarían {len(df_quedan)}.")
+
     if not fuera.any() and not reetiquetados:
+        if manifiesto.exists() and declarado != len(df_quedan):
+            if not args.aplicar:
+                print("Repite con --aplicar para corregir sólo el manifiesto.")
+                return 0
+            actualizar_manifiesto(ruta, len(df_quedan))
+            return 0
         print("\nNada que hacer.")
         return 0
     if not args.aplicar:
@@ -110,6 +137,11 @@ def main() -> int:
     tabla.optimize(cleanup_older_than=datetime.timedelta(0), delete_unverified=True)
     tamano = sum(f.stat().st_size for f in ruta.rglob("*") if f.is_file()) / 1e6
     print(f"Versiones antiguas purgadas. Tamaño en disco: {tamano:.0f} MB")
+
+    # El manifiesto lo escribe la ingesta y aquí acaba de cambiar el número de fragmentos. Si no
+    # se actualiza, miente: `fetch-index` lo imprime y `publish-index` lo usa como mensaje de
+    # commit, así que el Hub anunciaría un recuento que no es el del índice que sirve.
+    actualizar_manifiesto(ruta, len(df_quedan))
 
     print(f"\n✅ {total} → {len(df_quedan)} fragmentos. Recuerda `make publish-index`.")
     return 0
