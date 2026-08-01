@@ -42,6 +42,7 @@ interface InterpretacionClinica {
   siguientes_pruebas: string[];
   confianza: 'alta' | 'media' | 'baja';
   requiere_derivacion: boolean;
+  fuera_de_alcance: boolean;
   idioma: string;
 }
 
@@ -79,9 +80,13 @@ function esc(texto: string): string {
 
 function renderizar(resp: RespuestaInterpretacion): string {
   const r = resp.resultado;
-  const aviso = r.requiere_derivacion
-    ? '<div class="ia-aviso-derivacion">⚠ Requiere valoración presencial del veterinario</div>'
-    : '';
+  // El rechazo por alcance lo decide el servidor antes de llamar al modelo, así que se anuncia
+  // como tal en vez de dejarlo sólo en la prosa.
+  const aviso = r.fuera_de_alcance
+    ? '<div class="ia-aviso-alcance">⛔ Caso fuera del alcance de la herramienta (pacientes caninos y felinos)</div>'
+    : r.requiere_derivacion
+      ? '<div class="ia-aviso-derivacion">⚠ Requiere valoración presencial del veterinario</div>'
+      : '';
 
   const hallazgos = r.hallazgos_clave.length
     ? `<ul class="ia-hallazgos">${r.hallazgos_clave

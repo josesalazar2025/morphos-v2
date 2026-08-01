@@ -1,0 +1,86 @@
+{
+  "_comentario": [
+    "Alcance del corpus RAG por rangos de página. Morphos atiende SÓLO canino y felino, pero",
+    "los libros son de patología clínica veterinaria COMPARADA y traen secciones enteras de",
+    "otras especies. El filtro de `retriever.py` sólo excluye un fragmento si su metadato",
+    "`especie` está relleno y no coincide con el paciente; sin esto todos los chunks salen con",
+    "`especie` vacía y el filtro no excluye nada nunca.",
+    "",
+    "Sólo se etiquetan SECCIONES declaradas por el propio libro en su índice. NO se etiqueta el",
+    "material comparado que menciona caballo, vaca o cerdo de pasada: se comprobó (2026-08-01)",
+    "que esos pasajes enseñan el principio general y son útiles para un perro o un gato. Un",
+    "detector por palabras clave los marcaba en falso — ver `test_alcance_corpus.py`.",
+    "",
+    "`libro_empieza_por` casa contra el prefijo del campo `libro` del índice: los nombres",
+    "llevan sufijos de la fuente ('(VetBooks.ir) 2') que no conviene fijar por completo.",
+    "Los rangos son inclusivos y se comparan contra la PRIMERA página del fragmento."
+  ],
+  "_comentario_descartes": [
+    "`descartes` son rangos que NO entran en el corpus, ni siquiera etiquetados: el índice",
+    "alfabético del final de cada libro. Son listas de entradas con números de página",
+    "('Acantocito, 186t, 188, 189f, 194') sin ninguna frase clínica; recuperarlos gasta",
+    "presupuesto de prompt en ruido y puede inducir citas a páginas que el modelo no ha visto.",
+    "Etiquetarlos por especie no serviría: no sobran por especie, sobran por ser un índice.",
+    "Los límites se fijaron midiendo la densidad de entradas de índice por cada 1000 caracteres:",
+    "salta de ~0 a 23–32 exactamente en estas páginas."
+  ],
+  "_comentario_listados": [
+    "Además de los rangos, se descarta por CONTENIDO cualquier fragmento que sea un sumario con",
+    "líderes de puntos ('Urine Samples . . . . . . . 6'). Fundamentals repite uno al principio de",
+    "cada capítulo — 23 bloques repartidos por todo el libro—, así que por rangos harían falta 23",
+    "entradas a mano; la firma tipográfica los identifica sin ambigüedad y de una vez.",
+    "El umbral es la fracción del fragmento ocupada por líderes de puntos. Medido sobre el índice",
+    "real, el reparto es bimodal: 164 fragmentos por encima de 0.20 (sumarios puros) y 8 entre",
+    "0.05 y 0.18 (cola del sumario pegada al inicio del capítulo, con contenido real). 0.20 deja",
+    "esos 8 dentro, que es el lado correcto por el que equivocarse."
+  ],
+  "umbral_lideres_de_puntos": 0.2,
+  "descartes": [
+    {
+      "libro_empieza_por": "Fundamentals of Veterinary Clinical Pathology",
+      "desde": 1,
+      "hasta": 18,
+      "motivo": "Preliminares: portada, créditos, índice general, colaboradores, prefacio y agradecimientos (el contenido empieza en la p. 19)"
+    },
+    {
+      "libro_empieza_por": "Veterinary Hematology, Clinical Chemistry, and Cytology",
+      "desde": 1,
+      "hasta": 18,
+      "motivo": "Preliminares: portada, créditos, índice general, editores, colaboradores y prefacio (el contenido empieza en la p. 19)"
+    },
+    {
+      "libro_empieza_por": "Veterinary Hematology, Clinical Chemistry, and Cytology",
+      "desde": 793,
+      "hasta": 795,
+      "motivo": "«Clinical Case Presentations: Contents»: lista de los 117 casos con su página, al abrir la SECTION VII"
+    },
+    {
+      "libro_empieza_por": "Fundamentals of Veterinary Clinical Pathology",
+      "desde": 1249,
+      "hasta": 1296,
+      "motivo": "Índice alfabético final (empieza a media p. 1249, tras la Reference del Appendix A)"
+    },
+    {
+      "libro_empieza_por": "Veterinary Hematology, Clinical Chemistry, and Cytology",
+      "desde": 1026,
+      "hasta": 1058,
+      "motivo": "Índice alfabético final; p. 1026 es además una página escaneada sin texto legible"
+    }
+  ],
+  "rangos": [
+    {
+      "libro_empieza_por": "Veterinary Hematology, Clinical Chemistry, and Cytology",
+      "desde": 253,
+      "hasta": 358,
+      "especie": "no_domestico",
+      "motivo": "SECTION III: Hematology of Common Nondomestic Mammals, Birds, Reptiles, Fish, and Amphibians"
+    },
+    {
+      "libro_empieza_por": "Veterinary Hematology, Clinical Chemistry, and Cytology",
+      "desde": 605,
+      "hasta": 650,
+      "especie": "no_domestico",
+      "motivo": "SECTION V: Clinical Chemistry of Common Nondomestic Mammals, Birds, Reptiles, Fish, and Amphibians"
+    }
+  ]
+}

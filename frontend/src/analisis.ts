@@ -23,7 +23,72 @@ import type {
 
 const UMBRALES_GRAVEDAD = { leve: 0.5, moderado: 1.5 };
 
-const clasificarGravedad = (valor: number, ref: RangoReferencia): Gravedad => {
+// Cortes clinicos explicitos para el lado BAJO, en la unidad del analito. La regla generica de
+// anchos de rango no sabe expresar la gravedad de estos dos: con rango 24-45, un gato
+// necesitaria un hematocrito NEGATIVO para llegar a 'grave', y con 200-500 unas plaquetas de
+// -250. Es decir, ni una anemia felina ni una trombocitopenia disparaban nunca el suelo de
+// derivacion. Anclajes de la literatura (auditoria 2026-07-31):
+//   - PCV <= 20% es umbral de transfusion en perro y gato, y <= 12% (Hgb < 4 g/dL) es
+//     potencialmente mortal — Thrall 3.a ed., p. 240.
+//   - PCV 13 en gato se describe como "markedly anemic" y 24 como "mildly anemic" — p. 800-801.
+//   - El riesgo hemorragico por trombocitopenia aparece por debajo de 30x10^3/uL —
+//     Fundamentals 3.a ed., p. 310.
+// Los cortes interiores del gato (14, 20) siguen la gradacion de uso comun; no estan en estas
+// dos obras, que no traen tabla de gradacion.
+type CortesBajo = { leveHasta: number; moderadoHasta: number };
+
+const CORTES_GRAVEDAD_BAJO: Record<string, Partial<Record<Especie, CortesBajo>>> = {
+  hct: {
+    canino: { leveHasta: 30, moderadoHasta: 20 },
+    felino: { leveHasta: 20, moderadoHasta: 14 },
+  },
+  plt: {
+    canino: { leveHasta: 100, moderadoHasta: 30 },
+    felino: { leveHasta: 100, moderadoHasta: 30 },
+  },
+};
+
+// Cortes explicitos para el lado ALTO. Los renales salen del estadiaje IRIS de ERC (guia
+// modificada en 2026, indexada en el RAG; la misma tabla esta en Fundamentals 3.a ed., p. 573,
+// Tabla 8.4). Se mapean los cuatro estadios sobre las tres gravedades del motor:
+// estadio 2 -> leve, estadio 3 -> moderado, estadio 4 -> grave.
+// El estadio 1 queda dentro del rango de referencia y no genera hallazgo.
+const CORTES_GRAVEDAD_ALTO: Record<string, Partial<Record<Especie, CortesBajo>>> = {
+  creat: {
+    canino: { leveHasta: 2.8, moderadoHasta: 5.0 },
+    felino: { leveHasta: 2.8, moderadoHasta: 5.0 },
+  },
+  sdma: {
+    canino: { leveHasta: 35, moderadoHasta: 54 },
+    felino: { leveHasta: 25, moderadoHasta: 38 },
+  },
+  // La proteinuria IRIS no se subestadia mas alla de "proteinurico": nunca llega a 'grave'.
+  upc: {
+    canino: { leveHasta: 0.5, moderadoHasta: Number.POSITIVE_INFINITY },
+    felino: { leveHasta: 0.4, moderadoHasta: Number.POSITIVE_INFINITY },
+  },
+};
+
+const clasificarGravedad = (
+  valor: number,
+  ref: RangoReferencia,
+  clave?: string,
+  especie?: Especie,
+): Gravedad => {
+  const cortesBajo = clave && especie ? CORTES_GRAVEDAD_BAJO[clave]?.[especie] : undefined;
+  if (cortesBajo && valor < ref.inferior) {
+    if (valor < cortesBajo.moderadoHasta) return 'grave';
+    if (valor < cortesBajo.leveHasta) return 'moderado';
+    return 'leve';
+  }
+
+  const cortesAlto = clave && especie ? CORTES_GRAVEDAD_ALTO[clave]?.[especie] : undefined;
+  if (cortesAlto && valor > ref.superior) {
+    if (valor > cortesAlto.moderadoHasta) return 'grave';
+    if (valor > cortesAlto.leveHasta) return 'moderado';
+    return 'leve';
+  }
+
   // Mide cuantos anchos de rango de referencia se desvia el valor
   const rango = ref.superior - ref.inferior;
   const desviacion = valor > ref.superior
@@ -59,15 +124,21 @@ type TablaAjustes = Record<string, FactorRango>;
 
 // Ajustes por edad
 
+// El fosforo del animal en crecimiento es el hueco que mas falsos positivos generaba: sin el,
+// TODO cachorro sale hiperfosforemico y arrastra patrones renales falsos. Fundamentals 3.a ed.,
+// p. 831: cachorros < 12 sem 5,7-10,8 mg/dL frente a 2,5-5,5 del adulto; gatitos 5,0-10,0 frente
+// a 1,8-6,4. La FAL del gatito se sube de x2,0 a x3,0: gatitos de 4 semanas 97-274 U/L frente a
+// 10-80 del adulto (x3,4 el limite superior, Thrall 3.a ed., p. 447), y Fundamentals p. 831 pone
+// el techo general del joven en "< 3 veces el limite superior del adulto".
 const AJUSTES_EDAD: Record<Especie, Record<string, TablaAjustes>> = {
   canino: {
-    cachorro: { fal: { superior: 3.0 }, wbc: { superior: 1.25 } },
+    cachorro: { fal: { superior: 3.0 }, wbc: { superior: 1.25 }, fosf: { superior: 1.8 } },
     adulto: {},
     senior: { bun: { superior: 1.15 }, creat: { superior: 1.15 } },
     geriatrico: { bun: { superior: 1.25 }, creat: { superior: 1.25 }, fal: { superior: 1.40 } },
   },
   felino: {
-    cachorro: { fal: { superior: 2.0 }, wbc: { superior: 1.20 } },
+    cachorro: { fal: { superior: 3.0 }, wbc: { superior: 1.20 }, fosf: { superior: 1.3 } },
     adulto: {},
     senior: { bun: { superior: 1.20 }, creat: { superior: 1.20 } },
   },
@@ -78,37 +149,83 @@ const AJUSTES_EDAD: Record<Especie, Record<string, TablaAjustes>> = {
 const AJUSTES_RAZA: Partial<Record<Especie, Array<{ razas: string[]; ajustes: TablaAjustes }>>> = {
   canino: [
     {
-      razas: ['galgo', 'greyhound', 'whippet', 'lebrel'],
+      // Lebreles. Fundamentals 3.a ed., p. 213-214: los RI de Hct, Hgb y RBC son mas altos en
+      // greyhounds, afganos, salukis y whippets. Plaquetas mas bajas en lebreles (p. 307-310).
+      // La T4 es la trampa clinica: tT4 y fT4 por debajo del RI canino general en ~90% de los
+      // galgos sanos (p. 1065), asi que sin este ajuste un galgo sano sale hipotiroideo.
+      razas: ['galgo', 'greyhound', 'whippet', 'lebrel', 'afgano', 'afghan', 'saluki', 'sloughi'],
       ajustes: {
         rbc: { inferior: 1.15, superior: 1.15 },
         hgb: { inferior: 1.12, superior: 1.12 },
         hct: { inferior: 1.12, superior: 1.12 },
         plt: { inferior: 0.75, superior: 0.75 },
+        t4_total: { inferior: 0.5, superior: 0.8 },
+        t4_libre: { inferior: 0.5, superior: 0.8 },
+        creat: { superior: 1.15 },
       },
     },
     {
-      razas: ['shiba', 'akita'],
-      ajustes: {
-        rbc: { inferior: 1.10, superior: 1.10 },
-        hct: { inferior: 1.08, superior: 1.08 },
-        hgb: { inferior: 1.08, superior: 1.08 },
-      },
+      // Razas asiaticas con microcitosis fisiologica. Antes se les subia RBC/Hct/Hgb, que no es
+      // lo que dice la literatura: Fundamentals p. 221 documenta que "some healthy Akitas,
+      // shibas, Jindos, chow-chows, and shar-peis have lower MCV" — VCM bajo SIN anemia. Subir
+      // la serie roja generaba falsas anemias; bajar el VCM evita la falsa "anemia microcitica".
+      // El shiba inu ademas tiene plaquetas sustancialmente mas bajas (p. 307-310).
+      razas: ['shiba', 'akita', 'jindo', 'chow', 'shar pei', 'shar-pei', 'sharpei'],
+      ajustes: { vcm: { inferior: 0.85, superior: 0.92 } },
+    },
+    {
+      razas: ['shiba'],
+      ajustes: { plt: { inferior: 0.75, superior: 0.9 } },
+    },
+  ],
+  felino: [
+    // Fundamentals p. 213-214: los limites inferiores de Hgb y Hct del Maine Coon son
+    // sustancialmente mayores que los de las razas felinas tipicas.
+    {
+      razas: ['maine coon', 'maine'],
+      ajustes: { hct: { inferior: 1.15 }, hgb: { inferior: 1.15 } },
+    },
+    // Fundamentals p. 585: la creatinina de gatos Birman clinicamente sanos puede superar el
+    // limite superior de los RI felinos de rutina.
+    {
+      razas: ['birman', 'sagrado de birmania'],
+      ajustes: { creat: { superior: 1.2 } },
     },
   ],
 };
 
 // Ajustes por sexo
 
-const AJUSTES_SEXO: Partial<Record<Especie, Record<string, TablaAjustes>>> = {
-  felino: {
-    Macho: { creat: { superior: 1.15 } },
-  },
-};
+// Retirado el ajuste que subia un 15% el techo de creatinina en el gato MACHO: no aparece en
+// ninguna de las dos obras del corpus. Lo que si esta documentado es la masa muscular (los
+// galgos tienen creatinina mas alta, Thrall 3.a ed., p. 363) y la raza Birman (Fundamentals
+// 3.a ed., p. 585), y ambos se tratan ahora como ajuste de RAZA. Ademas, la secrecion tubular
+// de creatinina es cosa del perro macho —"cats and ponies do not secrete or reabsorb Ct in
+// their kidneys" (Thrall p. 363)— y se describe como clinicamente intrascendente. Tolerar un
+// 15% mas de creatinina justo en la poblacion con mas ERC era infradeteccion sin respaldo.
+//
+// Lo unico con respaldo por sexo es menor: en perro las plaquetas son hasta un 10% mayores en
+// hembras y en enteros (Fundamentals p. 310). No se implementa: por debajo de la resolucion
+// clinica del motor.
+const AJUSTES_SEXO: Partial<Record<Especie, Record<string, TablaAjustes>>> = {};
 
+// Combina TODOS los grupos que casan, no solo el primero: un shiba inu pertenece a la vez al
+// grupo de microcitosis fisiologica y al de plaquetas bajas, y quedarse con el primero perdia
+// el segundo en silencio.
 const obtenerAjustesRaza = (raza: string | null, especie: Especie): TablaAjustes => {
   const razaNorm = raza?.toLowerCase().trim() ?? '';
   const grupos = AJUSTES_RAZA[especie] ?? [];
-  return grupos.find((g) => g.razas.some((r) => razaNorm.includes(r)))?.ajustes ?? {};
+  return grupos
+    .filter((g) => g.razas.some((r) => razaNorm.includes(r)))
+    .reduce<TablaAjustes>((acc, grupo) => {
+      for (const [clave, factor] of Object.entries(grupo.ajustes)) {
+        acc[clave] = {
+          inferior: (acc[clave]?.inferior ?? 1) * (factor.inferior ?? 1),
+          superior: (acc[clave]?.superior ?? 1) * (factor.superior ?? 1),
+        };
+      }
+      return acc;
+    }, {});
 };
 
 // Ajuste de referencias
@@ -133,6 +250,75 @@ const ajustarReferencias = (refsEspecie: ReferenciasEspecie, paciente: Paciente)
     };
     return acc;
   }, {});
+};
+
+// Estadiaje IRIS de la enfermedad renal crónica
+//
+// Fuente: IRIS Staging of CKD (modificado 2026), indexada en el RAG; la misma tabla aparece en
+// Fundamentals 3.a ed., p. 573 (Tabla 8.4). Estadio por creatinina, con la escalada por
+// discrepancia con SDMA que describe la propia guía, y subestadio por proteinuria (UP/C).
+//
+// Limitación deliberada: la guía estadia pacientes YA diagnosticados de ERC, en ayunas y sobre
+// muestras seriadas estables. El motor sólo ve una analítica suelta, así que el estadio se
+// emite únicamente cuando la creatinina o la SDMA salen del rango de referencia, y se etiqueta
+// como orientativo. Un perro con creatinina 1,5 (estadio 2 IRIS pero dentro de nuestro rango)
+// no se estadia: haría falta el diagnóstico previo de ERC, que el motor no tiene.
+const CORTES_IRIS_CREAT: Record<Especie, number[]> = {
+  // Límite superior de los estadios 1, 2 y 3 en mg/dL (por encima del último → estadio 4).
+  canino: [1.4, 2.8, 5.0],
+  felino: [1.6, 2.8, 5.0],
+};
+
+const CORTES_IRIS_SDMA: Record<Especie, number[]> = {
+  // SDMA que hace subir de estadio cuando discrepa con la creatinina (µg/dL).
+  canino: [18, 35, 54],
+  felino: [18, 25, 38],
+};
+
+// UP/C: [no proteinúrico por debajo de, proteinúrico por encima de]
+const CORTES_IRIS_UPC: Record<Especie, [number, number]> = {
+  canino: [0.2, 0.5],
+  felino: [0.2, 0.4],
+};
+
+type EstadioIris = { estadio: number; subestadio: string; nota: string };
+
+const estadificarIris = (
+  creat: number | null,
+  sdma: number | null,
+  upc: number | null,
+  especie: Especie,
+): EstadioIris | null => {
+  if (creat === null && sdma === null) return null;
+
+  const cortesCreat = CORTES_IRIS_CREAT[especie];
+  const cortesSdma = CORTES_IRIS_SDMA[especie];
+
+  const porCreatinina = creat === null
+    ? 1
+    : cortesCreat.findIndex((techo) => creat <= techo) + 1 || 4;
+
+  // Escalada por SDMA: la guía sube un estadio cuando la SDMA persistente supera el umbral
+  // del estadio asignado por creatinina (>18 en el 1, >35/25 en el 2, >54/38 en el 3).
+  const umbral = cortesSdma[porCreatinina - 1];
+  const escalado = sdma !== null && umbral !== undefined && sdma > umbral
+    ? porCreatinina + 1
+    : porCreatinina;
+
+  if (escalado < 2) return null; // estadio 1: sin azotemia ni SDMA alta, nada que informar
+
+  const [noProteinurico, proteinurico] = CORTES_IRIS_UPC[especie];
+  const subestadio = upc === null
+    ? ''
+    : upc > proteinurico ? 'proteinúrico'
+      : upc >= noProteinurico ? 'proteinúrico limítrofe'
+        : 'no proteinúrico';
+
+  const nota = escalado > porCreatinina
+    ? `Estadio elevado de ${porCreatinina} a ${escalado} por SDMA discrepante (${sdma} µg/dL).`
+    : '';
+
+  return { estadio: escalado, subestadio, nota };
 };
 
 // Detección de patrones clínicos
@@ -304,6 +490,16 @@ const detectarPatrones = (hallazgos: Hallazgo[], especie: Especie, alt: Alteraci
     parametros: ['creat'],
   });
 
+  // Estadiaje IRIS. Se emite como patrón aparte de la azotemia porque responde a otra
+  // pregunta: la azotemia dice QUÉ está alterado, el estadio dice CUÁNTO y guía el manejo.
+  const estadio = estadificarIris(valor('creat'), valor('sdma'), valor('upc'), especie);
+  if (estadio) agregar({
+    nombre: `${alt.erc_iris.nombre} — estadio ${estadio.estadio}${estadio.subestadio ? `, ${estadio.subestadio}` : ''}`,
+    descripcion: `${alt.erc_iris.descripcion} ${estadio.nota}`,
+    gravedad: estadio.estadio >= 4 ? 'grave' : estadio.estadio === 3 ? 'moderado' : 'leve',
+    parametros: ['creat', 'sdma', 'upc'].filter(presente),
+  });
+
   if (esBajo('bun')) agregar({
     nombre: alt.bun_disminuido.nombre,
     descripcion: alt.bun_disminuido.descripcion,
@@ -377,12 +573,29 @@ const detectarPatrones = (hallazgos: Hallazgo[], especie: Especie, alt: Alteraci
     parametros: ['sodio'],
   });
 
-  if (esAlto('calc')) agregar({
-    nombre: alt.hipercalcemia.nombre,
-    descripcion: alt.hipercalcemia.descripcion,
-    gravedad: gravedadDe('calc'),
-    parametros: ['calc'],
-  });
+  // El fosforo es EL discriminador de la hipercalcemia, y sin el se devuelve una lista de
+  // diferenciales que no discrimina nada. Thrall 3.a ed., p. 586 y p. 997: con calcio alto y
+  // fosforo normal o bajo solo quedan dos diagnosticos probables —hipercalcemia maligna
+  // (linfoma el tumor mas frecuente, luego adenocarcinoma de sacos anales) e hiperparatiroidismo
+  // primario—, mientras que hipoadrenocorticismo, fallo renal, toxicidad por vitamina D y
+  // enfermedad granulomatosa cursan habitualmente con el fosforo ALTO.
+  if (esAlto('calc')) {
+    // Solo se matiza cuando el fosforo aparece como hallazgo: un fosforo dentro de rango y uno
+    // no medido son indistinguibles aqui (a detectarPatrones solo llegan los valores alterados).
+    const matizPorFosforo = esBajo('fosf')
+      ? ' Con el fósforo bajo, los dos diferenciales probables son hipercalcemia maligna '
+        + '(linfoma, adenocarcinoma de sacos anales) e hiperparatiroidismo primario.'
+      : esAlto('fosf')
+        ? ' Con el fósforo alto, priorizar fallo renal, hipoadrenocorticismo, toxicidad por '
+          + 'vitamina D y enfermedad granulomatosa.'
+        : '';
+    agregar({
+      nombre: alt.hipercalcemia.nombre,
+      descripcion: alt.hipercalcemia.descripcion + matizPorFosforo,
+      gravedad: gravedadDe('calc'),
+      parametros: ['calc', ...(presente('fosf') ? ['fosf'] : [])],
+    });
+  }
 
   if (esBajo('calc')) agregar({
     nombre: alt.hipocalcemia.nombre,
@@ -414,8 +627,12 @@ const detectarPatrones = (hallazgos: Hallazgo[], especie: Especie, alt: Alteraci
 
   // Urianálisis
 
+  // Corte de hiposteinuria en 1,007, no en 1,008: la isosteinuria es 1,007-1,013 en perro y
+  // gato (Thrall 3.a ed., Tabla 24.8; Fundamentals 3.a ed., p. 565, que la describe como
+  // "similar to the often-used 1.008-1.012"). Con 1,008 un USG de 1,0075 se etiquetaba como
+  // hiposteinuria cuando la literatura lo considera isosteinurico.
   const valUsg = valor('usg');
-  if (valUsg !== null && valUsg < 1.008) agregar({
+  if (valUsg !== null && valUsg < 1.007) agregar({
     nombre: alt.hiposthenuria.nombre,
     descripcion: alt.hiposthenuria.descripcion,
     gravedad: valUsg < 1.005 ? 'grave' : 'moderado',
@@ -828,12 +1045,12 @@ export const analizarResultados = (
     if (valorNum > ref.superior) {
       hallazgos.push({
         clave, nombre: ref.nombre, valor: valorNum, unidad: ref.unidad,
-        direccion: 'alto', gravedad: clasificarGravedad(valorNum, ref),
+        direccion: 'alto', gravedad: clasificarGravedad(valorNum, ref, clave, especie),
       });
     } else if (valorNum < ref.inferior) {
       hallazgos.push({
         clave, nombre: ref.nombre, valor: valorNum, unidad: ref.unidad,
-        direccion: 'bajo', gravedad: clasificarGravedad(valorNum, ref),
+        direccion: 'bajo', gravedad: clasificarGravedad(valorNum, ref, clave, especie),
       });
     }
   }

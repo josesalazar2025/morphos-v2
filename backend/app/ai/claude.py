@@ -11,13 +11,13 @@ import json
 import re
 
 from ..config import obtener_config
-from ..schemas import InterpretacionClinica
+from ..schemas import InterpretacionClinica, esquema_estructurado
 from .base import ErrorModelo
 
 _HERRAMIENTA = {
     "name": "emitir_interpretacion",
     "description": "Emite la interpretación clínica veterinaria en formato estructurado.",
-    "input_schema": InterpretacionClinica.model_json_schema(),
+    "input_schema": esquema_estructurado(),
 }
 
 _DATA_URL = re.compile(r"^data:(image/(?:jpeg|png|gif|webp));base64,(.+)$", re.DOTALL)

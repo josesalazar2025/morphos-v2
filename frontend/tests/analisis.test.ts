@@ -130,13 +130,54 @@ describe('ajustes por raza', () => {
 });
 
 describe('ajustes por sexo', () => {
-  it('el macho felino tolera mayor creatinina', () => {
-    const sup = referencias.felino.creat.superior;
-    const valor = sup * 1.1;
+  // Antes el gato MACHO toleraba un 15% más de creatinina. Se retiró en la auditoría del
+  // 2026-07-31: no aparece en ninguna de las dos obras del corpus, y toleraba azotemia justo
+  // en la población con más ERC. Lo documentado (masa muscular en lebreles, raza Birman) es
+  // ajuste de raza, no de sexo.
+  it('el sexo ya no altera el umbral de creatinina en el gato', () => {
+    const valor = referencias.felino.creat.superior * 1.1;
     const hembra = analizarResultados({ creat: valor }, paciente({ especie: 'felino', sexo: 'Hembra' }), referencias, alteraciones);
     const macho = analizarResultados({ creat: valor }, paciente({ especie: 'felino', sexo: 'Macho' }), referencias, alteraciones);
     expect(hembra.hallazgos.some((h) => h.clave === 'creat')).toBe(true);
-    expect(macho.hallazgos.some((h) => h.clave === 'creat')).toBe(false);
+    expect(macho.hallazgos.some((h) => h.clave === 'creat')).toBe(true);
+  });
+
+  it('el gato Birman sí tolera mayor creatinina (Fundamentals p. 585)', () => {
+    const valor = referencias.felino.creat.superior * 1.1;
+    const comun = analizarResultados({ creat: valor }, paciente({ especie: 'felino', raza: 'Común Europeo' }), referencias, alteraciones);
+    const birman = analizarResultados({ creat: valor }, paciente({ especie: 'felino', raza: 'Birman' }), referencias, alteraciones);
+    expect(comun.hallazgos.some((h) => h.clave === 'creat')).toBe(true);
+    expect(birman.hallazgos.some((h) => h.clave === 'creat')).toBe(false);
+  });
+});
+
+describe('cortes clínicos de gravedad (auditoría 2026-07-31)', () => {
+  const gravedadDe = (valores: Record<string, number>, p = paciente(), clave = 'hct') =>
+    analizarResultados(valores, p, referencias, alteraciones)
+      .hallazgos.find((h) => h.clave === clave)?.gravedad;
+
+  it('una anemia felina puede ser grave (antes era imposible por construcción)', () => {
+    // Con la regla genérica de anchos de rango, 'grave' en un gato exigía un Hct NEGATIVO.
+    expect(gravedadDe({ hct: 12 }, paciente({ especie: 'felino' }))).toBe('grave');
+    expect(gravedadDe({ hct: 16 }, paciente({ especie: 'felino' }))).toBe('moderado');
+    expect(gravedadDe({ hct: 22 }, paciente({ especie: 'felino' }))).toBe('leve');
+  });
+
+  it('el Hct canino se gradúa por el umbral de transfusión (PCV ≤ 20%)', () => {
+    expect(gravedadDe({ hct: 18 })).toBe('grave');
+    expect(gravedadDe({ hct: 25 })).toBe('moderado');
+    expect(gravedadDe({ hct: 33 })).toBe('leve');
+  });
+
+  it('la trombocitopenia es grave por debajo del umbral hemorrágico (30x10³/µL)', () => {
+    expect(gravedadDe({ plt: 25 }, paciente(), 'plt')).toBe('grave');
+    expect(gravedadDe({ plt: 60 }, paciente(), 'plt')).toBe('moderado');
+    expect(gravedadDe({ plt: 150 }, paciente(), 'plt')).toBe('leve');
+  });
+
+  it('el lado alto sigue con la regla genérica de anchos de rango', () => {
+    // No hay umbrales publicados para eritrocitosis en el corpus: no se inventan.
+    expect(gravedadDe({ hct: 60 })).toBe('leve');
   });
 });
 
@@ -215,5 +256,107 @@ describe('patrones — coagulación', () => {
 
   it('coagulopatía mixta cuando PT y aPTT altos', () => {
     expect(nombresPatrones({ pt: 30, aptt: 120 })).toContain(alteraciones.coagulopatia_mixta.nombre);
+  });
+});
+
+describe('ajustes por raza (auditoría 2026-07-31)', () => {
+  it('las razas asiáticas tienen VCM fisiológicamente bajo, no serie roja alta', () => {
+    // Fundamentals p. 221: "some healthy Akitas, shibas, Jindos, chow-chows, and shar-peis
+    // have lower MCV". Antes se les subía RBC/Hct/Hgb, que no es lo que dice la literatura.
+    const valor = referencias.canino.vcm.inferior * 0.95;
+    const mestizo = analizarResultados({ vcm: valor }, paciente(), referencias, alteraciones);
+    const akita = analizarResultados({ vcm: valor }, paciente({ raza: 'Akita Inu' }), referencias, alteraciones);
+    expect(mestizo.hallazgos.some((h) => h.clave === 'vcm')).toBe(true);
+    expect(akita.hallazgos.some((h) => h.clave === 'vcm')).toBe(false);
+  });
+
+  it('el shiba acumula microcitosis y plaquetas bajas (dos grupos de raza a la vez)', () => {
+    const plt = referencias.canino.plt.inferior * 0.8;
+    const mestizo = nombresPatrones({ plt });
+    const shiba = nombresPatrones({ plt }, paciente({ raza: 'Shiba Inu' }));
+    expect(mestizo).toContain(alteraciones.trombocitopenia.nombre);
+    expect(shiba).not.toContain(alteraciones.trombocitopenia.nombre);
+  });
+
+  it('el galgo sano no sale hipotiroideo', () => {
+    // Fundamentals p. 1065: ~90% de los galgos sanos por debajo del límite inferior de tT4.
+    const valor = referencias.canino.t4_total.inferior * 0.7;
+    const mestizo = analizarResultados({ t4_total: valor }, paciente(), referencias, alteraciones);
+    const galgo = analizarResultados({ t4_total: valor }, paciente({ raza: 'Galgo español' }), referencias, alteraciones);
+    expect(mestizo.hallazgos.some((h) => h.clave === 't4_total')).toBe(true);
+    expect(galgo.hallazgos.some((h) => h.clave === 't4_total')).toBe(false);
+  });
+});
+
+describe('ajustes por edad (auditoría 2026-07-31)', () => {
+  it('el cachorro no sale hiperfosforémico con un fósforo propio de su edad', () => {
+    // Fundamentals p. 831: cachorros < 12 sem 5,7–10,8 mg/dL frente a 2,5–5,5 del adulto.
+    const valor = referencias.canino.fosf.superior * 1.5;
+    const adulto = analizarResultados({ fosf: valor }, paciente({ edadMeses: 48 }), referencias, alteraciones);
+    const cachorro = analizarResultados({ fosf: valor }, paciente({ edadMeses: 3 }), referencias, alteraciones);
+    expect(adulto.hallazgos.some((h) => h.clave === 'fosf')).toBe(true);
+    expect(cachorro.hallazgos.some((h) => h.clave === 'fosf')).toBe(false);
+  });
+});
+
+describe('correlación calcio-fósforo (auditoría 2026-07-31)', () => {
+  const descripcionHipercalcemia = (valores: Record<string, number>) =>
+    analizarResultados(valores, paciente(), referencias, alteraciones)
+      .patrones.find((p) => p.nombre === alteraciones.hipercalcemia.nombre)?.descripcion ?? '';
+
+  it('con fósforo bajo prioriza malignidad e hiperparatiroidismo primario', () => {
+    const d = descripcionHipercalcemia({ calc: referencias.canino.calc.superior * 1.4, fosf: 1.5 });
+    // La entidad explica la regla; el patrón añade la conclusión APLICADA a este paciente.
+    expect(d).toContain('Con el fósforo bajo, los dos diferenciales probables');
+    expect(d).not.toContain('Con el fósforo alto');
+  });
+
+  it('con fósforo alto prioriza fallo renal y las causas que cursan con fósforo alto', () => {
+    const d = descripcionHipercalcemia({ calc: referencias.canino.calc.superior * 1.4, fosf: 12 });
+    expect(d).toContain('Con el fósforo alto, priorizar fallo renal');
+    expect(d).not.toContain('Con el fósforo bajo');
+  });
+});
+
+describe('estadiaje IRIS de ERC (guía IRIS 2026 + Fundamentals Tabla 8.4)', () => {
+  const patronIris = (valores: Record<string, number>, p = paciente()) =>
+    analizarResultados(valores, p, referencias, alteraciones)
+      .patrones.find((x) => x.nombre.startsWith(alteraciones.erc_iris.nombre));
+
+  it('estadia por creatinina y escala la gravedad con el estadio', () => {
+    // Gato: estadio 2 = 1,6–2,8 · estadio 3 = 2,9–5,0 · estadio 4 = > 5,0 mg/dL
+    const felino = paciente({ especie: 'felino' });
+    expect(patronIris({ creat: 2.5 }, felino)?.gravedad).toBe('leve');
+    expect(patronIris({ creat: 4.8 }, felino)?.nombre).toContain('estadio 3');
+    expect(patronIris({ creat: 6.0 }, felino)?.gravedad).toBe('grave');
+  });
+
+  it('una creatinina dentro de rango no genera estadio', () => {
+    // La guía estadia pacientes YA diagnosticados: sin hallazgo no se inventa un estadio.
+    expect(patronIris({ creat: 1.2 })).toBeUndefined();
+  });
+
+  it('la SDMA discrepante sube de estadio y lo deja dicho', () => {
+    // Perro en estadio 2 por creatinina (1,4–2,8) con SDMA > 35 → tratar como estadio 3.
+    const p = patronIris({ creat: 2.0, sdma: 40 });
+    expect(p?.nombre).toContain('estadio 3');
+    expect(p?.descripcion).toContain('SDMA discrepante');
+  });
+
+  it('subestadia la proteinuria con los cortes de cada especie', () => {
+    // Perro: proteinúrico > 0,5 · limítrofe 0,2–0,5 || Gato: proteinúrico > 0,4
+    expect(patronIris({ creat: 3.0, upc: 0.8 })?.nombre).toContain('proteinúrico');
+    expect(patronIris({ creat: 3.0, upc: 0.3 })?.nombre).toContain('limítrofe');
+    expect(patronIris({ creat: 3.0, upc: 0.45 }, paciente({ especie: 'felino' }))?.nombre)
+      .toContain('proteinúrico');
+  });
+
+  it('la gravedad de la creatinina sigue los estadios IRIS, no el ancho de rango', () => {
+    const grav = (v: number, p = paciente()) =>
+      analizarResultados({ creat: v }, p, referencias, alteraciones)
+        .hallazgos.find((h) => h.clave === 'creat')?.gravedad;
+    expect(grav(2.0)).toBe('leve');
+    expect(grav(4.0)).toBe('moderado');
+    expect(grav(6.0)).toBe('grave');
   });
 });

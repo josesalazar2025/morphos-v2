@@ -1,8 +1,8 @@
 # Morphos — tareas de desarrollo y despliegue
 
 .PHONY: help frontend-install frontend-test frontend-build backend-sync backend-test \
-        ingest dev lint evals evals-test ragas revision retrieval-eval docker-build \
-        publish-index fetch-index publish-books
+        ingest curar-indice dev lint evals evals-test ragas revision retrieval-eval \
+        docker-build publish-index fetch-index publish-books
 
 # Los repos del Hub se declaran en scripts/hub.py (y deben coincidir con rag_index_repo /
 # rag_books_repo en backend/app/config.py).
@@ -15,6 +15,7 @@ help:
 	@echo "  backend-sync      Sincroniza dependencias del backend (uv)"
 	@echo "  backend-test      Ejecuta pytest del backend"
 	@echo "  ingest            Construye el índice RAG desde books/ (grupo rag, local)"
+	@echo "  curar-indice      Descarta índices alfabéticos y reetiqueta especie (ARGS=--aplicar)"
 	@echo "  publish-index     Sube instance/rag_index al dataset privado del Hub"
 	@echo "  fetch-index       Descarga el índice del Hub a instance/rag_index"
 	@echo "  publish-books     Sube books/*.pdf al dataset privado (sólo para reingerir)"
@@ -44,6 +45,12 @@ backend-test:
 # Requiere el grupo pesado 'rag'. Coloca los PDFs con licencia en books/ primero.
 ingest:
 	cd backend && uv sync --group rag && uv run --group rag python -m app.rag.ingest --fuente ../books --salida ../instance/rag_index
+
+# Aplica data/rag_alcance.json a un índice YA construido: descarta el índice alfabético de los
+# libros y reetiqueta `especie`. No reingiere ni recalcula vectores. Sin ARGS es un simulacro;
+# ARGS=--aplicar escribe. Después hace falta publish-index.
+curar-indice:
+	cd backend && uv run --group rag python ../scripts/curar_indice.py $(ARGS)
 
 # --- Distribución del índice y del corpus (Hub privado) -----------------------------------
 #

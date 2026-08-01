@@ -51,7 +51,8 @@ class ClienteFalso:
 @pytest.fixture
 def sin_rag(monkeypatch):
     """Aísla del retriever: estos tests miden reintentos, no recuperación."""
-    monkeypatch.setattr(service, "recuperar", lambda *_a, **_k: [])
+    for nombre in ("recuperar", "recuperar_multi"):
+        monkeypatch.setattr(service, nombre, lambda *_a, **_k: [])
 
 
 async def _interpretar_con(cliente, monkeypatch):
@@ -112,7 +113,8 @@ async def test_la_ruta_de_prosa_devuelve_fuentes_verificables(monkeypatch):
         texto="…", libro="Thrall Veterinary Hematology", edicion="3.ª ed.",
         capitulo="Anemia", pagina="210", score=0.9,
     )
-    monkeypatch.setattr(service, "recuperar", lambda *_a, **_k: [fragmento])
+    for nombre in ("recuperar", "recuperar_multi"):
+        monkeypatch.setattr(service, nombre, lambda *_a, **_k: [fragmento])
     cliente = ClienteProsa("Anemia arregenerativa compatible con proceso crónico [1]. " * 3)
 
     resp = await _interpretar_con(cliente, monkeypatch)
@@ -120,3 +122,151 @@ async def test_la_ruta_de_prosa_devuelve_fuentes_verificables(monkeypatch):
     assert [f.cita for f in resp.fuentes] == ["Thrall Veterinary Hematology, 3.ª ed., p. 210"]
     assert resp.fuentes[0].citada
     assert resp.fuentes_rag == 1
+
+
+class ClienteTruncaConContexto:
+    """Reproduce lo medido contra el Space: con literatura en el prompt la respuesta se corta
+    siempre; sin ella (o con poca) sale completa."""
+
+    nombre = "medgemma-hf"
+
+    def __init__(self, umbral_fragmentos: int):
+        self.umbral = umbral_fragmentos
+        self.fragmentos_por_intento: list[int] = []
+
+    async def interpretar(self, _sistema, mensaje_usuario, _imagenes):
+        recibidos = mensaje_usuario.count("Literatura recuperada") and mensaje_usuario.count("] (")
+        self.fragmentos_por_intento.append(recibidos)
+        if recibidos > self.umbral:
+            raise ErrorModelo("cortada a mitad de frase", truncado=True)
+        return InterpretacionClinica(interpretacion="Interpretación completa. " * 5)
+
+
+async def test_la_respuesta_truncada_se_reintenta_con_menos_literatura(monkeypatch):
+    from app.rag.retriever import Fragmento
+
+    fragmentos = [
+        Fragmento(texto=f"texto {i}", libro=f"Libro {i}", edicion="1.ª ed.",
+                  capitulo="", pagina=str(i), score=1.0)
+        for i in range(6)
+    ]
+    for nombre in ("recuperar", "recuperar_multi"):
+        monkeypatch.setattr(service, nombre, lambda *_a, **_k: fragmentos)
+    cliente = ClienteTruncaConContexto(umbral_fragmentos=3)
+
+    resp = await _interpretar_con(cliente, monkeypatch)
+
+    assert cliente.fragmentos_por_intento == [6, 2]  # recorta a un tercio y lo consigue
+    # Sólo se ofrecen como fuentes los fragmentos que el modelo llegó a ver.
+    assert resp.fuentes_rag == 2
+    assert len(resp.fuentes) == 2
+
+
+class ClienteEstructuraVacia:
+    """Reproduce lo medido con qwen2.5:7b: JSON válido con los campos estructurados vacíos."""
+
+    nombre = "medgemma"
+
+    def __init__(self, llenar_en: int | None = None):
+        self.llenar_en = llenar_en
+        self.llamadas = 0
+
+    async def interpretar(self, *_a, **_k):
+        self.llamadas += 1
+        if self.llenar_en is not None and self.llamadas >= self.llenar_en:
+            return InterpretacionClinica(
+                interpretacion="Interpretación completa. " * 5,
+                hallazgos_clave=[{"analito": "hct", "direccion": "bajo", "gravedad": "grave"}],
+                diferenciales=[{"nombre": "Anemia", "probabilidad": "alta"}],
+            )
+        return InterpretacionClinica(interpretacion="Sólo prosa, sin estructura. " * 3)
+
+
+async def test_estructura_vacia_en_ruta_estructurada_se_reintenta(sin_rag, monkeypatch):
+    cliente = ClienteEstructuraVacia(llenar_en=2)
+    resp = await _interpretar_con(cliente, monkeypatch)
+    assert cliente.llamadas == 2
+    assert resp.resultado.diferenciales
+
+
+async def test_estructura_vacia_persistente_es_error_tipado(sin_rag, monkeypatch):
+    cliente = ClienteEstructuraVacia()
+    with pytest.raises(ErrorModelo):
+        await _interpretar_con(cliente, monkeypatch)
+    assert cliente.llamadas == 2
+
+
+async def test_la_ruta_de_prosa_no_exige_campos_estructurados(sin_rag, monkeypatch):
+    """El HF Space no puede rellenarlos: exigírselos lo dejaría siempre en error."""
+    cliente = ClienteProsa("Interpretación en prosa suficientemente larga. " * 4)
+    resp = await _interpretar_con(cliente, monkeypatch)
+    assert resp.resultado.diferenciales == []
+
+
+class ClienteSinDerivacion:
+    nombre = "medgemma"
+
+    async def interpretar(self, *_a, **_k):
+        return InterpretacionClinica(
+            interpretacion="El paciente está estable. " * 5,
+            hallazgos_clave=[{"analito": "creat", "direccion": "alto", "gravedad": "grave"}],
+            diferenciales=[{"nombre": "ERC", "probabilidad": "alta"}],
+            requiere_derivacion=False,
+        )
+
+
+async def test_la_derivacion_no_la_decide_el_modelo(sin_rag, monkeypatch):
+    """Con un hallazgo GRAVE del motor, se deriva aunque el modelo diga que no: es la marca de
+    seguridad que un 7B general falló en una ERC felina avanzada."""
+    resp = await _interpretar_con(ClienteSinDerivacion(), monkeypatch)
+    assert resp.resultado.requiere_derivacion is True
+
+
+class ClienteProsaSimple:
+    nombre = "medgemma-hf"
+
+    async def interpretar(self, *_a, **_k):
+        # Igual que el cliente del Space: sólo prosa, con el default del esquema.
+        return InterpretacionClinica(interpretacion="Interpretación en prosa. " * 5)
+
+
+async def test_prosa_sin_alteraciones_no_deriva(sin_rag, monkeypatch):
+    """El default del esquema hacía que un panel normal pidiera derivación contradiciendo su
+    propio texto; el juez lo penalizó como incoherencia (2026-07-31, `normal-canino`)."""
+    monkeypatch.setattr(service, "_crear_cliente", lambda _b: ClienteProsaSimple())
+    pet = PeticionInterpretacion(paciente={"especie": "canino"}, hallazgos=[], patrones=[])
+
+    resp = await service.interpretar(pet)
+
+    assert resp.resultado.requiere_derivacion is False
+
+
+async def test_prosa_con_alteraciones_sigue_derivando(sin_rag, monkeypatch):
+    monkeypatch.setattr(service, "_crear_cliente", lambda _b: ClienteProsaSimple())
+
+    resp = await service.interpretar(PeticionInterpretacion.model_validate(PETICION))
+
+    assert resp.resultado.requiere_derivacion is True
+
+
+async def test_la_ruta_estructurada_conserva_la_opinion_del_modelo(sin_rag, monkeypatch):
+    """La corrección es sólo para quien no puede rellenar el campo: si el modelo SÍ opina, se
+    respeta (y el suelo de `_derivacion_obligatoria` sigue por encima)."""
+
+    class ClienteEstructurado:
+        nombre = "medgemma"
+
+        async def interpretar(self, *_a, **_k):
+            return InterpretacionClinica(
+                interpretacion="Panel sin alteraciones. " * 5,
+                hallazgos_clave=[],
+                diferenciales=[],
+                requiere_derivacion=True,
+            )
+
+    monkeypatch.setattr(service, "_crear_cliente", lambda _b: ClienteEstructurado())
+    pet = PeticionInterpretacion(paciente={"especie": "canino"}, hallazgos=[], patrones=[])
+
+    resp = await service.interpretar(pet)
+
+    assert resp.resultado.requiere_derivacion is True

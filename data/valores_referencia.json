@@ -1,186 +1,1086 @@
 {
   "canino": {
-    "rbc":          { "inferior": 5.5,   "superior": 8.5,   "unidad": "x10⁶/μL", "nombre": "Eritrocitos (RBC)" },
-    "hgb":          { "inferior": 12,    "superior": 18,    "unidad": "g/dL",     "nombre": "Hemoglobina (Hgb)" },
-    "hct":          { "inferior": 37,    "superior": 55,    "unidad": "%",         "nombre": "Hematocrito (Hct)" },
-    "vcm":          { "inferior": 60,    "superior": 77,    "unidad": "fL",        "nombre": "VCM (MCV)" },
-    "hcm":          { "inferior": 19.5,  "superior": 24.5,  "unidad": "pg",        "nombre": "HCM (MCH)" },
-    "chcm":         { "inferior": 32,    "superior": 36,    "unidad": "g/dL",      "nombre": "CHCM (MCHC)" },
-    "rdw":          { "inferior": 11.9,  "superior": 14.2,  "unidad": "%",         "nombre": "RDW" },
-    "reti":         { "inferior": 0,     "superior": 1.5,   "unidad": "%",         "nombre": "Reticulocitos" },
-    "reti_abs":     { "inferior": 0,     "superior": 80,    "unidad": "x10³/μL",   "nombre": "Reticulocitos #" },
-    "nrbc":         { "inferior": 0,     "superior": 0.5,   "unidad": "/100WBC",   "nombre": "nRBC" },
-    "wbc":          { "inferior": 6,     "superior": 17,    "unidad": "x10³/μL",   "nombre": "Leucocitos (WBC)" },
-    "neutro":       { "inferior": 60,    "superior": 77,    "unidad": "%",         "nombre": "Neutrófilos" },
-    "linfo":        { "inferior": 12,    "superior": 30,    "unidad": "%",         "nombre": "Linfocitos" },
-    "mono":         { "inferior": 3,     "superior": 10,    "unidad": "%",         "nombre": "Monocitos" },
-    "eosino":       { "inferior": 2,     "superior": 10,    "unidad": "%",         "nombre": "Eosinófilos" },
-    "baso":         { "inferior": 0,     "superior": 1,     "unidad": "%",         "nombre": "Basófilos" },
-    "neutro_abs":   { "inferior": 3.0,   "superior": 11.5,  "unidad": "x10³/μL",   "nombre": "Neutrófilos #" },
-    "linfo_abs":    { "inferior": 1.0,   "superior": 4.8,   "unidad": "x10³/μL",   "nombre": "Linfocitos #" },
-    "mono_abs":     { "inferior": 0.15,  "superior": 1.35,  "unidad": "x10³/μL",   "nombre": "Monocitos #" },
-    "eosino_abs":   { "inferior": 0.1,   "superior": 1.25,  "unidad": "x10³/μL",   "nombre": "Eosinófilos #" },
-    "baso_abs":     { "inferior": 0,     "superior": 0.1,   "unidad": "x10³/μL",   "nombre": "Basófilos #" },
-    "plt":          { "inferior": 200,   "superior": 500,   "unidad": "x10³/μL",   "nombre": "Plaquetas" },
-    "mpv":          { "inferior": 6.7,   "superior": 11.1,  "unidad": "fL",        "nombre": "MPV" },
-    "pct":          { "inferior": 0.14,  "superior": 0.46,  "unidad": "%",         "nombre": "Plaquetocrito (PCT)" },
-    "alt":          { "inferior": 10,    "superior": 100,   "unidad": "U/L",       "nombre": "ALT (GPT)" },
-    "ast":          { "inferior": 10,    "superior": 50,    "unidad": "U/L",       "nombre": "AST (GOT)" },
-    "fal":          { "inferior": 23,    "superior": 212,   "unidad": "U/L",       "nombre": "FAL (ALP)" },
-    "ggt":          { "inferior": 0,     "superior": 7,     "unidad": "U/L",       "nombre": "GGT" },
-    "amylasa":      { "inferior": 500,   "superior": 2000,  "unidad": "U/L",       "nombre": "Amilasa (AMY)" },
-    "ldh":          { "inferior": 50,    "superior": 420,   "unidad": "U/L",       "nombre": "LDH" },
-    "bili":         { "inferior": 0,     "superior": 0.3,   "unidad": "mg/dL",     "nombre": "Bilirrubina Total" },
-    "bili_dir":     { "inferior": 0,     "superior": 0.1,   "unidad": "mg/dL",     "nombre": "Bilirrubina Directa" },
-    "acidos_bil":   { "inferior": 0,     "superior": 5,     "unidad": "μmol/L",    "nombre": "Ácidos Biliares" },
-    "bun":          { "inferior": 7,     "superior": 25,    "unidad": "mg/dL",     "nombre": "BUN/Urea" },
-    "creat":        { "inferior": 0.5,   "superior": 1.5,   "unidad": "mg/dL",     "nombre": "Creatinina" },
-    "sdma":         { "inferior": 0,     "superior": 14,    "unidad": "μg/dL",     "nombre": "SDMA" },
-    "gluc":         { "inferior": 70,    "superior": 143,   "unidad": "mg/dL",     "nombre": "Glucosa" },
-    "prot":         { "inferior": 5.4,   "superior": 8.2,   "unidad": "g/dL",      "nombre": "Proteína Total" },
-    "alb":          { "inferior": 2.7,   "superior": 3.8,   "unidad": "g/dL",      "nombre": "Albúmina" },
-    "glob":         { "inferior": 2.7,   "superior": 4.4,   "unidad": "g/dL",      "nombre": "Globulinas" },
-    "fosf":         { "inferior": 2.5,   "superior": 6.2,   "unidad": "mg/dL",     "nombre": "Fósforo" },
-    "calc":         { "inferior": 9.0,   "superior": 11.3,  "unidad": "mg/dL",     "nombre": "Calcio" },
-    "magnesio":     { "inferior": 1.7,   "superior": 2.5,   "unidad": "mg/dL",     "nombre": "Magnesio" },
-    "hierro":       { "inferior": 60,    "superior": 200,   "unidad": "μg/dL",     "nombre": "Hierro sérico (Fe)" },
-    "ac_urico":     { "inferior": 0,     "superior": 1.0,   "unidad": "mg/dL",     "nombre": "Ácido úrico (UA)" },
-    "fruc":         { "inferior": 225,   "superior": 365,   "unidad": "μmol/L",    "nombre": "Fructosamina" },
-    "sodio":        { "inferior": 140,   "superior": 154,   "unidad": "mEq/L",     "nombre": "Sodio" },
-    "potasio":      { "inferior": 3.7,   "superior": 5.8,   "unidad": "mEq/L",     "nombre": "Potasio" },
-    "cloro":        { "inferior": 105,   "superior": 122,   "unidad": "mEq/L",     "nombre": "Cloro" },
-    "tco2":         { "inferior": 17,    "superior": 24,    "unidad": "mEq/L",     "nombre": "TCO₂ / Bicarbonato" },
-    "colest":       { "inferior": 110,   "superior": 320,   "unidad": "mg/dL",     "nombre": "Colesterol" },
-    "trigli":       { "inferior": 20,    "superior": 150,   "unidad": "mg/dL",     "nombre": "Triglicéridos" },
-    "lipasa":       { "inferior": 0,     "superior": 200,   "unidad": "U/L",       "nombre": "Lipasa" },
-    "pli":          { "inferior": 0,     "superior": 200,   "unidad": "μg/L",      "nombre": "Lipasa pancreática (cPLI)" },
-    "ck":           { "inferior": 10,    "superior": 200,   "unidad": "U/L",       "nombre": "Creatina Kinasa (CK)" },
-    "usg":          { "inferior": 1.013, "superior": 1.100, "unidad": "",           "nombre": "Densidad (USG)" },
-    "ph":           { "inferior": 5.5,   "superior": 7.5,   "unidad": "",           "nombre": "pH urinario" },
-    "rbc_uri":      { "inferior": 0,     "superior": 5,     "unidad": "/μL",        "nombre": "Eritrocitos orina" },
-    "wbc_uri":      { "inferior": 0,     "superior": 5,     "unidad": "/μL",        "nombre": "Leucocitos orina" },
-    "upc":          { "inferior": 0,     "superior": 0.2,   "unidad": "",           "nombre": "Cociente P/C (UPC)" },
-    "pt":           { "inferior": 7.0,   "superior": 10.0,  "unidad": "s",          "nombre": "Tiempo de protrombina (TP)" },
-    "aptt":         { "inferior": 10.0,  "superior": 15.0,  "unidad": "s",          "nombre": "TTPa (aPTT)" },
-    "act":          { "inferior": 60,    "superior": 90,    "unidad": "s",          "nombre": "ACT" },
-    "fibrinogeno":  { "inferior": 150,   "superior": 400,   "unidad": "mg/dL",      "nombre": "Fibrinógeno" },
-    "ddimeros":     { "inferior": 0,     "superior": 250,   "unidad": "ng/mL",      "nombre": "Dímeros D" },
-    "fdp":          { "inferior": 0,     "superior": 10,    "unidad": "μg/mL",      "nombre": "PDF (FDP)" },
-    "antitrombina": { "inferior": 75,    "superior": 120,   "unidad": "%",          "nombre": "Antitrombina (AT-III)" },
-    "vwf":          { "inferior": 70,    "superior": 180,   "unidad": "%",          "nombre": "vWF (antígeno)" },
-    "cortisol_bas": { "inferior": 1.0,   "superior": 6.0,   "unidad": "μg/dL",     "nombre": "Cortisol basal" },
-    "cortisol_acth":{ "inferior": 6.0,   "superior": 18.0,  "unidad": "μg/dL",     "nombre": "Cortisol post-ACTH" },
-    "t4_total":     { "inferior": 19,    "superior": 58,    "unidad": "nmol/L",    "nombre": "T4 total" },
-    "t4_libre":     { "inferior": 9,     "superior": 37,    "unidad": "pmol/L",    "nombre": "T4 libre (fT4)" },
-    "tsh":          { "inferior": 0.01,  "superior": 0.60,  "unidad": "ng/mL",     "nombre": "TSH (cTSH)" },
-    "insulina":     { "inferior": 5,     "superior": 20,    "unidad": "μIU/mL",    "nombre": "Insulina basal" },
-    "progesterona": { "inferior": 0.1,   "superior": 1.0,   "unidad": "ng/mL",     "nombre": "Progesterona" },
-    "ctni":         { "inferior": 0,     "superior": 0.07,  "unidad": "ng/mL",     "nombre": "Troponina I cardíaca (cTnI)" },
-    "nt_probnp":    { "inferior": 0,     "superior": 900,   "unidad": "pmol/L",    "nombre": "NT-proBNP" },
-    "crp":          { "inferior": 0,     "superior": 10,    "unidad": "mg/L",      "nombre": "Proteína C reactiva (PCR)" },
-    "saa":          { "inferior": 0,     "superior": 10,    "unidad": "mg/L",      "nombre": "Amiloide A sérico (SAA)" },
-    "fenobarbital": { "inferior": 20,    "superior": 40,    "unidad": "μg/mL",     "nombre": "Fenobarbital (nivel sérico)" },
-    "ciclosporina": { "inferior": 100,   "superior": 400,   "unidad": "ng/mL",     "nombre": "Ciclosporina (nivel sérico)" },
-    "ph_sangre":    { "inferior": 7.35,  "superior": 7.45,  "unidad": "",           "nombre": "pH sanguíneo" },
-    "pco2":         { "inferior": 35,    "superior": 45,    "unidad": "mmHg",       "nombre": "pCO₂" },
-    "po2":          { "inferior": 85,    "superior": 105,   "unidad": "mmHg",       "nombre": "pO₂ arterial" },
-    "hco3":         { "inferior": 18,    "superior": 24,    "unidad": "mEq/L",      "nombre": "HCO₃⁻" },
-    "exceso_base":  { "inferior": -4,    "superior": 4,     "unidad": "mEq/L",      "nombre": "Exceso de base (BE)" },
-    "so2":          { "inferior": 95,    "superior": 100,   "unidad": "%",          "nombre": "Saturación O₂ (SO₂)" },
-    "ca_ion":       { "inferior": 1.12,  "superior": 1.40,  "unidad": "mmol/L",     "nombre": "Calcio ionizado (iCa)" },
-    "lactato":      { "inferior": 0.5,   "superior": 2.5,   "unidad": "mmol/L",     "nombre": "Lactato" },
-    "anion_gap":    { "inferior": 8,     "superior": 16,    "unidad": "mEq/L",      "nombre": "Anión Gap" }
+    "rbc": {
+      "inferior": 5.5,
+      "superior": 8.5,
+      "unidad": "x10⁶/μL",
+      "nombre": "Eritrocitos (RBC)"
+    },
+    "hgb": {
+      "inferior": 12,
+      "superior": 18,
+      "unidad": "g/dL",
+      "nombre": "Hemoglobina (Hgb)"
+    },
+    "hct": {
+      "inferior": 37,
+      "superior": 55,
+      "unidad": "%",
+      "nombre": "Hematocrito (Hct)"
+    },
+    "vcm": {
+      "inferior": 60.0,
+      "superior": 72.0,
+      "unidad": "fL",
+      "nombre": "VCM (MCV)"
+    },
+    "hcm": {
+      "inferior": 22.4,
+      "superior": 26.2,
+      "unidad": "pg",
+      "nombre": "HCM (MCH)"
+    },
+    "chcm": {
+      "inferior": 34.0,
+      "superior": 38.0,
+      "unidad": "g/dL",
+      "nombre": "CHCM (MCHC)"
+    },
+    "rdw": {
+      "inferior": 12.9,
+      "superior": 19.4,
+      "unidad": "%",
+      "nombre": "RDW"
+    },
+    "reti": {
+      "inferior": 0,
+      "superior": 1.5,
+      "unidad": "%",
+      "nombre": "Reticulocitos"
+    },
+    "reti_abs": {
+      "inferior": 0.0,
+      "superior": 60.0,
+      "unidad": "x10³/μL",
+      "nombre": "Reticulocitos #"
+    },
+    "nrbc": {
+      "inferior": 0,
+      "superior": 0.5,
+      "unidad": "/100WBC",
+      "nombre": "nRBC"
+    },
+    "wbc": {
+      "inferior": 6,
+      "superior": 17,
+      "unidad": "x10³/μL",
+      "nombre": "Leucocitos (WBC)"
+    },
+    "neutro": {
+      "inferior": 60,
+      "superior": 77,
+      "unidad": "%",
+      "nombre": "Neutrófilos"
+    },
+    "linfo": {
+      "inferior": 12,
+      "superior": 30,
+      "unidad": "%",
+      "nombre": "Linfocitos"
+    },
+    "mono": {
+      "inferior": 3,
+      "superior": 10,
+      "unidad": "%",
+      "nombre": "Monocitos"
+    },
+    "eosino": {
+      "inferior": 2,
+      "superior": 10,
+      "unidad": "%",
+      "nombre": "Eosinófilos"
+    },
+    "baso": {
+      "inferior": 0,
+      "superior": 1,
+      "unidad": "%",
+      "nombre": "Basófilos"
+    },
+    "neutro_abs": {
+      "inferior": 3.0,
+      "superior": 11.5,
+      "unidad": "x10³/μL",
+      "nombre": "Neutrófilos #"
+    },
+    "linfo_abs": {
+      "inferior": 1.0,
+      "superior": 4.8,
+      "unidad": "x10³/μL",
+      "nombre": "Linfocitos #"
+    },
+    "mono_abs": {
+      "inferior": 0.1,
+      "superior": 1.3,
+      "unidad": "x10³/μL",
+      "nombre": "Monocitos #"
+    },
+    "eosino_abs": {
+      "inferior": 0.1,
+      "superior": 1.2,
+      "unidad": "x10³/μL",
+      "nombre": "Eosinófilos #"
+    },
+    "baso_abs": {
+      "inferior": 0,
+      "superior": 0.1,
+      "unidad": "x10³/μL",
+      "nombre": "Basófilos #"
+    },
+    "plt": {
+      "inferior": 200,
+      "superior": 500,
+      "unidad": "x10³/μL",
+      "nombre": "Plaquetas"
+    },
+    "mpv": {
+      "inferior": 6.7,
+      "superior": 11.1,
+      "unidad": "fL",
+      "nombre": "MPV"
+    },
+    "pct": {
+      "inferior": 0.14,
+      "superior": 0.46,
+      "unidad": "%",
+      "nombre": "Plaquetocrito (PCT)"
+    },
+    "alt": {
+      "inferior": 10.0,
+      "superior": 120.0,
+      "unidad": "U/L",
+      "nombre": "ALT (GPT)"
+    },
+    "ast": {
+      "inferior": 16.0,
+      "superior": 40.0,
+      "unidad": "U/L",
+      "nombre": "AST (GOT)"
+    },
+    "fal": {
+      "inferior": 35.0,
+      "superior": 280.0,
+      "unidad": "U/L",
+      "nombre": "FAL (ALP)"
+    },
+    "ggt": {
+      "inferior": 0.0,
+      "superior": 6.0,
+      "unidad": "U/L",
+      "nombre": "GGT"
+    },
+    "amylasa": {
+      "inferior": 200.0,
+      "superior": 1200.0,
+      "unidad": "U/L",
+      "nombre": "Amilasa (AMY)"
+    },
+    "ldh": {
+      "inferior": 50,
+      "superior": 420,
+      "unidad": "U/L",
+      "nombre": "LDH"
+    },
+    "bili": {
+      "inferior": 0.0,
+      "superior": 0.4,
+      "unidad": "mg/dL",
+      "nombre": "Bilirrubina Total"
+    },
+    "bili_dir": {
+      "inferior": 0,
+      "superior": 0.1,
+      "unidad": "mg/dL",
+      "nombre": "Bilirrubina Directa"
+    },
+    "acidos_bil": {
+      "inferior": 0,
+      "superior": 5,
+      "unidad": "μmol/L",
+      "nombre": "Ácidos Biliares"
+    },
+    "bun": {
+      "inferior": 7.0,
+      "superior": 28.0,
+      "unidad": "mg/dL",
+      "nombre": "BUN/Urea"
+    },
+    "creat": {
+      "inferior": 0.9,
+      "superior": 1.7,
+      "unidad": "mg/dL",
+      "nombre": "Creatinina"
+    },
+    "sdma": {
+      "inferior": 0,
+      "superior": 18,
+      "unidad": "μg/dL",
+      "nombre": "SDMA"
+    },
+    "gluc": {
+      "inferior": 65.0,
+      "superior": 122.0,
+      "unidad": "mg/dL",
+      "nombre": "Glucosa"
+    },
+    "prot": {
+      "inferior": 6.0,
+      "superior": 8.0,
+      "unidad": "g/dL",
+      "nombre": "Proteína Total"
+    },
+    "alb": {
+      "inferior": 2.7,
+      "superior": 4.5,
+      "unidad": "g/dL",
+      "nombre": "Albúmina"
+    },
+    "glob": {
+      "inferior": 2.0,
+      "superior": 3.8,
+      "unidad": "g/dL",
+      "nombre": "Globulinas"
+    },
+    "fosf": {
+      "inferior": 2.8,
+      "superior": 6.1,
+      "unidad": "mg/dL",
+      "nombre": "Fósforo"
+    },
+    "calc": {
+      "inferior": 9.0,
+      "superior": 11.2,
+      "unidad": "mg/dL",
+      "nombre": "Calcio"
+    },
+    "magnesio": {
+      "inferior": 1.6,
+      "superior": 2.2,
+      "unidad": "mg/dL",
+      "nombre": "Magnesio"
+    },
+    "hierro": {
+      "inferior": 60,
+      "superior": 200,
+      "unidad": "μg/dL",
+      "nombre": "Hierro sérico (Fe)"
+    },
+    "ac_urico": {
+      "inferior": 0,
+      "superior": 1.0,
+      "unidad": "mg/dL",
+      "nombre": "Ácido úrico (UA)"
+    },
+    "fruc": {
+      "inferior": 225,
+      "superior": 365,
+      "unidad": "μmol/L",
+      "nombre": "Fructosamina"
+    },
+    "sodio": {
+      "inferior": 145.0,
+      "superior": 158.0,
+      "unidad": "mEq/L",
+      "nombre": "Sodio"
+    },
+    "potasio": {
+      "inferior": 4.1,
+      "superior": 5.5,
+      "unidad": "mEq/L",
+      "nombre": "Potasio"
+    },
+    "cloro": {
+      "inferior": 106.0,
+      "superior": 127.0,
+      "unidad": "mEq/L",
+      "nombre": "Cloro"
+    },
+    "tco2": {
+      "inferior": 14.0,
+      "superior": 27.0,
+      "unidad": "mEq/L",
+      "nombre": "TCO₂ / Bicarbonato"
+    },
+    "colest": {
+      "inferior": 131.0,
+      "superior": 320.0,
+      "unidad": "mg/dL",
+      "nombre": "Colesterol"
+    },
+    "trigli": {
+      "inferior": 20,
+      "superior": 150,
+      "unidad": "mg/dL",
+      "nombre": "Triglicéridos"
+    },
+    "lipasa": {
+      "inferior": 12.0,
+      "superior": 147.0,
+      "unidad": "U/L",
+      "nombre": "Lipasa"
+    },
+    "pli": {
+      "inferior": 0,
+      "superior": 200,
+      "unidad": "μg/L",
+      "nombre": "Lipasa pancreática (cPLI)"
+    },
+    "ck": {
+      "inferior": 43.0,
+      "superior": 234.0,
+      "unidad": "U/L",
+      "nombre": "Creatina Kinasa (CK)"
+    },
+    "usg": {
+      "inferior": 1.013,
+      "superior": 1.1,
+      "unidad": "",
+      "nombre": "Densidad (USG)"
+    },
+    "ph": {
+      "inferior": 5.5,
+      "superior": 7.5,
+      "unidad": "",
+      "nombre": "pH urinario"
+    },
+    "rbc_uri": {
+      "inferior": 0,
+      "superior": 5,
+      "unidad": "/μL",
+      "nombre": "Eritrocitos orina"
+    },
+    "wbc_uri": {
+      "inferior": 0,
+      "superior": 5,
+      "unidad": "/μL",
+      "nombre": "Leucocitos orina"
+    },
+    "upc": {
+      "inferior": 0,
+      "superior": 0.2,
+      "unidad": "",
+      "nombre": "Cociente P/C (UPC)"
+    },
+    "pt": {
+      "inferior": 7.0,
+      "superior": 10.0,
+      "unidad": "s",
+      "nombre": "Tiempo de protrombina (TP)"
+    },
+    "aptt": {
+      "inferior": 10.0,
+      "superior": 15.0,
+      "unidad": "s",
+      "nombre": "TTPa (aPTT)"
+    },
+    "act": {
+      "inferior": 60,
+      "superior": 90,
+      "unidad": "s",
+      "nombre": "ACT"
+    },
+    "fibrinogeno": {
+      "inferior": 150,
+      "superior": 400,
+      "unidad": "mg/dL",
+      "nombre": "Fibrinógeno"
+    },
+    "ddimeros": {
+      "inferior": 0,
+      "superior": 250,
+      "unidad": "ng/mL",
+      "nombre": "Dímeros D"
+    },
+    "fdp": {
+      "inferior": 0,
+      "superior": 10,
+      "unidad": "μg/mL",
+      "nombre": "PDF (FDP)"
+    },
+    "antitrombina": {
+      "inferior": 75,
+      "superior": 120,
+      "unidad": "%",
+      "nombre": "Antitrombina (AT-III)"
+    },
+    "vwf": {
+      "inferior": 70,
+      "superior": 180,
+      "unidad": "%",
+      "nombre": "vWF (antígeno)"
+    },
+    "cortisol_bas": {
+      "inferior": 1.0,
+      "superior": 6.0,
+      "unidad": "μg/dL",
+      "nombre": "Cortisol basal"
+    },
+    "cortisol_acth": {
+      "inferior": 6.0,
+      "superior": 18.0,
+      "unidad": "μg/dL",
+      "nombre": "Cortisol post-ACTH"
+    },
+    "t4_total": {
+      "inferior": 19,
+      "superior": 58,
+      "unidad": "nmol/L",
+      "nombre": "T4 total"
+    },
+    "t4_libre": {
+      "inferior": 9,
+      "superior": 37,
+      "unidad": "pmol/L",
+      "nombre": "T4 libre (fT4)"
+    },
+    "tsh": {
+      "inferior": 0.01,
+      "superior": 0.6,
+      "unidad": "ng/mL",
+      "nombre": "TSH (cTSH)"
+    },
+    "insulina": {
+      "inferior": 5,
+      "superior": 20,
+      "unidad": "μIU/mL",
+      "nombre": "Insulina basal"
+    },
+    "progesterona": {
+      "inferior": 0.1,
+      "superior": 1.0,
+      "unidad": "ng/mL",
+      "nombre": "Progesterona"
+    },
+    "ctni": {
+      "inferior": 0,
+      "superior": 0.07,
+      "unidad": "ng/mL",
+      "nombre": "Troponina I cardíaca (cTnI)"
+    },
+    "nt_probnp": {
+      "inferior": 0,
+      "superior": 900,
+      "unidad": "pmol/L",
+      "nombre": "NT-proBNP"
+    },
+    "crp": {
+      "inferior": 0,
+      "superior": 10,
+      "unidad": "mg/L",
+      "nombre": "Proteína C reactiva (PCR)"
+    },
+    "saa": {
+      "inferior": 0,
+      "superior": 10,
+      "unidad": "mg/L",
+      "nombre": "Amiloide A sérico (SAA)"
+    },
+    "fenobarbital": {
+      "inferior": 20,
+      "superior": 40,
+      "unidad": "μg/mL",
+      "nombre": "Fenobarbital (nivel sérico)"
+    },
+    "ciclosporina": {
+      "inferior": 100,
+      "superior": 400,
+      "unidad": "ng/mL",
+      "nombre": "Ciclosporina (nivel sérico)"
+    },
+    "ph_sangre": {
+      "inferior": 7.35,
+      "superior": 7.45,
+      "unidad": "",
+      "nombre": "pH sanguíneo"
+    },
+    "pco2": {
+      "inferior": 35,
+      "superior": 45,
+      "unidad": "mmHg",
+      "nombre": "pCO₂"
+    },
+    "po2": {
+      "inferior": 85,
+      "superior": 105,
+      "unidad": "mmHg",
+      "nombre": "pO₂ arterial"
+    },
+    "hco3": {
+      "inferior": 18,
+      "superior": 24,
+      "unidad": "mEq/L",
+      "nombre": "HCO₃⁻"
+    },
+    "exceso_base": {
+      "inferior": -4,
+      "superior": 4,
+      "unidad": "mEq/L",
+      "nombre": "Exceso de base (BE)"
+    },
+    "so2": {
+      "inferior": 95,
+      "superior": 100,
+      "unidad": "%",
+      "nombre": "Saturación O₂ (SO₂)"
+    },
+    "ca_ion": {
+      "inferior": 1.12,
+      "superior": 1.4,
+      "unidad": "mmol/L",
+      "nombre": "Calcio ionizado (iCa)"
+    },
+    "lactato": {
+      "inferior": 0.5,
+      "superior": 2.5,
+      "unidad": "mmol/L",
+      "nombre": "Lactato"
+    },
+    "anion_gap": {
+      "inferior": 8,
+      "superior": 16,
+      "unidad": "mEq/L",
+      "nombre": "Anión Gap"
+    }
   },
   "felino": {
-    "rbc":          { "inferior": 5.0,   "superior": 10.0,  "unidad": "x10⁶/μL", "nombre": "Eritrocitos (RBC)" },
-    "hgb":          { "inferior": 8,     "superior": 15,    "unidad": "g/dL",     "nombre": "Hemoglobina (Hgb)" },
-    "hct":          { "inferior": 24,    "superior": 45,    "unidad": "%",         "nombre": "Hematocrito (Hct)" },
-    "vcm":          { "inferior": 39,    "superior": 55,    "unidad": "fL",        "nombre": "VCM (MCV)" },
-    "hcm":          { "inferior": 12.5,  "superior": 17.5,  "unidad": "pg",        "nombre": "HCM (MCH)" },
-    "chcm":         { "inferior": 30,    "superior": 36,    "unidad": "g/dL",      "nombre": "CHCM (MCHC)" },
-    "rdw":          { "inferior": 14.0,  "superior": 18.0,  "unidad": "%",         "nombre": "RDW" },
-    "reti":         { "inferior": 0,     "superior": 0.4,   "unidad": "%",         "nombre": "Reticulocitos" },
-    "reti_abs":     { "inferior": 0,     "superior": 40,    "unidad": "x10³/μL",   "nombre": "Reticulocitos #" },
-    "nrbc":         { "inferior": 0,     "superior": 0.5,   "unidad": "/100WBC",   "nombre": "nRBC" },
-    "wbc":          { "inferior": 5.5,   "superior": 19.5,  "unidad": "x10³/μL",   "nombre": "Leucocitos (WBC)" },
-    "neutro":       { "inferior": 35,    "superior": 75,    "unidad": "%",         "nombre": "Neutrófilos" },
-    "linfo":        { "inferior": 20,    "superior": 55,    "unidad": "%",         "nombre": "Linfocitos" },
-    "mono":         { "inferior": 1,     "superior": 4,     "unidad": "%",         "nombre": "Monocitos" },
-    "eosino":       { "inferior": 2,     "superior": 12,    "unidad": "%",         "nombre": "Eosinófilos" },
-    "baso":         { "inferior": 0,     "superior": 1,     "unidad": "%",         "nombre": "Basófilos" },
-    "neutro_abs":   { "inferior": 2.5,   "superior": 12.5,  "unidad": "x10³/μL",   "nombre": "Neutrófilos #" },
-    "linfo_abs":    { "inferior": 1.5,   "superior": 7.0,   "unidad": "x10³/μL",   "nombre": "Linfocitos #" },
-    "mono_abs":     { "inferior": 0,     "superior": 0.85,  "unidad": "x10³/μL",   "nombre": "Monocitos #" },
-    "eosino_abs":   { "inferior": 0,     "superior": 1.5,   "unidad": "x10³/μL",   "nombre": "Eosinófilos #" },
-    "baso_abs":     { "inferior": 0,     "superior": 0.1,   "unidad": "x10³/μL",   "nombre": "Basófilos #" },
-    "plt":          { "inferior": 200,   "superior": 600,   "unidad": "x10³/μL",   "nombre": "Plaquetas" },
-    "mpv":          { "inferior": 12,    "superior": 17,    "unidad": "fL",        "nombre": "MPV" },
-    "pct":          { "inferior": 0.14,  "superior": 0.44,  "unidad": "%",         "nombre": "Plaquetocrito (PCT)" },
-    "alt":          { "inferior": 10,    "superior": 100,   "unidad": "U/L",       "nombre": "ALT (GPT)" },
-    "ast":          { "inferior": 10,    "superior": 50,    "unidad": "U/L",       "nombre": "AST (GOT)" },
-    "fal":          { "inferior": 10,    "superior": 90,    "unidad": "U/L",       "nombre": "FAL (ALP)" },
-    "ggt":          { "inferior": 0,     "superior": 4,     "unidad": "U/L",       "nombre": "GGT" },
-    "amylasa":      { "inferior": 500,   "superior": 1500,  "unidad": "U/L",       "nombre": "Amilasa (AMY)" },
-    "ldh":          { "inferior": 50,    "superior": 300,   "unidad": "U/L",       "nombre": "LDH" },
-    "bili":         { "inferior": 0,     "superior": 0.4,   "unidad": "mg/dL",     "nombre": "Bilirrubina Total" },
-    "bili_dir":     { "inferior": 0,     "superior": 0.1,   "unidad": "mg/dL",     "nombre": "Bilirrubina Directa" },
-    "acidos_bil":   { "inferior": 0,     "superior": 5,     "unidad": "μmol/L",    "nombre": "Ácidos Biliares" },
-    "bun":          { "inferior": 14,    "superior": 36,    "unidad": "mg/dL",     "nombre": "BUN/Urea" },
-    "creat":        { "inferior": 0.8,   "superior": 2.4,   "unidad": "mg/dL",     "nombre": "Creatinina" },
-    "sdma":         { "inferior": 0,     "superior": 14,    "unidad": "μg/dL",     "nombre": "SDMA" },
-    "gluc":         { "inferior": 70,    "superior": 150,   "unidad": "mg/dL",     "nombre": "Glucosa" },
-    "prot":         { "inferior": 5.7,   "superior": 8.9,   "unidad": "g/dL",      "nombre": "Proteína Total" },
-    "alb":          { "inferior": 2.3,   "superior": 3.5,   "unidad": "g/dL",      "nombre": "Albúmina" },
-    "glob":         { "inferior": 2.6,   "superior": 5.1,   "unidad": "g/dL",      "nombre": "Globulinas" },
-    "fosf":         { "inferior": 2.4,   "superior": 8.2,   "unidad": "mg/dL",     "nombre": "Fósforo" },
-    "calc":         { "inferior": 8.0,   "superior": 11.0,  "unidad": "mg/dL",     "nombre": "Calcio" },
-    "magnesio":     { "inferior": 1.9,   "superior": 2.7,   "unidad": "mg/dL",     "nombre": "Magnesio" },
-    "hierro":       { "inferior": 60,    "superior": 175,   "unidad": "μg/dL",     "nombre": "Hierro sérico (Fe)" },
-    "ac_urico":     { "inferior": 0,     "superior": 1.0,   "unidad": "mg/dL",     "nombre": "Ácido úrico (UA)" },
-    "fruc":         { "inferior": 225,   "superior": 350,   "unidad": "μmol/L",    "nombre": "Fructosamina" },
-    "sodio":        { "inferior": 144,   "superior": 160,   "unidad": "mEq/L",     "nombre": "Sodio" },
-    "potasio":      { "inferior": 3.7,   "superior": 5.4,   "unidad": "mEq/L",     "nombre": "Potasio" },
-    "cloro":        { "inferior": 113,   "superior": 129,   "unidad": "mEq/L",     "nombre": "Cloro" },
-    "tco2":         { "inferior": 15,    "superior": 22,    "unidad": "mEq/L",     "nombre": "TCO₂ / Bicarbonato" },
-    "colest":       { "inferior": 75,    "superior": 220,   "unidad": "mg/dL",     "nombre": "Colesterol" },
-    "trigli":       { "inferior": 25,    "superior": 160,   "unidad": "mg/dL",     "nombre": "Triglicéridos" },
-    "lipasa":       { "inferior": 0,     "superior": 200,   "unidad": "U/L",       "nombre": "Lipasa" },
-    "pli":          { "inferior": 0,     "superior": 3.5,   "unidad": "μg/L",      "nombre": "Lipasa pancreática (fPLI)" },
-    "ck":           { "inferior": 0,     "superior": 314,   "unidad": "U/L",       "nombre": "Creatina Kinasa (CK)" },
-    "usg":          { "inferior": 1.013, "superior": 1.100, "unidad": "",           "nombre": "Densidad (USG)" },
-    "ph":           { "inferior": 5.5,   "superior": 7.5,   "unidad": "",           "nombre": "pH urinario" },
-    "rbc_uri":      { "inferior": 0,     "superior": 5,     "unidad": "/μL",        "nombre": "Eritrocitos orina" },
-    "wbc_uri":      { "inferior": 0,     "superior": 5,     "unidad": "/μL",        "nombre": "Leucocitos orina" },
-    "upc":          { "inferior": 0,     "superior": 0.4,   "unidad": "",           "nombre": "Cociente P/C (UPC)" },
-    "pt":           { "inferior": 8.0,   "superior": 13.0,  "unidad": "s",          "nombre": "Tiempo de protrombina (TP)" },
-    "aptt":         { "inferior": 12.0,  "superior": 18.0,  "unidad": "s",          "nombre": "TTPa (aPTT)" },
-    "act":          { "inferior": 50,    "superior": 75,    "unidad": "s",          "nombre": "ACT" },
-    "fibrinogeno":  { "inferior": 100,   "superior": 300,   "unidad": "mg/dL",      "nombre": "Fibrinógeno" },
-    "ddimeros":     { "inferior": 0,     "superior": 250,   "unidad": "ng/mL",      "nombre": "Dímeros D" },
-    "fdp":          { "inferior": 0,     "superior": 10,    "unidad": "μg/mL",      "nombre": "PDF (FDP)" },
-    "antitrombina": { "inferior": 75,    "superior": 120,   "unidad": "%",          "nombre": "Antitrombina (AT-III)" },
-    "vwf":          { "inferior": 70,    "superior": 180,   "unidad": "%",          "nombre": "vWF (antígeno)" },
-    "cortisol_bas": { "inferior": 0.5,   "superior": 4.0,   "unidad": "μg/dL",     "nombre": "Cortisol basal" },
-    "cortisol_acth":{ "inferior": 3.5,   "superior": 12.0,  "unidad": "μg/dL",     "nombre": "Cortisol post-ACTH" },
-    "t4_total":     { "inferior": 19,    "superior": 52,    "unidad": "nmol/L",    "nombre": "T4 total" },
-    "t4_libre":     { "inferior": 10,    "superior": 40,    "unidad": "pmol/L",    "nombre": "T4 libre (fT4)" },
-    "tsh":          { "inferior": 0.01,  "superior": 0.30,  "unidad": "ng/mL",     "nombre": "TSH" },
-    "insulina":     { "inferior": 5,     "superior": 25,    "unidad": "μIU/mL",    "nombre": "Insulina basal" },
-    "progesterona": { "inferior": 0.1,   "superior": 1.0,   "unidad": "ng/mL",     "nombre": "Progesterona" },
-    "ctni":         { "inferior": 0,     "superior": 0.06,  "unidad": "ng/mL",     "nombre": "Troponina I cardíaca (cTnI)" },
-    "nt_probnp":    { "inferior": 0,     "superior": 100,   "unidad": "pmol/L",    "nombre": "NT-proBNP" },
-    "crp":          { "inferior": 0,     "superior": 10,    "unidad": "mg/L",      "nombre": "Proteína C reactiva (PCR)" },
-    "saa":          { "inferior": 0,     "superior": 10,    "unidad": "mg/L",      "nombre": "Amiloide A sérico (SAA)" },
-    "fenobarbital": { "inferior": 20,    "superior": 40,    "unidad": "μg/mL",     "nombre": "Fenobarbital (nivel sérico)" },
-    "ciclosporina": { "inferior": 100,   "superior": 400,   "unidad": "ng/mL",     "nombre": "Ciclosporina (nivel sérico)" },
-    "ph_sangre":    { "inferior": 7.35,  "superior": 7.46,  "unidad": "",           "nombre": "pH sanguíneo" },
-    "pco2":         { "inferior": 28,    "superior": 35,    "unidad": "mmHg",       "nombre": "pCO₂" },
-    "po2":          { "inferior": 85,    "superior": 100,   "unidad": "mmHg",       "nombre": "pO₂ arterial" },
-    "hco3":         { "inferior": 16,    "superior": 22,    "unidad": "mEq/L",      "nombre": "HCO₃⁻" },
-    "exceso_base":  { "inferior": -4,    "superior": 4,     "unidad": "mEq/L",      "nombre": "Exceso de base (BE)" },
-    "so2":          { "inferior": 95,    "superior": 100,   "unidad": "%",          "nombre": "Saturación O₂ (SO₂)" },
-    "ca_ion":       { "inferior": 1.12,  "superior": 1.40,  "unidad": "mmol/L",     "nombre": "Calcio ionizado (iCa)" },
-    "lactato":      { "inferior": 0.3,   "superior": 2.0,   "unidad": "mmol/L",     "nombre": "Lactato" },
-    "anion_gap":    { "inferior": 10,    "superior": 18,    "unidad": "mEq/L",      "nombre": "Anión Gap" }
+    "rbc": {
+      "inferior": 5.0,
+      "superior": 11.0,
+      "unidad": "x10⁶/μL",
+      "nombre": "Eritrocitos (RBC)"
+    },
+    "hgb": {
+      "inferior": 8,
+      "superior": 15,
+      "unidad": "g/dL",
+      "nombre": "Hemoglobina (Hgb)"
+    },
+    "hct": {
+      "inferior": 24,
+      "superior": 45,
+      "unidad": "%",
+      "nombre": "Hematocrito (Hct)"
+    },
+    "vcm": {
+      "inferior": 39.0,
+      "superior": 50.0,
+      "unidad": "fL",
+      "nombre": "VCM (MCV)"
+    },
+    "hcm": {
+      "inferior": 12.5,
+      "superior": 17.5,
+      "unidad": "pg",
+      "nombre": "HCM (MCH)"
+    },
+    "chcm": {
+      "inferior": 33.0,
+      "superior": 37.0,
+      "unidad": "g/dL",
+      "nombre": "CHCM (MCHC)"
+    },
+    "rdw": {
+      "inferior": 14.0,
+      "superior": 18.0,
+      "unidad": "%",
+      "nombre": "RDW"
+    },
+    "reti": {
+      "inferior": 0,
+      "superior": 0.4,
+      "unidad": "%",
+      "nombre": "Reticulocitos"
+    },
+    "reti_abs": {
+      "inferior": 0.0,
+      "superior": 60.0,
+      "unidad": "x10³/μL",
+      "nombre": "Reticulocitos #"
+    },
+    "nrbc": {
+      "inferior": 0,
+      "superior": 0.5,
+      "unidad": "/100WBC",
+      "nombre": "nRBC"
+    },
+    "wbc": {
+      "inferior": 5.5,
+      "superior": 19.5,
+      "unidad": "x10³/μL",
+      "nombre": "Leucocitos (WBC)"
+    },
+    "neutro": {
+      "inferior": 35,
+      "superior": 75,
+      "unidad": "%",
+      "nombre": "Neutrófilos"
+    },
+    "linfo": {
+      "inferior": 20,
+      "superior": 55,
+      "unidad": "%",
+      "nombre": "Linfocitos"
+    },
+    "mono": {
+      "inferior": 1,
+      "superior": 4,
+      "unidad": "%",
+      "nombre": "Monocitos"
+    },
+    "eosino": {
+      "inferior": 2,
+      "superior": 12,
+      "unidad": "%",
+      "nombre": "Eosinófilos"
+    },
+    "baso": {
+      "inferior": 0,
+      "superior": 1,
+      "unidad": "%",
+      "nombre": "Basófilos"
+    },
+    "neutro_abs": {
+      "inferior": 2.5,
+      "superior": 12.5,
+      "unidad": "x10³/μL",
+      "nombre": "Neutrófilos #"
+    },
+    "linfo_abs": {
+      "inferior": 1.5,
+      "superior": 7.0,
+      "unidad": "x10³/μL",
+      "nombre": "Linfocitos #"
+    },
+    "mono_abs": {
+      "inferior": 0.0,
+      "superior": 0.8,
+      "unidad": "x10³/μL",
+      "nombre": "Monocitos #"
+    },
+    "eosino_abs": {
+      "inferior": 0,
+      "superior": 1.5,
+      "unidad": "x10³/μL",
+      "nombre": "Eosinófilos #"
+    },
+    "baso_abs": {
+      "inferior": 0,
+      "superior": 0.1,
+      "unidad": "x10³/μL",
+      "nombre": "Basófilos #"
+    },
+    "plt": {
+      "inferior": 200.0,
+      "superior": 500.0,
+      "unidad": "x10³/μL",
+      "nombre": "Plaquetas"
+    },
+    "mpv": {
+      "inferior": 12,
+      "superior": 17,
+      "unidad": "fL",
+      "nombre": "MPV"
+    },
+    "pct": {
+      "inferior": 0.14,
+      "superior": 0.44,
+      "unidad": "%",
+      "nombre": "Plaquetocrito (PCT)"
+    },
+    "alt": {
+      "inferior": 10,
+      "superior": 100,
+      "unidad": "U/L",
+      "nombre": "ALT (GPT)"
+    },
+    "ast": {
+      "inferior": 10,
+      "superior": 50,
+      "unidad": "U/L",
+      "nombre": "AST (GOT)"
+    },
+    "fal": {
+      "inferior": 10,
+      "superior": 90,
+      "unidad": "U/L",
+      "nombre": "FAL (ALP)"
+    },
+    "ggt": {
+      "inferior": 0,
+      "superior": 4,
+      "unidad": "U/L",
+      "nombre": "GGT"
+    },
+    "amylasa": {
+      "inferior": 500,
+      "superior": 1500,
+      "unidad": "U/L",
+      "nombre": "Amilasa (AMY)"
+    },
+    "ldh": {
+      "inferior": 50,
+      "superior": 300,
+      "unidad": "U/L",
+      "nombre": "LDH"
+    },
+    "bili": {
+      "inferior": 0,
+      "superior": 0.4,
+      "unidad": "mg/dL",
+      "nombre": "Bilirrubina Total"
+    },
+    "bili_dir": {
+      "inferior": 0,
+      "superior": 0.1,
+      "unidad": "mg/dL",
+      "nombre": "Bilirrubina Directa"
+    },
+    "acidos_bil": {
+      "inferior": 0,
+      "superior": 5,
+      "unidad": "μmol/L",
+      "nombre": "Ácidos Biliares"
+    },
+    "bun": {
+      "inferior": 17.0,
+      "superior": 32.0,
+      "unidad": "mg/dL",
+      "nombre": "BUN/Urea"
+    },
+    "creat": {
+      "inferior": 0.9,
+      "superior": 2.1,
+      "unidad": "mg/dL",
+      "nombre": "Creatinina"
+    },
+    "sdma": {
+      "inferior": 0,
+      "superior": 18,
+      "unidad": "μg/dL",
+      "nombre": "SDMA"
+    },
+    "gluc": {
+      "inferior": 67.0,
+      "superior": 124.0,
+      "unidad": "mg/dL",
+      "nombre": "Glucosa"
+    },
+    "prot": {
+      "inferior": 6.0,
+      "superior": 8.0,
+      "unidad": "g/dL",
+      "nombre": "Proteína Total"
+    },
+    "alb": {
+      "inferior": 2.3,
+      "superior": 3.9,
+      "unidad": "g/dL",
+      "nombre": "Albúmina"
+    },
+    "glob": {
+      "inferior": 2.9,
+      "superior": 4.4,
+      "unidad": "g/dL",
+      "nombre": "Globulinas"
+    },
+    "fosf": {
+      "inferior": 3.3,
+      "superior": 7.8,
+      "unidad": "mg/dL",
+      "nombre": "Fósforo"
+    },
+    "calc": {
+      "inferior": 8.5,
+      "superior": 11.0,
+      "unidad": "mg/dL",
+      "nombre": "Calcio"
+    },
+    "magnesio": {
+      "inferior": 1.9,
+      "superior": 2.7,
+      "unidad": "mg/dL",
+      "nombre": "Magnesio"
+    },
+    "hierro": {
+      "inferior": 60,
+      "superior": 175,
+      "unidad": "μg/dL",
+      "nombre": "Hierro sérico (Fe)"
+    },
+    "ac_urico": {
+      "inferior": 0,
+      "superior": 1.0,
+      "unidad": "mg/dL",
+      "nombre": "Ácido úrico (UA)"
+    },
+    "fruc": {
+      "inferior": 225,
+      "superior": 350,
+      "unidad": "μmol/L",
+      "nombre": "Fructosamina"
+    },
+    "sodio": {
+      "inferior": 144,
+      "superior": 160,
+      "unidad": "mEq/L",
+      "nombre": "Sodio"
+    },
+    "potasio": {
+      "inferior": 3.7,
+      "superior": 5.4,
+      "unidad": "mEq/L",
+      "nombre": "Potasio"
+    },
+    "cloro": {
+      "inferior": 112.0,
+      "superior": 129.0,
+      "unidad": "mEq/L",
+      "nombre": "Cloro"
+    },
+    "tco2": {
+      "inferior": 14.0,
+      "superior": 24.0,
+      "unidad": "mEq/L",
+      "nombre": "TCO₂ / Bicarbonato"
+    },
+    "colest": {
+      "inferior": 75,
+      "superior": 220,
+      "unidad": "mg/dL",
+      "nombre": "Colesterol"
+    },
+    "trigli": {
+      "inferior": 25,
+      "superior": 160,
+      "unidad": "mg/dL",
+      "nombre": "Triglicéridos"
+    },
+    "lipasa": {
+      "inferior": 3.0,
+      "superior": 125.0,
+      "unidad": "U/L",
+      "nombre": "Lipasa"
+    },
+    "pli": {
+      "inferior": 0,
+      "superior": 3.5,
+      "unidad": "μg/L",
+      "nombre": "Lipasa pancreática (fPLI)"
+    },
+    "ck": {
+      "inferior": 0,
+      "superior": 314,
+      "unidad": "U/L",
+      "nombre": "Creatina Kinasa (CK)"
+    },
+    "usg": {
+      "inferior": 1.013,
+      "superior": 1.1,
+      "unidad": "",
+      "nombre": "Densidad (USG)"
+    },
+    "ph": {
+      "inferior": 5.5,
+      "superior": 7.5,
+      "unidad": "",
+      "nombre": "pH urinario"
+    },
+    "rbc_uri": {
+      "inferior": 0,
+      "superior": 5,
+      "unidad": "/μL",
+      "nombre": "Eritrocitos orina"
+    },
+    "wbc_uri": {
+      "inferior": 0,
+      "superior": 5,
+      "unidad": "/μL",
+      "nombre": "Leucocitos orina"
+    },
+    "upc": {
+      "inferior": 0,
+      "superior": 0.2,
+      "unidad": "",
+      "nombre": "Cociente P/C (UPC)"
+    },
+    "pt": {
+      "inferior": 8.0,
+      "superior": 13.0,
+      "unidad": "s",
+      "nombre": "Tiempo de protrombina (TP)"
+    },
+    "aptt": {
+      "inferior": 12.0,
+      "superior": 18.0,
+      "unidad": "s",
+      "nombre": "TTPa (aPTT)"
+    },
+    "act": {
+      "inferior": 50,
+      "superior": 75,
+      "unidad": "s",
+      "nombre": "ACT"
+    },
+    "fibrinogeno": {
+      "inferior": 100,
+      "superior": 300,
+      "unidad": "mg/dL",
+      "nombre": "Fibrinógeno"
+    },
+    "ddimeros": {
+      "inferior": 0,
+      "superior": 250,
+      "unidad": "ng/mL",
+      "nombre": "Dímeros D"
+    },
+    "fdp": {
+      "inferior": 0,
+      "superior": 10,
+      "unidad": "μg/mL",
+      "nombre": "PDF (FDP)"
+    },
+    "antitrombina": {
+      "inferior": 75,
+      "superior": 120,
+      "unidad": "%",
+      "nombre": "Antitrombina (AT-III)"
+    },
+    "vwf": {
+      "inferior": 70,
+      "superior": 180,
+      "unidad": "%",
+      "nombre": "vWF (antígeno)"
+    },
+    "cortisol_bas": {
+      "inferior": 0.5,
+      "superior": 4.0,
+      "unidad": "μg/dL",
+      "nombre": "Cortisol basal"
+    },
+    "cortisol_acth": {
+      "inferior": 3.5,
+      "superior": 12.0,
+      "unidad": "μg/dL",
+      "nombre": "Cortisol post-ACTH"
+    },
+    "t4_total": {
+      "inferior": 19,
+      "superior": 52,
+      "unidad": "nmol/L",
+      "nombre": "T4 total"
+    },
+    "t4_libre": {
+      "inferior": 10,
+      "superior": 40,
+      "unidad": "pmol/L",
+      "nombre": "T4 libre (fT4)"
+    },
+    "tsh": {
+      "inferior": 0.01,
+      "superior": 0.3,
+      "unidad": "ng/mL",
+      "nombre": "TSH"
+    },
+    "insulina": {
+      "inferior": 5,
+      "superior": 25,
+      "unidad": "μIU/mL",
+      "nombre": "Insulina basal"
+    },
+    "progesterona": {
+      "inferior": 0.1,
+      "superior": 1.0,
+      "unidad": "ng/mL",
+      "nombre": "Progesterona"
+    },
+    "ctni": {
+      "inferior": 0,
+      "superior": 0.06,
+      "unidad": "ng/mL",
+      "nombre": "Troponina I cardíaca (cTnI)"
+    },
+    "nt_probnp": {
+      "inferior": 0,
+      "superior": 100,
+      "unidad": "pmol/L",
+      "nombre": "NT-proBNP"
+    },
+    "crp": {
+      "inferior": 0,
+      "superior": 10,
+      "unidad": "mg/L",
+      "nombre": "Proteína C reactiva (PCR)"
+    },
+    "saa": {
+      "inferior": 0,
+      "superior": 10,
+      "unidad": "mg/L",
+      "nombre": "Amiloide A sérico (SAA)"
+    },
+    "fenobarbital": {
+      "inferior": 20,
+      "superior": 40,
+      "unidad": "μg/mL",
+      "nombre": "Fenobarbital (nivel sérico)"
+    },
+    "ciclosporina": {
+      "inferior": 100,
+      "superior": 400,
+      "unidad": "ng/mL",
+      "nombre": "Ciclosporina (nivel sérico)"
+    },
+    "ph_sangre": {
+      "inferior": 7.35,
+      "superior": 7.46,
+      "unidad": "",
+      "nombre": "pH sanguíneo"
+    },
+    "pco2": {
+      "inferior": 28,
+      "superior": 35,
+      "unidad": "mmHg",
+      "nombre": "pCO₂"
+    },
+    "po2": {
+      "inferior": 85,
+      "superior": 100,
+      "unidad": "mmHg",
+      "nombre": "pO₂ arterial"
+    },
+    "hco3": {
+      "inferior": 16,
+      "superior": 22,
+      "unidad": "mEq/L",
+      "nombre": "HCO₃⁻"
+    },
+    "exceso_base": {
+      "inferior": -4,
+      "superior": 4,
+      "unidad": "mEq/L",
+      "nombre": "Exceso de base (BE)"
+    },
+    "so2": {
+      "inferior": 95,
+      "superior": 100,
+      "unidad": "%",
+      "nombre": "Saturación O₂ (SO₂)"
+    },
+    "ca_ion": {
+      "inferior": 1.12,
+      "superior": 1.4,
+      "unidad": "mmol/L",
+      "nombre": "Calcio ionizado (iCa)"
+    },
+    "lactato": {
+      "inferior": 0.3,
+      "superior": 2.0,
+      "unidad": "mmol/L",
+      "nombre": "Lactato"
+    },
+    "anion_gap": {
+      "inferior": 10,
+      "superior": 18,
+      "unidad": "mEq/L",
+      "nombre": "Anión Gap"
+    }
   }
 }

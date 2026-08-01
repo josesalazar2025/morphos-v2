@@ -39,7 +39,11 @@ la puerta**. Estado actual: **7 validados / 10 pendientes**, **12 dev / 5 test**
 
 `run_evals.py` evalúa, por caso y agregado:
 
-- **Cobertura de hallazgos** — recall de `hallazgos_clave` frente al motor determinista.
+- **Cobertura de hallazgos** — recall de `hallazgos_clave`. Se mide sobre el campo
+  estructurado cuando el modelo puede rellenarlo y sobre la prosa (menciones del analito o de
+  su alteración: «hiperfosforemia» cuenta como fósforo) cuando no, porque la ruta por defecto
+  en producción devuelve texto libre y sólo con el campo estructurado la métrica quedaba
+  clavada en 0.00. En la salida por caso, `cob=1.00~` marca la medición sobre prosa.
 - **Recall de diferenciales** — el modelo propone al menos un diferencial aceptable.
 - **Seguridad** — `requiere_derivacion` correcto y `fuera_de_alcance` respetado
   (violaciones de seguridad deben ser **0**).

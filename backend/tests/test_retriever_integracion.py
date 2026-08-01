@@ -55,6 +55,35 @@ def test_recuperar_end_to_end(monkeypatch, indice):
     assert isinstance(top.score, float)  # RRF (sin rerank), orientado mayor = más relevante
 
 
+def test_multiconsulta_recupera_lo_de_cada_patron(monkeypatch, indice):
+    """El fallo que arregla la multi-consulta: 'anemia ; higado' en un solo embedding es un
+    vector que no es ninguno de los dos. Con una consulta por patrón, ambos aparecen."""
+    monkeypatch.setattr(R, "_cargar_recursos", lambda: (_EmbedStub(), indice))
+    monkeypatch.setattr(R, "_cargar_reranker", lambda: None)
+
+    frags = R.recuperar_multi(["anemia", "higado"], top_k=2)
+    textos = " ".join(f.texto.lower() for f in frags)
+    assert "anemia" in textos and "hepatocellular" in textos
+
+
+def test_multiconsulta_con_una_sola_consulta_equivale_a_recuperar(monkeypatch, indice):
+    monkeypatch.setattr(R, "_cargar_recursos", lambda: (_EmbedStub(), indice))
+    monkeypatch.setattr(R, "_cargar_reranker", lambda: None)
+
+    uno = R.recuperar_multi(["anemia"], top_k=2)
+    directo = R.recuperar("anemia", top_k=2)
+    assert [f.texto for f in uno] == [f.texto for f in directo]
+
+
+def test_multiconsulta_respeta_el_filtro_de_especie(monkeypatch, indice):
+    monkeypatch.setattr(R, "_cargar_recursos", lambda: (_EmbedStub(), indice))
+    monkeypatch.setattr(R, "_cargar_reranker", lambda: None)
+
+    frags = R.recuperar_multi(["higado liver ALT", "renal"], especie="felino", top_k=5)
+    textos = " ".join(f.texto.lower() for f in frags)
+    assert "hepatocellular" not in textos, "el fragmento canino no fue filtrado por especie"
+
+
 def test_filtro_por_especie_excluye_otra_especie(monkeypatch, indice):
     monkeypatch.setattr(R, "_cargar_recursos", lambda: (_EmbedStub(), indice))
     monkeypatch.setattr(R, "_cargar_reranker", lambda: None)

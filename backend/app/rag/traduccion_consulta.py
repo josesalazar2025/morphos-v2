@@ -80,6 +80,9 @@ _LEXICO: dict[str, str] = {
     "hipoxemia": "hypoxemia", "hiperlactatemia": "hyperlactatemia",
     "hiperfibrinogenemia": "hyperfibrinogenemia", "hipofibrinogenemia": "hypofibrinogenemia",
     "coagulacion": "coagulation",
+    # Estadiaje IRIS (entidad erc_iris de alteraciones.json)
+    "escala": "scale", "graduada": "graded", "graduado": "graded", "estadio": "stage",
+    "estadiaje": "staging", "proteinurico": "proteinuric",
 }
 
 # Cognados/proper-nouns/acrónimos que pasan directos sin necesidad de entrada en el léxico

@@ -47,6 +47,19 @@ def construir_query_eval(caso: dict) -> str:
     return " ; ".join(p for p in partes if p)[:512]
 
 
+def construir_queries_eval(caso: dict) -> list[str]:
+    """Versión multi-consulta de la anterior, para poder medir el A/B.
+
+    Reproduce la descomposición de producción con lo que tiene el caso dorado: la entidad
+    clínica y los signos hacen de «patrones» (una consulta cada uno) y los analitos van
+    agregados, igual que `construir_consultas` hace con hallazgos.
+    """
+    from app.rag.retriever import construir_consultas
+
+    patrones = [p for p in (caso.get("descripcion", ""), caso.get("signos_clinicos", "")) if p]
+    return construir_consultas(patrones, caso.get("esperado", {}).get("hallazgos_clave", []))
+
+
 # --- Métricas (puras, testeables sin índice) ---
 
 def precision_en_k(relevancias: list[bool]) -> float:
@@ -103,6 +116,23 @@ _ESQUEMA_RELEVANCIA = {
 }
 
 
+def _juez_cli(caso: dict, textos: list[str]) -> list[bool]:
+    """Juez servido por el CLI de Claude Code: sin clave de API, con un modelo grande."""
+    from judge.claude_cli import preguntar_json
+
+    dx = ", ".join(caso.get("esperado", {}).get("diferenciales_aceptables", []))
+    return [
+        bool(
+            preguntar_json(
+                "Eres un patólogo clínico veterinario. Responde SOLO con el JSON pedido, "
+                'con esta forma exacta: {"relevante": true|false}',
+                _PREGUNTA_RELEVANCIA.format(dx=dx, texto=texto[:1200]),
+            ).get("relevante", False)
+        )
+        for texto in textos
+    ]
+
+
 def _juez_ollama(caso: dict, textos: list[str]) -> list[bool]:
     """Juez LLM local y gratuito, con salida estructurada (booleano, sin parseo de prosa)."""
     from judge.ollama_local import preguntar_json
@@ -146,11 +176,20 @@ def _juez_claude(caso: dict, textos: list[str]) -> list[bool]:
 
 
 def elegir_juez(preferencia: str):
-    """Devuelve (funcion_juez, etiqueta). Prefiere el juez local gratuito."""
+    """Devuelve (funcion_juez, etiqueta). Mismo orden que el juez clínico: CLI de Claude
+    Code → Ollama local → SDK de Claude → heurístico de palabras clave."""
+    from judge import claude_cli
     from judge.ollama_local import disponible, modelo_juez
 
     if preferencia == "keyword":
         return _juez_keyword, "keyword(aprox)"
+    if preferencia in ("auto", "cli"):
+        ok, motivo = claude_cli.disponible()
+        if ok:
+            return _juez_cli, f"claude-cli:{claude_cli.modelo_cli()}"
+        if preferencia == "cli":
+            print(f"  ⚠ juez cli no disponible: {motivo}")
+            return _juez_keyword, "keyword(aprox)"
     if preferencia in ("auto", "ollama"):
         ok, motivo = disponible()
         if ok:
@@ -163,9 +202,9 @@ def elegir_juez(preferencia: str):
     return _juez_keyword, "keyword(aprox)"
 
 
-def evaluar(k: int, preferencia_juez: str) -> int:
+def evaluar(k: int, preferencia_juez: str, multiconsulta: bool = False) -> int:
     from app.config import obtener_config
-    from app.rag.retriever import recuperar
+    from app.rag.retriever import recuperar, recuperar_multi
 
     cfg = obtener_config()
     casos = cargar_casos()
@@ -173,8 +212,11 @@ def evaluar(k: int, preferencia_juez: str) -> int:
 
     relevancias_por_caso: list[list[bool]] = []
     for caso in casos:
-        query = construir_query_eval(caso)
-        frags = recuperar(query, especie=caso.get("paciente", {}).get("especie"), top_k=k)
+        especie = caso.get("paciente", {}).get("especie")
+        if multiconsulta:
+            frags = recuperar_multi(construir_queries_eval(caso), especie=especie, top_k=k)
+        else:
+            frags = recuperar(construir_query_eval(caso), especie=especie, top_k=k)
         if not frags:
             print(f"  ⚠ {caso['id']}: 0 fragmentos (¿índice construido para esta config?)")
             relevancias_por_caso.append([])
@@ -187,7 +229,8 @@ def evaluar(k: int, preferencia_juez: str) -> int:
     print("\n=== RESUMEN RECUPERACIÓN ===")
     print(f"config: embed={cfg.rag_embed_model} query_lang={cfg.rag_query_lang} "
           f"hibrido={cfg.rag_hibrido} rerank={cfg.rag_rerank} k={k} "
-          f"juez={etiqueta_juez}")
+          f"multiconsulta={multiconsulta} max_por_libro={cfg.rag_max_por_libro} "
+          f"score_minimo={cfg.rag_score_minimo} juez={etiqueta_juez}")
     print(json.dumps(met, ensure_ascii=False))
     return 0
 
@@ -197,14 +240,19 @@ def main() -> None:
     parser.add_argument("--k", type=int, default=6)
     parser.add_argument("--etiqueta", default="", help="etiqueta informativa de la config")
     parser.add_argument(
-        "--juez", choices=["auto", "ollama", "claude", "keyword"], default="auto",
-        help="auto: juez local gratuito si Ollama responde; si no, Claude si hay clave; si no, keyword",
+        "--juez", choices=["auto", "cli", "ollama", "claude", "keyword"], default="auto",
+        help="auto: CLI de Claude Code → Ollama local → SDK de Claude → keyword",
     )
     parser.add_argument("--keyword", action="store_true", help="atajo de --juez keyword")
+    parser.add_argument(
+        "--multiconsulta", action="store_true",
+        help="descompone el caso en una consulta por entidad y fusiona con RRF (A/B del "
+             "comportamiento de producción, controlado por MORPHOS_RAG_MULTICONSULTA)",
+    )
     args = parser.parse_args()
     if args.etiqueta:
         print(f"# config: {args.etiqueta}")
-    sys.exit(evaluar(args.k, "keyword" if args.keyword else args.juez))
+    sys.exit(evaluar(args.k, "keyword" if args.keyword else args.juez, args.multiconsulta))
 
 
 if __name__ == "__main__":

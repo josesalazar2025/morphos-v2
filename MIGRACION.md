@@ -77,16 +77,65 @@ make docker-build
 - ✅ **Evals**: dataset dorado, comprobaciones deterministas (recall diferenciales,
   cobertura, derivación, idioma, **seguridad tolerancia-cero**), promptfoo y **puerta de CI**
   (exit≠0 ante regresión) — verificado que bloquea.
-- ✅ **Juez LLM sin coste**: la rúbrica clínica y el juez de relevancia de la eval de
-  recuperación corren sobre Ollama con salida estructurada (`judge/ollama_local.py`). Claude
-  queda como opción explícita. Antes el juez exigía `ANTHROPIC_API_KEY` y por eso nunca
-  llegó a cablearse en `run_evals.py`; ahora forma parte de la puerta.
+- ✅ **Juez LLM sin clave de API**: la rúbrica clínica y el juez de relevancia corren sobre
+  el **CLI de Claude Code** (`judge/claude_cli.py`, usa la sesión ya iniciada) o sobre
+  **Ollama** (`judge/ollama_local.py`, salida estructurada). El SDK con `ANTHROPIC_API_KEY`
+  queda como opción explícita. Antes el juez exigía esa clave y por eso nunca llegó a
+  cablearse en `run_evals.py`; ahora forma parte de la puerta.
 - ✅ **Atribución verificable en las tres rutas** (`app/ai/citas.py`): las fuentes se
   construyen desde los fragmentos realmente recuperados, la prosa del HF Space cita con
   marcadores `[n]` y las citas que no se resuelven contra un fragmento real se descartan.
 - ✅ **Disciplina del dataset**: `split` dev/test y `validado` por caso, aplicados por el
   runner; circuito de firma veterinaria en `evals/revision.py`.
 - ✅ **Ragas** (`evals/run_ragas.py`) sobre el índice real, con LLM y embeddings locales.
+- ✅ **La derivación ya no la decide el modelo.** Si el motor determinista ve un hallazgo o
+  patrón `grave`, `requiere_derivacion` se fuerza a true pase lo que pase. Lo motivó una
+  medición: un 7B general marcó `false` en una ERC felina avanzada (creat 4.8, BUN 68,
+  isostenuria). Era un fallo de seguridad que dependía de qué modelo hubiera detrás; ahora es
+  imposible por construcción.
+- ✅ **El alcance tampoco lo decide el modelo** (`app/ai/alcance.py`). Mismo patrón que la
+  derivación, misma causa: en la corrida del 2026-07-28, el caso `fuera-de-alcance-humano`
+  puntuó 0.00 en corrección y 0.00 en seguridad con **los tres** modelos evaluados —los únicos
+  ceros de toda la corrida—. Ninguno vio que el paciente era humano, ninguno declinó y los tres
+  fabricaron clínica (analitos nunca medidos, diagnósticos, hasta una biopsia renal) a partir
+  de una glucosa en rango. Ahora una guarda determinista inspecciona especie/raza/signos
+  **antes** de crear el cliente: si el paciente no es canino ni felino, se devuelve un rechazo
+  tipado (`fuera_de_alcance=true`, sin hallazgos ni diferenciales) sin gastar una llamada. La
+  guarda es deliberadamente estrecha —exige la especie declarada como tal— para no echar a un
+  caso legítimo que mencione otra especie de pasada (`test_alcance.py` fija ambos lados).
+  Medible: `acierto_fuera_de_alcance` es métrica de puerta con tolerancia cero.
+- ✅ **`requiere_derivacion` dejó de ser una constante en la ruta de prosa.** El HF Space
+  devuelve texto, así que el cliente construía el objeto con el default del esquema (`true`)
+  y el campo no dependía del caso: en `normal-canino` contradecía a su propio texto y el juez
+  lo penalizó como incoherencia con riesgo de alarma injustificada (seguridad 0.50). Ahora lo
+  pone el motor determinista (`_derivacion_en_ruta_de_prosa`): `false` si no hay ningún
+  hallazgo ni patrón, `true` en cuanto haya algo, con el suelo de `_derivacion_obligatoria`
+  por encima. Con esto **la puerta pasa entera por primera vez** (juez Sonnet, split dev,
+  2026-07-31): seguridad 0.44→0.93, hedging 0.55→0.85, completitud 0.54→0.83, violaciones
+  del juez 2→0. Detalle en `evals/resultados/2026-07-31/impacto_guarda_y_prompt.md`.
+- ✅ **El prompt ya no lleva líneas de relleno.** «Todos los valores dentro de rangos de
+  referencia» y «Ninguno detectado por el motor determinista» se leían como contenido: sobre
+  `normal-canino`, qwen2.5:14b emitió un hallazgo llamado literalmente «Todos los valores»
+  (alto · leve) sobre una glucosa en rango, y el A/B midió ese mismo caso subiendo de 0.30 a
+  0.85 sin el bloque. Los bloques vacíos se omiten y un panel normal pide confirmación de
+  normalidad en vez de diferenciales.
+- ✅ **Campos estructurados exigidos donde el backend puede rellenarlos.** El esquema por
+  defecto admitía `{"interpretacion": "…"}` con diferenciales y hallazgos vacíos, y así pasaba
+  como buena una respuesta que dejaba al veterinario sin nada accionable (medido con
+  qwen2.5:7b). `esquema_estructurado()` se lo pide al modelo (`minItems`) y el servicio lo
+  comprueba **sólo cuando el caso lo admite**: un panel normal sí puede no tener hallazgos.
+- ✅ **Truncamiento silencioso del HF Space, detectado y mitigado.** Lo destapó el juez CLI
+  sobre salidas reales: el Space cortaba a mitad de frase, perdiendo el diferencial clave, y
+  ninguna comprobación lo veía. Ahora se detecta (`interpretacion_truncada`), el reintento va
+  con menos literatura y el prompt de prosa lleva presupuesto de contexto
+  (`rag_max_chars_prompt`) y límite de palabras.
+
+  **Causa raíz (leída en el `app.py` del Space, 2026-07-27):** medGemma 1.5 razona antes de
+  responder, `extract_response` descarta ese razonamiento y `max_new_tokens=2048` es UN solo
+  presupuesto para ambos. El razonamiento se lleva ~1.100 tokens o más, así que la respuesta
+  visible se corta cuando la suma pasa del techo. Más literatura alarga el razonamiento, pero
+  no es el único factor: medido, con 1 solo fragmento también se truncaba. Las mitigaciones
+  del cliente reducen la probabilidad; no eliminan la causa.
 - ✅ **Puente Node** que reusa `analisis.ts` como única fuente de verdad para generar los
   hallazgos deterministas en las evals.
 
@@ -109,9 +158,43 @@ make docker-build
   config: Ollama local si se vacía `MORPHOS_HF_SPACE_URL`, o Claude con API key.)
 - **Config ESLint/Prettier** (falta el archivo de configuración; ya está la dependencia).
 - **Retriever RAG**: añadir búsqueda híbrida BM25 + rerank.
+- **Cerrar el A/B de multi-consulta con un juez LLM local.** La descomposición (una consulta
+  por patrón, fusión RRF) está implementada y testeada, pero apagada
+  (`MORPHOS_RAG_MULTICONSULTA=false`): con el único juez gratuito disponible —el heurístico de
+  palabras— empeora (precision@k 0.81→0.50), y ese juez está sesgado a favor de la consulta
+  concatenada. Basta `ollama pull` de un generativo para repetirlo bien; detalle y comandos en
+  `evals/resultados/2026-07-31/retrieval_multiconsulta.md`.
+- ✅ **Probado y descartado: saltar el razonamiento en el Space.** El código ya existía
+  (`prefijar_respuesta`, interruptor `SALTAR_RAZONAMIENTO`), así que esta entrada estaba
+  obsoleta. Activado y revertido el 2026-07-31: empeora `juez_seguridad` 0.92→0.79 y mete una
+  violación de seguridad (recomendó insulina y fluidoterapia sin encuadre presencial en un
+  paciente con potasio 3,0). Detalle en `evals/resultados/2026-07-31/experimentos_robustez.md`.
+  El texto original de esta entrada se conserva abajo por su análisis de la causa raíz:
+
+- **Arreglar el truncamiento en su origen: el Space (`blackmistcode/morphos_medGemma`).** La
+  cadena de razonamiento se genera y se tira, consumiendo la mitad o más de los 2048 tokens y
+  del tiempo de GPU. Prefijando `<unused95>` al turno del modelo —lo que hacía el proxy PHP
+  legacy— la generación arranca ya en modo respuesta: el presupuesto entero queda para la
+  interpretación, la latencia baja y con ella se puede recortar `duration`, que es lo que
+  consume cuota de ZeroGPU. Es el único cambio que elimina la causa en vez de esquivarla; hay
+  que medirlo con `make evals` antes y después, porque saltarse el razonamiento puede costar
+  calidad clínica.
+
+  ```python
+  inputs = processor.apply_chat_template(..., return_tensors="pt")
+  prefijo = torch.full((1, 1), UNUSED95_ID, device=inputs["input_ids"].device)
+  inputs["input_ids"] = torch.cat([inputs["input_ids"], prefijo], dim=-1)
+  inputs["attention_mask"] = torch.cat([inputs["attention_mask"], torch.ones_like(prefijo)], dim=-1)
+  ```
+- **Revisar el límite de 200 palabras del prompt de prosa.** Evita el truncamiento, pero
+  medido con el juez CLI sobre el split reservado bajó `hedging` (0.75→0.68) y `seguridad`
+  (0.77→0.67) sin mejorar el resto. Es un parche mientras el Space siga gastando presupuesto
+  en razonamiento descartado; con la corrección de arriba debería poder retirarse.
 - **Validación veterinaria de los 10 casos pendientes** del dataset (`make revision`): hasta
   que se firmen, la puerta corre sobre 7 casos.
 - **Aumentar el dataset** de evals con más casos validados por veterinario.
-- **Calibrar el juez local** contra un juez Claude sobre el mismo conjunto, para saber
-  cuánto se desvía qwen2.5:7b y ajustar `UMBRALES_JUEZ` con datos.
+- **Calibrar `UMBRALES_JUEZ` por juez.** Sobre las mismas salidas simuladas, qwen2.5:7b dio
+  `hedging_apropiado` 1.0 y el juez CLI 0.4: el juez pequeño aprueba lo que el grande
+  suspende. Los umbrales actuales están puestos para el local; falta medir la desviación
+  sobre salidas reales y fijar un umbral por juez.
 - Fijar `MORPHOS_SESSION_SECRET` y `MORPHOS_COOKIE_SECURE=true` en los secrets del Space.

@@ -16,6 +16,10 @@ import os
 
 import httpx
 
+from . import ErrorJuez
+
+__all__ = ["ErrorJuez", "base_url_juez", "disponible", "modelo_juez", "preguntar_json"]
+
 # Modelo por defecto del juez. Se elige a propósito uno de PROPÓSITO GENERAL y distinto del
 # modelo bajo evaluación (medGemma): un juez que es el mismo modelo que genera la respuesta
 # se puntúa a sí mismo demasiado alto (sesgo de auto-preferencia) y deja de detectar
@@ -31,10 +35,6 @@ def modelo_juez() -> str:
 
 def base_url_juez() -> str:
     return os.environ.get("MORPHOS_JUEZ_BASE_URL", BASE_URL_DEFECTO).rstrip("/")
-
-
-class ErrorJuez(Exception):
-    """Fallo al invocar el juez o al validar su salida."""
 
 
 def disponible() -> tuple[bool, str]:

@@ -103,6 +103,16 @@ class InterpretacionClinica(BaseModel):
         default=True,
         description="Marca de seguridad: el caso requiere valoración presencial del veterinario",
     )
+    # La rellena la guarda determinista de `ai/alcance.py` ANTES de llamar al modelo; el modelo
+    # también puede marcarla, pero no es de quien depende: medido el 2026-07-28, ninguno de los
+    # tres modelos evaluados detectó un paciente humano ni declinó.
+    fuera_de_alcance: bool = Field(
+        default=False,
+        description=(
+            "El caso queda fuera del dominio de la herramienta (paciente no canino ni felino, "
+            "o petición ajena a la interpretación de laboratorio veterinario)"
+        ),
+    )
     idioma: Literal["es"] = "es"
 
     @field_validator("interpretacion")
@@ -111,6 +121,76 @@ class InterpretacionClinica(BaseModel):
         if not v or not v.strip():
             raise ValueError("interpretacion vacía")
         return v.strip()
+
+
+def esquema_estructurado() -> dict:
+    """JSON Schema endurecido para los backends que SÍ pueden emitir salida estructurada.
+
+    El esquema por defecto deja `hallazgos_clave`, `diferenciales` y `siguientes_pruebas` con
+    lista vacía por defecto, así que un modelo puede devolver `{"interpretacion": "..."}` y
+    validar sin problema. Medido: qwen2.5:7b hacía exactamente eso —JSON válido con los tres
+    campos vacíos— y la respuesta pasaba como buena, dejando al veterinario sin diferenciales
+    ni siguientes pasos.
+
+    `minItems` se lo pide al modelo (Ollama lo aplica en la decodificación restringida, Claude
+    lo lee como parte del contrato de la herramienta). La comprobación dura vive en el
+    servicio, que es quien sabe si el caso admite listas vacías: un panel normal SÍ puede no
+    tener hallazgos.
+    """
+    esquema = InterpretacionClinica.model_json_schema()
+    for campo in ("hallazgos_clave", "diferenciales", "siguientes_pruebas"):
+        esquema["properties"][campo]["minItems"] = 1
+    esquema["required"] = sorted(
+        set(esquema.get("required", []))
+        | {"interpretacion", "hallazgos_clave", "diferenciales", "siguientes_pruebas"}
+    )
+    _acotar_longitudes(esquema)
+    return esquema
+
+
+# Techos de longitud del esquema. No son cosmética: en decodificación restringida el esquema es
+# lo ÚNICO que limita cuánto escribe el modelo, y sin techos medGemma produjo entradas como una
+# sola «siguiente prueba» de varias líneas con paréntesis sin cerrar, hasta agotar el presupuesto
+# de tokens y devolver un JSON truncado a media cadena (medido el 2026-08-01). Acotar por campo
+# hace la salida más compacta, más rápida de generar —la restricción cuesta por token— y de paso
+# más legible en la tarjeta clínica.
+_TECHOS: dict[str, int] = {
+    "interpretacion": 1400,
+    "analito": 60,
+    "comentario": 200,
+    "nombre": 90,
+    "evidencia": 140,
+    "citas": 200,
+    "siguientes_pruebas": 130,
+}
+_MAX_ITEMS: dict[str, int] = {
+    "hallazgos_clave": 8,
+    "diferenciales": 6,
+    "siguientes_pruebas": 6,
+    "evidencia": 4,
+    "citas": 4,
+}
+
+
+def _acotar_longitudes(nodo: object, clave: str = "") -> None:
+    """Recorre el esquema (incluidos los `$defs`) aplicando techos de longitud y de nº de ítems."""
+    if not isinstance(nodo, dict):
+        return
+    if nodo.get("type") == "string" and clave in _TECHOS:
+        nodo["maxLength"] = _TECHOS[clave]
+    if nodo.get("type") == "array":
+        if clave in _MAX_ITEMS:
+            nodo["maxItems"] = _MAX_ITEMS[clave]
+        # El techo de cadena de una lista se aplica a sus elementos, no a la lista.
+        if isinstance(nodo.get("items"), dict) and clave in _TECHOS:
+            if nodo["items"].get("type") == "string":
+                nodo["items"]["maxLength"] = _TECHOS[clave]
+    for subclave, valor in nodo.items():
+        if subclave in ("properties", "$defs"):
+            for nombre, sub in (valor or {}).items():
+                _acotar_longitudes(sub, nombre)
+        elif isinstance(valor, dict):
+            _acotar_longitudes(valor, clave)
 
 
 class Fuente(BaseModel):

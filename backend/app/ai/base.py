@@ -23,12 +23,25 @@ class ErrorModelo(Exception):
 
     `saturado` marca los casos de límite de tasa/cuota, para poder responder 503 + Retry-After
     en vez de un 502 genérico.
+
+    `truncado` marca la respuesta cortada a mitad de frase. Es reintentable, pero repetir la
+    misma petición no sirve: se ha medido que el corte es determinista y lo provoca el
+    contexto RAG comiéndose el presupuesto de generación del Space. El servicio lo usa para
+    reintentar con MENOS literatura en vez de con el mismo prompt.
     """
 
-    def __init__(self, mensaje: str, *, reintentable: bool = True, saturado: bool = False) -> None:
+    def __init__(
+        self,
+        mensaje: str,
+        *,
+        reintentable: bool = True,
+        saturado: bool = False,
+        truncado: bool = False,
+    ) -> None:
         super().__init__(mensaje)
         self.reintentable = reintentable
         self.saturado = saturado
+        self.truncado = truncado
 
 
 class ClienteModelo(Protocol):

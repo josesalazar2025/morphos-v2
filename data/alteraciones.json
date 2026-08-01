@@ -3,7 +3,7 @@
     "nombre": "Anemia",
     "prefijo": "Parámetros eritrocitarios disminuidos.",
     "etiologias": {
-      "ferropenia":  "Compatible con déficit de hierro (microcitosis + hipocromia marcada) o anemia de enfermedad crónica. Evaluar reticulocitos para valorar respuesta regenerativa; considerar electroforesis de proteínas si se sospecha proceso crónico.",
+      "ferropenia": "Compatible con déficit de hierro (microcitosis + hipocromia marcada) o anemia de enfermedad crónica. Evaluar reticulocitos para valorar respuesta regenerativa; considerar electroforesis de proteínas si se sospecha proceso crónico.",
       "macrocitica": "Compatible con anemia regenerativa (reticulocitosis activa), déficit de cobalamina/folato o mielodisplasia. En felinos descartar FeLV como causa de macrocitosis no regenerativa.",
       "normocitica": "Compatible con anemia no regenerativa (enfermedad crónica, insuficiencia renal, fallo medular), hemorragia aguda reciente o hemólisis. En felinos considerar Mycoplasma haemofelis y FeLV/FIV."
     }
@@ -18,11 +18,11 @@
   },
   "leucocitosis_linfocitica": {
     "nombre": "Leucocitosis linfocítica",
-    "descripcion": "Compatible con estimulación antigénica crónica, linfoma o excitación fisiológica (frecuente en felinos). En felinos jóvenes con linfocitosis marcada considerar linfoma de células grandes de alto grado."
+    "descripcion": "Compatible con estimulación antigénica crónica, linfoma o excitación fisiológica (frecuente en felinos). Umbrales de referencia: > 12.000/μL en perros de más de 1 año y > 20.000/μL en gatos (Thrall 3.ª ed., p. 173); por encima, si no hubo excitación, considerar leucemia linfoide. En felinos jóvenes con linfocitosis marcada considerar linfoma de células grandes de alto grado."
   },
   "eosinofilia": {
     "nombre": "Eosinofilia",
-    "descripcion": "Compatible con parasitismo (especialmente tisular), hipersensibilidad/alergia, enfermedad inflamatoria intestinal eosinofílica, tumores mastocitarios o síndrome hipereosinofílico idiopático (más frecuente en felinos)."
+    "descripcion": "Compatible con parasitismo (especialmente tisular), hipersensibilidad/alergia, enfermedad inflamatoria intestinal eosinofílica, tumores mastocitarios, hipoadrenocorticismo (Fundamentals 3.ª ed., p. 128–129) o síndrome hipereosinofílico idiopático (más frecuente en felinos)."
   },
   "leucocitosis": {
     "nombre": "Leucocitosis",
@@ -46,7 +46,7 @@
   },
   "trombocitosis": {
     "nombre": "Trombocitosis",
-    "descripcion": "Puede ser reactiva (inflamación, ferropenia, esplenectomía, traumatismo) o primaria (trombocitemia esencial, neoplasia mieloproliferativa). La forma reactiva es la más frecuente y generalmente no requiere tratamiento específico."
+    "descripcion": "Puede ser reactiva (inflamación, ferropenia, esplenectomía, traumatismo) o primaria (trombocitemia esencial, neoplasia mieloproliferativa). La forma reactiva es la más frecuente y generalmente no requiere tratamiento específico. Descartar antes pseudotrombocitosis: eritrocitos microcíticos, células fantasma por hemólisis o gotas lipídicas contados como plaquetas (Fundamentals 3.ª ed., p. 325)."
   },
   "dano_hepatocelular": {
     "nombre": "Daño hepatocelular",
@@ -54,7 +54,7 @@
   },
   "alt_aislada": {
     "nombre": "Elevación de ALT aislada",
-    "descripcion": "Daño hepatocelular leve o lesión muscular (la ALT también se encuentra en músculo esquelético, especialmente en felinos). Descartar hepatopatía incipiente, reacción a fármacos (fenobarbital, glucocorticoides) o vacunación reciente. Recomendable repetir la analítica en 2–4 semanas."
+    "descripcion": "Daño hepatocelular leve o lesión muscular. La ALT también está en músculo, y la proporción respecto al hígado es MAYOR en el perro que en el gato: en el perro la actividad ALT del músculo esquelético y cardíaco es ~5% y ~25% de la hepática, mientras que en el gato ambas son ~5% (Thrall 3.ª ed., p. 516). Correlacionar con CK ante sospecha de origen muscular. Descartar hepatopatía incipiente, reacción a fármacos (fenobarbital, glucocorticoides) o vacunación reciente. Recomendable repetir la analítica en 2–4 semanas."
   },
   "patron_colestasico": {
     "nombre": "Patrón colestásico",
@@ -84,7 +84,7 @@
   },
   "azotemia": {
     "nombre": "Azotemia",
-    "descripcion": "Elevación de BUN y creatinina. Clasificar en prerrenal (deshidratación, hipoperfusión), renal (ERC o IRA) o posrenal (obstrucción, rotura urinaria). Estadificar según criterios IRIS si se sospecha ERC. Correlacionar con densidad urinaria, urianálisis y presión arterial."
+    "descripcion": "Elevación de BUN y creatinina. Clasificar en prerrenal (deshidratación, hipoperfusión), renal (ERC o IRA) o posrenal (obstrucción, rotura urinaria). Estadificar según criterios IRIS si se sospecha ERC (creatinina y SDMA; subestadiar por UP/C). Correlacionar con densidad urinaria, urianálisis y presión arterial."
   },
   "hiperuremia_bun": {
     "nombre": "Hiperuremia aislada (BUN)",
@@ -96,7 +96,7 @@
   },
   "creatinina_aislada": {
     "nombre": "Creatinina elevada (BUN normal)",
-    "descripcion": "Creatinina elevada con BUN normal o bajo. Puede reflejar inicio de ERC con BUN artificialmente bajo por baja masa muscular o dieta hipoproteica. Realizar urianálisis con densidad urinaria para descartar ERC estadio I–II (IRIS). Repetir en 2–4 semanas."
+    "descripcion": "Creatinina elevada con BUN normal o bajo. Puede reflejar inicio de ERC con BUN artificialmente bajo por baja masa muscular o dieta hipoproteica. Medir SDMA: es más sensible en ERC temprana y menos afectado por la pérdida de masa magra, que es justo el escenario descrito (IRIS 2026). Una creatinina por encima del intervalo de referencia ya sitúa al paciente en estadio IRIS ≥ 2 si se confirma ERC. Realizar urianálisis con densidad urinaria y repetir en 2–4 semanas."
   },
   "hiperglucemia": {
     "nombre": "Hiperglucemia",
@@ -123,15 +123,15 @@
   },
   "ratio_nak": {
     "nombre": "Ratio Na:K reducido — sospecha de hipoadrenocorticismo",
-    "descripcion": "Ratio Na:K de {ratio} (referencia > 27). Altamente compatible con hipoadrenocorticismo (enfermedad de Addison). También puede observarse en efusiones (quilotórax, derrame pleural), nefropatía con pérdida de sodio o diarrea grave. Confirmar con test de estimulación con ACTH (cortisol basal y a los 60 minutos)."
+    "descripcion": "Ratio Na:K de {ratio} (referencia > 27). Altamente compatible con hipoadrenocorticismo (enfermedad de Addison). También puede observarse en efusiones (quilotórax, derrame pleural), nefropatía con pérdida de sodio, diarrea grave o tricuriasis (Trichuris vulpis), que remeda el cuadro y se conoce como pseudo-Addison, sin hipoplasia adrenocortical ni hipoaldosteronismo (Fundamentals 3.ª ed., p. 695). Confirmar con test de estimulación con ACTH (cortisol basal y a los 60 minutos)."
   },
   "hipercalcemia": {
     "nombre": "Hipercalcemia",
-    "descripcion": "Compatible con hipercalcemia de malignidad (linfoma — más frecuente en el perro —, adenocarcinoma apocrino de sacos anales, tumores osteolíticos), hiperparatiroidismo primario, hipervitaminosis D (intoxicación por raticidas, suplementos), granulomatosis (hongos, micobacterias) o hipoadrenocorticismo. Confirmar con calcio ionizado y PTH/PTHrP."
+    "descripcion": "Compatible con hipercalcemia de malignidad (linfoma — más frecuente en el perro —, adenocarcinoma apocrino de sacos anales, tumores osteolíticos), hiperparatiroidismo primario, hipervitaminosis D (intoxicación por raticidas, suplementos), granulomatosis (hongos, micobacterias) o hipoadrenocorticismo. El FÓSFORO discrimina: con fósforo normal o bajo quedan sólo dos diagnósticos probables —hipercalcemia maligna e hiperparatiroidismo primario—, mientras que fallo renal, hipoadrenocorticismo, hipervitaminosis D y granulomatosis cursan habitualmente con fósforo ALTO (Thrall 3.ª ed., p. 586 y 997). Confirmar con calcio ionizado y PTH/PTHrP."
   },
   "hipocalcemia": {
     "nombre": "Hipocalcemia",
-    "descripcion": "Compatible con hipoparatiroidismo (postquirúrgico — tiroidectomía en felinos — o idiopático), eclampsia puerperal (tetania lactante en hembras periparturientas), pancreatitis aguda grave, hipoalbuminemia (evaluar calcio ionizado corregido) o hipomagnesemia concurrente que perpetúa la hipocalcemia. La tetania se presenta generalmente por debajo de 6,5 mg/dL."
+    "descripcion": "Compatible con hipoparatiroidismo (postquirúrgico — tiroidectomía en felinos — o idiopático), eclampsia puerperal (tetania lactante en hembras periparturientas), pancreatitis aguda grave, hipoalbuminemia — es la causa más frecuente con diferencia en todas las especies (Thrall 3.ª ed., p. 589); medir calcio IONIZADO directo, no fórmulas de calcio corregido por proteínas, cuya fiabilidad es baja (p. 580–581) o hipomagnesemia concurrente que perpetúa la hipocalcemia. La tetania se presenta generalmente por debajo de 6,5 mg/dL."
   },
   "hipernatremia": {
     "nombre": "Hipernatremia",
@@ -170,11 +170,11 @@
     "descripcion": "Ácido úrico sérico elevado. En perros y gatos, el ácido úrico se metaboliza normalmente a alantoína por la uricasa, por lo que la hiperuricemia es infrecuente en estas especies. Descartar hepatopatía grave con disfunción del ciclo de la urea (incluido shunt portosistémico), enfermedad renal o raza con déficit parcial de uricasa (Dálmata, Bulldog inglés, Bulldog americano — predispostos a urolitiasis por urato). En Dálmatas, valores > 2 mg/dL son relevantes clínicamente y justifican acidificación de orina y dieta baja en purinas."
   },
   "hiposthenuria": {
-    "nombre": "Hiposthenuria (USG < 1.008) — concentración muy disminuida",
+    "nombre": "Hiposthenuria (USG < 1.007) — concentración muy disminuida",
     "descripcion": "Densidad urinaria muy baja. Compatible con diabetes insípida central o nefrogénica, hiperadrenocorticismo (HAC), hipercalcemia, hipopotasemia o administración de diuréticos. En felinos, considerar acromegalia y HAC. Requiere prueba de privación de agua o test de vasopresina para diferenciar los subtipos de diabetes insípida."
   },
   "isosthenuria": {
-    "nombre": "Isosthenuria (USG 1.008–1.013) — capacidad de concentración deteriorada",
+    "nombre": "Isosthenuria (USG 1.007–1.013) — capacidad de concentración deteriorada",
     "descripcion": "La densidad urinaria isostenúrica refleja incapacidad para concentrar la orina por encima de la osmolaridad plasmática. Compatible con ERC moderada–grave (pérdida tubular), pielonefritis, hiperadrenocorticismo o diabetes insípida parcial. Evaluar función renal completa (creatinina, BUN) y presión arterial."
   },
   "hipotiroidismo": {
@@ -235,7 +235,7 @@
   },
   "dano_miocardico": {
     "nombre": "Daño miocárdico — Troponina I elevada",
-    "descripcion": "Troponina I cardíaca (cTnI) elevada. Marcador altamente sensible y específico de necrosis/lesión cardiomiocitaria. Compatible con cardiomiopatía dilatada (DCM — especialmente caninos de razas grandes), cardiomiopatía hipertrófica (HCM — principalmente felinos), miocarditis (viral, bacteriana, toxoplasma), trauma torácico, taquiarritmias sostenidas, contusión miocárdica o lesión isquémica perioperatoria. En perros: considerar también DCM por deficiencia de taurina/carnitina o DCM asociada a dietas grain-free. Correlacionar con NT-proBNP, radiografía torácica y ecocardiografía. La cinética de la troponina (elevación aguda vs. crónica) ayuda a diferenciar lesión aguda de cardiomiopatía establecida."
+    "descripcion": "Troponina I cardíaca (cTnI) elevada. Marcador sensible de necrosis/lesión cardiomiocitaria. Cautela analítica: no todos los inmunoensayos comerciales se han validado en animales y los valores de un ensayo no son directamente comparables con los de otro (Thrall 3.ª ed., p. 516). Compatible con cardiomiopatía dilatada (DCM — especialmente caninos de razas grandes), cardiomiopatía hipertrófica (HCM — principalmente felinos), miocarditis (viral, bacteriana, toxoplasma), trauma torácico, taquiarritmias sostenidas, contusión miocárdica o lesión isquémica perioperatoria. En perros: considerar también DCM por deficiencia de taurina/carnitina o DCM asociada a dietas grain-free. Correlacionar con NT-proBNP, radiografía torácica y ecocardiografía. La cinética de la troponina (elevación aguda vs. crónica) ayuda a diferenciar lesión aguda de cardiomiopatía establecida."
   },
   "cardiopatia_bnp": {
     "nombre": "NT-proBNP elevado — cardiopatía",
@@ -297,7 +297,7 @@
   },
   "deficit_vwf": {
     "nombre": "Déficit de vWF — Enfermedad de von Willebrand",
-    "descripcion": "vWF (antígeno del factor von Willebrand) disminuido. La enfermedad de von Willebrand es la coagulopatía hereditaria más frecuente en perros. Razas predispuestas a vWD tipo I (deficiencia cuantitativa leve-moderada): Dobermann Pinscher, Pastor de Shetland, Caniche, Scottie, Golden Retriever, Labrador. Razas con vWD tipo III (ausencia total de vWF — grave): Scottish Terrier, Chesapeake Bay Retriever. Signos clínicos: epistaxis, sangrado de mucosas, hematomas, hemorragia excesiva post-quirúrgica. El TTPa puede estar prolongado en casos graves (el vWF estabiliza el FVIII). El TP es normal. Confirmar con actividad funcional del vWF (vWF:RCo). Tratamiento: desmopresina (DDAVP) en tipo I, transfusión de PFC o crioprecipitado en tipos II y III."
+    "descripcion": "vWF (antígeno del factor von Willebrand) disminuido. La enfermedad de von Willebrand es la coagulopatía hereditaria más frecuente en perros. Razas predispuestas a vWD tipo I (deficiencia cuantitativa leve-moderada): Dobermann Pinscher, Pastor de Shetland, Caniche, Scottie, Golden Retriever, Labrador. Razas con vWD tipo III (ausencia total de vWF — grave): Scottish Terrier, Chesapeake Bay Retriever. Signos clínicos: epistaxis, sangrado de mucosas, hematomas, hemorragia excesiva post-quirúrgica. El TTPa puede estar prolongado en casos graves (el vWF estabiliza el FVIII). El TP es normal. NO existe asociación predecible entre hipotiroidismo y vWD: los valores de vWF:Ag de perros hipotiroideos estaban dentro del intervalo de referencia antes del levotiroxina y disminuyeron —no aumentaron— tras el tratamiento (Fundamentals 3.ª ed., p. 350–351). Confirmar con actividad funcional del vWF (vWF:RCo). Tratamiento: desmopresina (DDAVP) en tipo I, transfusión de PFC o crioprecipitado en tipos II y III."
   },
   "antitrombina_baja": {
     "nombre": "Antitrombina (AT-III) disminuida — estado protrombótico",
@@ -325,7 +325,7 @@
   },
   "hiperlactatemia": {
     "nombre": "Hiperlactatemia",
-    "descripcion": "Lactato sanguíneo elevado. Marcador de hipoperfusión tisular y metabolismo anaeróbico. Clasificar por mecanismo: (1) Tipo A — hipóxica (más frecuente en urgencias): shock (hipovolémico, cardiogénico, distributivo-séptico, obstructivo — dilatación-vólvulo gástrico), hipoxemia grave, anemia severa, bajo gasto cardíaco. (2) Tipo B — no hipóxica: neoplasia con alta glucólisis (linfoma, hemangiosarcoma), insuficiencia hepática grave (reducción del aclaramiento de lactato), diabetes mellitus, ejercicio exhaustivo, convulsiones, fármacos (metformina, propilenglicol), intoxicación por etilenglicol o salicilatos. Niveles > 2.5 mmol/L: iniciar resucitación; > 5 mmol/L: pronóstico reservado; > 10 mmol/L: pronóstico grave. La reducción del lactato > 10% en 1–2h tras resucitación (aclaración de lactato) es un indicador positivo de respuesta al tratamiento."
+    "descripcion": "Lactato sanguíneo elevado. Marcador de hipoperfusión tisular y metabolismo anaeróbico. Clasificar por mecanismo: (1) Tipo A — hipóxica (más frecuente en urgencias): shock (hipovolémico, cardiogénico, distributivo-séptico, obstructivo — dilatación-vólvulo gástrico), hipoxemia grave, anemia severa, bajo gasto cardíaco. (2) Tipo B — no hipóxica: neoplasia con alta glucólisis (linfoma, hemangiosarcoma) — aunque en el paciente oncológico la hiperlactatemia suele deberse a otros mecanismos y no al efecto Warburg (Fundamentals 3.ª ed., p. 730–731), insuficiencia hepática grave (reducción del aclaramiento de lactato), diabetes mellitus, ejercicio exhaustivo, convulsiones, fármacos (metformina, propilenglicol), intoxicación por etilenglicol o salicilatos. Niveles > 2.5 mmol/L: iniciar resucitación; > 5 mmol/L: pronóstico reservado; > 10 mmol/L: pronóstico grave. La reducción del lactato > 10% en 1–2h tras resucitación (aclaración de lactato) es un indicador positivo de respuesta al tratamiento."
   },
   "ca_ionizado_bajo": {
     "nombre": "Hipocalcemia ionizada",
@@ -341,14 +341,18 @@
   },
   "hematuria_uri": {
     "nombre": "Hematuria — eritrocitos elevados en orina",
-    "descripcion": "Eritrocitos en sedimento urinario > 5/μL. Compatible con: (1) Cistitis hemorrágica (infecciosa o estéril — cistitis idiopática felina es la causa más frecuente en gatos); (2) Urolitiasis (cristales de estruvita, oxalato cálcico, urato — rasar urolitiasis Dálmatas); (3) Neoplasia del tracto urinario — carcinoma de células de transición (TCC) de vejiga en perros mayores; (4) Trauma/coagulopatía sistémica; (5) Prostatitis o hiperplasia prostática en machos (contaminación urinaria). Distinguir hematuria (eritrocitos en sedimento) de hemoglobinuria (orina roja sin eritrocitos — hemólisis intravascular) y mioglobinuria (orina oscura en rabdomiólisis — sin eritrocitos). Cistocentesis para muestras libres de contaminación. Ecografía de vejiga y radiografía abdominal para descartar urolitiasis y neoplasia."
+    "descripcion": "Eritrocitos en sedimento urinario > 5 por campo de gran aumento (/hpf, unidad del sedimento manual; los analizadores automáticos informan /μL — comprobar la unidad del laboratorio). Compatible con: (1) Cistitis hemorrágica (infecciosa o estéril — cistitis idiopática felina es la causa más frecuente en gatos); (2) Urolitiasis (cristales de estruvita, oxalato cálcico, urato — rasar urolitiasis Dálmatas); (3) Neoplasia del tracto urinario — carcinoma de células de transición (TCC) de vejiga en perros mayores; (4) Trauma/coagulopatía sistémica; (5) Prostatitis o hiperplasia prostática en machos (contaminación urinaria). Distinguir hematuria (eritrocitos en sedimento) de hemoglobinuria (orina roja sin eritrocitos — hemólisis intravascular) y mioglobinuria (orina oscura en rabdomiólisis — sin eritrocitos). Cistocentesis para muestras libres de contaminación. Ecografía de vejiga y radiografía abdominal para descartar urolitiasis y neoplasia."
   },
   "piuria": {
     "nombre": "Piuria — leucocitos elevados en orina",
-    "descripcion": "Leucocitos en sedimento urinario > 5/μL. La piuria indica inflamación del tracto urinario (ITU) o inflamación estéril. Compatible con: infección urinaria bacteriana (E. coli — más frecuente en hembras, Staphylococcus, Proteus, Klebsiella, Pseudomonas), pielonefritis (piuria + cilindros + signos sistémicos), cistitis estéril idiopática (felinos jóvenes estresados), cálculos urinarios irritantes o neoplasia vesical. La piuria sin bacteriuria en muestra por cistocentesis puede indicar inflamación estéril, antibioticoterapia reciente o contaminación. El cultivo urinario con antibiograma es el gold standard diagnóstico para ITU. En machos, descartar prostatitis (piuria + secreción prepucial). En felinos, la FUS (feline urological syndrome) suele cursar con piuria estéril."
+    "descripcion": "Leucocitos en sedimento urinario > 5 por campo de gran aumento (/hpf, unidad del sedimento manual; los analizadores automáticos informan /μL — comprobar la unidad del laboratorio). La piuria indica inflamación del tracto urinario (ITU) o inflamación estéril. Compatible con: infección urinaria bacteriana (E. coli — más frecuente en hembras, Staphylococcus, Proteus, Klebsiella, Pseudomonas), pielonefritis (piuria + cilindros + signos sistémicos), cistitis estéril idiopática (felinos jóvenes estresados), cálculos urinarios irritantes o neoplasia vesical. La piuria sin bacteriuria en muestra por cistocentesis puede indicar inflamación estéril, antibioticoterapia reciente o contaminación. El cultivo urinario con antibiograma es el gold standard diagnóstico para ITU. En machos, descartar prostatitis (piuria + secreción prepucial). En felinos, la FUS (feline urological syndrome) suele cursar con piuria estéril."
   },
   "proteinuria_upc": {
     "nombre": "Proteinuria — UPC elevado",
     "descripcion": "Cociente Proteína/Creatinina Urinaria (UPC) elevado. UPC > 0.2 en perros o > 0.4 en gatos indica proteinuria anormal persistente. Clasificar según localización: (1) Glomerular — UPC > 2.0, hipoalbuminemia, edemas, ascitis; glomerulonefritis (inmunomediada, infecciosa), amiloidosis renal (Shar Pei, Beagle — acumulo de SAA en glomérulos), nefropatía diabética. (2) Tubular — UPC modesto, pérdida de proteínas de bajo peso molecular; nefrotoxicidad (aminoglucósidos, cisplatino, AINES), síndrome de Fanconi (Basenji). (3) Post-renal — cistitis, prostatitis, vaginitis; confirmar con cistocentesis para excluir contaminación. (4) Prerrenal — hiperglobulinemia extrema, hemoglobinuria. La proteinuria glomerular crónica asocia riesgo elevado de tromboembolismo (pérdida de AT-III y proteína C). Estadificar según IRIS (proteinuria substadios P0–P3). Iniciar IECA o ARA-II si UPC persistente > 0.5 con hipoalbuminemia."
+  },
+  "erc_iris": {
+    "nombre": "Azotemia graduada en escala IRIS",
+    "descripcion": "Magnitud de la azotemia expresada en la escala de estadiaje IRIS de ERC, con subestadiaje por proteinuria (UP/C). NO es un diagnóstico de ERC: la escala sólo es aplicable tras confirmar enfermedad renal crónica y haber descartado azotemia prerrenal (deshidratación, hipoperfusión, hipoadrenocorticismo) y posrenal (obstrucción, uroperitoneo). El estadiaje formal exige paciente estable, en ayunas y al menos dos determinaciones separadas. Estadio 2 = azotemia leve; estadio 3 = azotemia moderada con signos sistémicos frecuentes; estadio 4 = azotemia grave, riesgo de crisis urémica. Completar con presión arterial sistólica para el subestadiaje de hipertensión, urianálisis y densidad urinaria."
   }
 }

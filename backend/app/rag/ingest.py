@@ -30,6 +30,8 @@ from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
+from .alcance_corpus import debe_descartarse, especie_de
+
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 log = logging.getLogger("morphos.rag.ingest")
 
@@ -363,7 +365,25 @@ def _contextualizar(chunks: list[ChunkMeta]) -> list[str]:
     return salida
 
 
-def ingerir(fuente: Path, salida: Path) -> int:
+def _libros_ya_indexados(salida: Path) -> set[str]:
+    """Nombres de `libro` presentes en el índice, o conjunto vacío si aún no existe."""
+    try:
+        import lancedb  # type: ignore
+
+        tabla = lancedb.connect(str(salida)).open_table("literatura")
+        return {str(v) for v in tabla.to_pandas()["libro"].unique()}
+    except Exception:  # noqa: BLE001 — sin índice o sin tabla: no hay nada indexado
+        return set()
+
+
+def ingerir(fuente: Path, salida: Path, anexar: bool = False) -> int:
+    """Construye el índice desde cero, o (con `anexar`) añade sólo los libros que faltan.
+
+    Reprocesar los dos libros grandes cuesta OCR sobre cientos de MB, así que incorporar una
+    guía nueva no puede exigir reconstruirlo todo. En modo anexar se saltan los documentos cuyo
+    `libro` ya está en la tabla, se añaden las filas nuevas y se REGENERA el índice FTS, que si
+    no quedaría ciego a los fragmentos recién añadidos.
+    """
     import lancedb  # type: ignore
     import pyarrow as pa  # type: ignore
     from sentence_transformers import SentenceTransformer  # type: ignore
@@ -376,17 +396,37 @@ def ingerir(fuente: Path, salida: Path) -> int:
         log.warning("No se encontraron PDFs en %s. Nada que ingerir.", fuente)
         return 0
 
+    if anexar:
+        ya = _libros_ya_indexados(salida)
+        nuevos = [a for a in archivos if _metadatos_desde_ruta(a).get("libro", a.stem) not in ya]
+        if not nuevos:
+            log.info("Todos los documentos de %s ya están indexados. Nada que anexar.", fuente)
+            return 0
+        log.info("Anexando %d documento(s): %s", len(nuevos), ", ".join(a.name for a in nuevos))
+        archivos = nuevos
+
     contar = _cargar_contador_tokens(cfg.rag_embed_model)
 
     chunks: list[ChunkMeta] = []
     for archivo in archivos:
         meta = _metadatos_desde_ruta(archivo)
         log.info("Procesando %s…", archivo.name)
+        descartados = 0
         for chunk in trocear_documento(archivo, contar):
             chunk.libro = meta.get("libro", archivo.stem)
             chunk.edicion = meta.get("edicion", "")
-            chunk.especie = meta.get("especie", "")
+            # Índices, sumarios y preliminares no son literatura: son entradas con números
+            # de página, y ocuparían sitio en el prompt sin decir nada clínico.
+            if debe_descartarse(chunk.libro, chunk.pagina, chunk.texto):
+                descartados += 1
+                continue
+            # La especie se resuelve por SECCIÓN, no por libro: estos textos son comparados y
+            # traen secciones enteras de aves, reptiles y peces que Morphos no atiende. El
+            # sidecar sigue valiendo como valor por defecto del tomo. Ver alcance_corpus.py.
+            chunk.especie = especie_de(chunk.libro, chunk.pagina, meta.get("especie", ""))
             chunks.append(chunk)
+        if descartados:
+            log.info("  → %d fragmento(s) descartados (índices, sumarios y preliminares)", descartados)
         log.info("  → %d fragmentos acumulados", len(chunks))
 
     if not chunks:
@@ -412,7 +452,12 @@ def ingerir(fuente: Path, salida: Path) -> int:
     filas = [
         {**asdict(c), "vector": vec.tolist()} for c, vec in zip(chunks, vectores, strict=True)
     ]
-    tabla = db.create_table("literatura", data=filas, mode="overwrite")
+    if anexar:
+        tabla = db.open_table("literatura")
+        tabla.add(filas)
+        log.info("Anexados %d fragmentos; la tabla queda con %d.", len(filas), tabla.count_rows())
+    else:
+        tabla = db.create_table("literatura", data=filas, mode="overwrite")
 
     # Índice de texto completo (BM25) sobre `texto` para la recuperación híbrida (Tier 2).
     # Si falla, la recuperación degrada a sólo-vectorial sin romper la ingesta.
@@ -422,9 +467,13 @@ def ingerir(fuente: Path, salida: Path) -> int:
     except Exception as exc:  # noqa: BLE001
         log.warning("No se pudo crear el índice FTS (híbrido degradará a vectorial): %s", exc)
 
-    # Manifiesto para reproducibilidad de evals (versión + hash del corpus + parámetros).
+    # Manifiesto para reproducibilidad de evals (versión + hash del corpus + parámetros). En
+    # modo anexar se recorre TODA la carpeta, no sólo lo añadido: el manifiesto describe el
+    # corpus indexado, no la última operación.
+    todos = sorted([*fuente.glob("**/*.pdf")])
+    n_total = tabla.count_rows() if anexar else len(chunks)
     huella = hashlib.sha256()
-    for archivo in archivos:
+    for archivo in todos:
         huella.update(archivo.name.encode())
         huella.update(str(archivo.stat().st_size).encode())
     (salida / "manifest.json").write_text(
@@ -436,9 +485,9 @@ def ingerir(fuente: Path, salida: Path) -> int:
                 "troceo": "estructural-markdown-cruzando-paginas",
                 "contextual_retrieval": cfg.rag_contextual,
                 "indice_fts": True,
-                "n_fragmentos": len(chunks),
-                "n_libros": len(archivos),
-                "libros": [a.name for a in archivos],
+                "n_fragmentos": n_total,
+                "n_libros": len(todos),
+                "libros": [a.name for a in todos],
                 "hash_corpus": huella.hexdigest()[:16],
             },
             ensure_ascii=False,
@@ -446,7 +495,8 @@ def ingerir(fuente: Path, salida: Path) -> int:
         ),
         encoding="utf-8",
     )
-    log.info("Índice construido en %s (%d fragmentos).", salida, len(chunks))
+    log.info("Índice %s en %s (%d fragmentos).",
+             "anexado" if anexar else "construido", salida, n_total)
     _ = pa  # pyarrow se importa para asegurar backend Arrow de LanceDB
     return len(chunks)
 
@@ -455,8 +505,12 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Ingesta de literatura veterinaria al índice RAG")
     parser.add_argument("--fuente", type=Path, default=Path("books"))
     parser.add_argument("--salida", type=Path, default=Path("instance/rag_index"))
+    parser.add_argument(
+        "--anexar", action="store_true",
+        help="añade sólo los documentos que aún no están en el índice, sin reconstruirlo",
+    )
     args = parser.parse_args()
-    ingerir(args.fuente, args.salida)
+    ingerir(args.fuente, args.salida, anexar=args.anexar)
 
 
 if __name__ == "__main__":

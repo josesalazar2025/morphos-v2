@@ -49,3 +49,22 @@ def test_json_schema_generable_para_tool_use():
     esquema = InterpretacionClinica.model_json_schema()
     assert "diferenciales" in esquema["properties"]
     assert esquema["properties"]["requiere_derivacion"]["type"] == "boolean"
+
+
+def test_el_esquema_estructurado_exige_contenido():
+    """El esquema por defecto admite `{"interpretacion": "..."}` con todo lo demás vacío;
+    el endurecido se lo pide explícitamente al modelo."""
+    from app.schemas import esquema_estructurado
+
+    esquema = esquema_estructurado()
+    for campo in ("hallazgos_clave", "diferenciales", "siguientes_pruebas"):
+        assert esquema["properties"][campo]["minItems"] == 1
+        assert campo in esquema["required"]
+
+
+def test_el_esquema_por_defecto_sigue_siendo_permisivo():
+    """La ruta de prosa construye la interpretación sin campos estructurados y debe validar."""
+    from app.schemas import InterpretacionClinica
+
+    interp = InterpretacionClinica(interpretacion="Sólo prosa.")
+    assert interp.diferenciales == []

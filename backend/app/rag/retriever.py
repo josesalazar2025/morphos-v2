@@ -189,6 +189,90 @@ def _reordenar(consulta: str, filas: list[dict], k: int) -> list[dict]:
         return filas[:k]
 
 
+def _filtrar_por_score(filas: list[dict], minimo: float | None) -> list[dict]:
+    """Descarta los fragmentos por debajo del suelo de relevancia del cross-encoder.
+
+    Sólo se aplica a las filas que llevan `_rerank_score`: el RRF y la distancia densa están en
+    escalas distintas y compararlas contra el mismo umbral sería mezclar métricas —el bug que
+    `_relevancia` ya corrige. Si el suelo deja la lista vacía, se devuelve vacía a propósito:
+    literatura irrelevante gasta presupuesto de prompt e invita a citas que parecen respaldo.
+    """
+    if minimo is None:
+        return filas
+    fuertes = [f for f in filas if "_rerank_score" not in f or f["_rerank_score"] >= minimo]
+    if len(fuertes) < len(filas):
+        log.info(
+            "Suelo de relevancia (%.2f): %d de %d fragmentos descartados.",
+            minimo, len(filas) - len(fuertes), len(filas),
+        )
+    return fuertes
+
+
+def _aplicar_diversidad(filas: list[dict], k: int, max_por_libro: int) -> list[dict]:
+    """Los k mejores prefiriendo no repetir libro. Es una PREFERENCIA, no un límite duro: si
+    no hay material de otras fuentes se rellena con los descartados antes que devolver menos.
+    """
+    if max_por_libro <= 0:
+        return filas[:k]
+    elegidas: list[dict] = []
+    sobrantes: list[dict] = []
+    cuenta: dict[str, int] = {}
+    for fila in filas:
+        libro = fila.get("libro", "")
+        if cuenta.get(libro, 0) < max_por_libro:
+            elegidas.append(fila)
+            cuenta[libro] = cuenta.get(libro, 0) + 1
+        else:
+            sobrantes.append(fila)
+    return (elegidas + sobrantes)[:k]
+
+
+def _a_fragmentos(filas: list[dict]) -> list[Fragmento]:
+    return [
+        Fragmento(
+            texto=f.get("texto", ""),
+            libro=f.get("libro", ""),
+            edicion=f.get("edicion", ""),
+            capitulo=f.get("capitulo", ""),
+            pagina=str(f.get("pagina", "")),
+            score=_relevancia(f),
+        )
+        for f in filas
+    ]
+
+
+def _recuperar_filas(
+    cfg, tabla, modelo, consulta: str, especie: str | None, pozo: int, k: int
+) -> list[dict]:
+    """Filas rankeadas para UNA consulta: híbrido → filtro de especie → rerank → suelo.
+
+    Nunca lanza: ante cualquier fallo devuelve [], para que una consulta rota no tumbe al
+    resto de la multi-consulta ni a la interpretación.
+    """
+    if cfg.rag_query_lang == "en":
+        from .traduccion_consulta import traducir_consulta
+
+        consulta = traducir_consulta(consulta, "en")
+
+    try:
+        candidatos = _recuperar_candidatos(cfg, tabla, modelo, consulta, pozo)
+    except Exception as exc:  # noqa: BLE001 — la recuperación nunca debe tumbar la interpretación
+        log.warning("Fallo en recuperación RAG para «%s»: %s", consulta[:60], exc)
+        return []
+
+    # Filtrado por especie ANTES de reordenar (metadato 'especie' opcional).
+    if especie:
+        candidatos = [
+            f for f in candidatos
+            if not (f.get("especie") or "") or (f.get("especie") or "").lower() == especie.lower()
+        ]
+
+    # El rerank se hace contra ESTA consulta, no contra la concatenación de todas: es lo que
+    # hace que la descomposición sirva de algo.
+    mejores = _reordenar(consulta, candidatos, k) if cfg.rag_rerank else candidatos[:k]
+    return _filtrar_por_score(mejores, cfg.rag_score_minimo)
+
+
 def recuperar(
     consulta: str,
     especie: str | None = None,
@@ -209,40 +293,79 @@ def recuperar(
 
     modelo, tabla = recursos
     k = top_k or cfg.rag_top_k
-    if cfg.rag_query_lang == "en":
-        from .traduccion_consulta import traducir_consulta
+    filas = _recuperar_filas(cfg, tabla, modelo, consulta, especie, cfg.rag_candidatos, k)
+    return _a_fragmentos(_aplicar_diversidad(filas, k, cfg.rag_max_por_libro))
 
-        consulta = traducir_consulta(consulta, "en")
 
-    try:
-        candidatos = _recuperar_candidatos(cfg, tabla, modelo, consulta, cfg.rag_candidatos)
-    except Exception as exc:  # noqa: BLE001 — la recuperación nunca debe tumbar la interpretación
-        log.warning("Fallo en recuperación RAG: %s", exc)
+def recuperar_multi(
+    consultas: list[str],
+    especie: str | None = None,
+    top_k: int | None = None,
+) -> list[Fragmento]:
+    """Recuperación multi-consulta: una búsqueda independiente por consulta, fusionadas por
+    RANGO con RRF.
+
+    Por qué por rango y no por puntuación: cada consulta reordena con el cross-encoder contra
+    SU propio texto, y esos logits no son comparables entre consultas distintas. El pozo de
+    candidatos total se reparte entre las consultas, así que el número de pares que ve el
+    reranker —y por tanto la latencia— es el mismo que con una sola consulta.
+
+    No mira `rag_multiconsulta`: quien decide si el caso se descompone es el llamador (el
+    servicio para producción, `run_retrieval_eval.py --multiconsulta` para el A/B). Aquí, si
+    llega una sola consulta, se delega en `recuperar`.
+
+    Ojo con `Fragmento.score` en esta ruta: el ORDEN lo da el RRF de la fusión, pero el score
+    que se propaga es el rerank de la consulta que trajo el fragmento (la mejor señal absoluta
+    disponible). No asumir que la lista está ordenada por `score` descendente.
+    """
+    cfg = obtener_config()
+    consultas = [c for c in consultas if c.strip()]
+    if not cfg.rag_habilitado or not consultas:
+        return []
+    if len(consultas) == 1:
+        return recuperar(consultas[0], especie=especie, top_k=top_k)
+
+    recursos = _cargar_recursos()
+    if recursos is None:
         return []
 
-    # Filtrado por especie ANTES de reordenar (metadato 'especie' opcional).
-    if especie:
-        candidatos = [
-            f for f in candidatos
-            if not (f.get("especie") or "") or (f.get("especie") or "").lower() == especie.lower()
-        ]
+    modelo, tabla = recursos
+    k = top_k or cfg.rag_top_k
+    consultas = consultas[: cfg.rag_max_consultas]
+    pozo = max(8, cfg.rag_candidatos // len(consultas))
 
-    mejores = _reordenar(consulta, candidatos, k) if cfg.rag_rerank else candidatos[:k]
-
-    return [
-        Fragmento(
-            texto=f.get("texto", ""),
-            libro=f.get("libro", ""),
-            edicion=f.get("edicion", ""),
-            capitulo=f.get("capitulo", ""),
-            pagina=str(f.get("pagina", "")),
-            score=_relevancia(f),
-        )
-        for f in mejores
+    listas = [
+        filas
+        for consulta in consultas
+        if (filas := _recuperar_filas(cfg, tabla, modelo, consulta, especie, pozo, k))
     ]
+    if not listas:
+        return []
+
+    fusionadas = fusion_rrf(listas, n=k * 2) if len(listas) > 1 else listas[0]
+    return _a_fragmentos(_aplicar_diversidad(fusionadas, k, cfg.rag_max_por_libro))
 
 
 def construir_consulta(patrones: list[str], hallazgos: list[str]) -> str:
     """Arma la consulta de recuperación a partir de los patrones y hallazgos del paciente."""
     terminos = [*patrones, *hallazgos]
     return " ; ".join(t for t in terminos if t)[:512]
+
+
+def construir_consultas(patrones: list[str], hallazgos: list[str]) -> list[str]:
+    """Descompone el caso en consultas de recuperación independientes.
+
+    Una por patrón —que es la unidad clínica que el motor determinista ya identificó, y la que
+    tiene literatura propia— más una agregada con los hallazgos, que sirve de red por si el
+    patrón no está en el corpus con ese nombre. Sin patrones, degrada exactamente a
+    `construir_consulta`.
+    """
+    consultas: list[str] = []
+    vistas: set[str] = set()
+    for termino in [*patrones, " ; ".join(h for h in hallazgos if h)]:
+        texto = termino.strip()[:512]
+        clave = texto.lower()
+        if texto and clave not in vistas:
+            vistas.add(clave)
+            consultas.append(texto)
+    return consultas

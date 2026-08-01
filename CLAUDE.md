@@ -100,11 +100,14 @@ Los libros con licencia y el índice **nunca** entran en git (`books/*` y `insta
 
 | Artefacto | Repo | Tamaño | Para qué |
 |---|---|---|---|
-| Índice LanceDB | `blackmistcode/morphos-rag-index` | 70 MB | Lo consume la app; se hornea en la imagen |
+| Índice LanceDB | `blackmistcode/morphos-rag-index` | 33 MB | Lo consume la app; se hornea en la imagen |
 | PDFs originales | `blackmistcode/morphos-books` | 226 MB | Sólo para reingerir |
 
 ```bash
 make ingest          # construye el índice desde books/ (local, requiere grupo rag)
+# Añadir un documento nuevo sin reprocesar los libros grandes (OCR sobre cientos de MB):
+#   uv run --group rag python -m app.rag.ingest --fuente ../books --salida ../instance/rag_index --anexar
+make curar-indice    # descarta índices alfabéticos + reetiqueta especie (ARGS=--aplicar)
 make publish-index   # sube instance/rag_index al dataset privado
 make fetch-index     # lo descarga (clon limpio, otra máquina, CI)
 make publish-books   # respalda los PDFs (no hace falta para desplegar)
@@ -113,6 +116,47 @@ make publish-books   # respalda los PDFs (no hace falta para desplegar)
 Se usa la API de Python de `huggingface_hub`, **no el CLI `hf`**: en la versión instalada
 (1.16.1) el CLI devuelve código 1 aunque la operación vaya bien, por una incompatibilidad
 typer/click, y eso aborta cualquier Makefile o build.
+
+### Alcance del corpus: qué entra y con qué especie
+
+**`data/rag_alcance.json`** declara, por rangos de página, las dos decisiones que la ingesta y
+`make curar-indice` aplican por igual (`app/rag/alcance_corpus.py`):
+
+- **`descartes`** — rangos de página que no entran en el corpus: los preliminares (portada,
+  créditos, índice general, colaboradores, prefacio; el contenido empieza en la p. 19 en ambos
+  libros), el índice alfabético del final y la lista de casos que abre la SECTION VII.
+- **`umbral_lideres_de_puntos`** — descarte por CONTENIDO: cualquier fragmento cuya fracción de
+  líderes de puntos («Urine Samples . . . . . . 6») supere el umbral. Fundamentals repite un
+  sumario al principio de cada capítulo, 23 bloques por todo el libro, que por rangos serían 23
+  entradas a mano; la firma tipográfica los coge de una vez. El reparto real es bimodal (164
+  fragmentos por encima de 0.20, 8 entre 0.05 y 0.18 con contenido real), así que 0.20 se
+  equivoca por el lado de conservar.
+- **`rangos`** — restringidos a una especie (abajo).
+
+Total fuera: **571 fragmentos, 6772 → 6201 (8,4 %)**. Ninguno contiene prosa clínica.
+
+`curar-indice` **compacta al terminar**, y no es cosmético: LanceDB versiona, así que
+sobrescribir deja los datos viejos en disco y el índice *crece* al quitarle filas (medido:
+73 MB → 140 MB → 33 MB tras compactar). Este artefacto se sube al Hub y se hornea en la imagen.
+
+### Sólo canino y felino
+
+Morphos atiende **sólo canino y felino**, pero los dos libros son de patología clínica
+veterinaria **comparada** y traen secciones enteras de aves, reptiles y peces (5,7 % de los
+fragmentos mencionan aves). `retriever.py` filtra por especie, pero sólo excluye un fragmento
+si su metadato `especie` está relleno — y hasta el 2026-08-01 **los 6772 chunks lo tenían
+vacío**, así que el filtro estaba inerte sobre el índice real aunque sus tests pasaran contra un
+índice sintético que sí lo traía.
+
+Sólo se etiquetan **secciones declaradas por el propio libro en su índice** (488 fragmentos,
+7,2 %, como `no_domestico`). El material comparado que menciona caballo o vaca de pasada se deja
+intacto: enseña el principio general y sirve igual para un perro. Etiquetar no es descartar —esas
+secciones siguen en el corpus, sólo quedan fuera del alcance de un paciente canino o felino.
+
+**Si se reingiere o se reetiqueta, hay que `make publish-index`**: si no, el arreglo se queda en
+local y las builds siguen bajando el índice sin etiquetar. `test_alcance_corpus.py` comprueba el
+índice REAL (se omite donde no está) precisamente porque un fixture sintético no puede ver este
+fallo.
 
 En Docker, `WITH_RAG=1` es el valor por defecto y los modelos (bge-m3 + bge-reranker-v2-m3,
 ~6.4 GB) se hornean en `/opt/hf` con `HF_HUB_OFFLINE=1` en runtime, para que un fallo de red no

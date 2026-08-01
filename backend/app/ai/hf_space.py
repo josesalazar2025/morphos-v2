@@ -17,7 +17,7 @@ import re
 import httpx
 
 from ..config import obtener_config
-from ..schemas import InterpretacionClinica
+from ..schemas import InterpretacionClinica, esquema_estructurado
 from .base import ErrorModelo
 
 _DATA_URL = re.compile(r"^data:(image/[\w+]+);base64,(.+)$", re.DOTALL)
@@ -84,12 +84,42 @@ def _cortar_bucle_lineas(text: str) -> str:
     return "\n".join(salida)
 
 
+# Caracteres que pueden ir DESPUÉS del punto final sin que la frase esté cortada: énfasis
+# markdown, comillas y cierres de paréntesis.
+_ADORNOS_FINALES = "*_`\"'”»)]}"
+_FIN_DE_FRASE = ".!?…:"
+# Una línea final corta puede ser un ítem de lista o un encabezado legítimos sin puntuación
+# ("- Ecografía abdominal"). Sólo una línea larga sin cierre delata una frase interrumpida.
+_LARGO_MINIMO_TRUNCADO = 40
+
+
+def interpretacion_truncada(text: str) -> bool:
+    """True si la respuesta se corta a mitad de frase.
+
+    El Space puede devolver una interpretación cortada en seco (visto en producción:
+    «…los diferenciales incluyen la lip», justo antes de nombrar el diferencial clave). La
+    limpieza no la toca —el corte viene de arriba— y el resto de comprobaciones no la ven:
+    el texto es largo, no repite y no filtra razonamiento. Sin esto, una interpretación
+    incompleta llega al veterinario con aspecto de completa, callando justo lo que importa.
+    """
+    limpio = text.rstrip()
+    if not limpio:
+        return True
+    ultima_linea = limpio.split("\n")[-1].strip()
+    if len(ultima_linea) < _LARGO_MINIMO_TRUNCADO:
+        return False
+    return limpio.rstrip(_ADORNOS_FINALES)[-1:] not in _FIN_DE_FRASE
+
+
 def interpretacion_defectuosa(text: str) -> bool:
     """True si la salida limpiada no es una interpretación válida: demasiado corta, cadena de
-    razonamiento filtrada, o bucle de repetición. Se usa para forzar un reintento."""
+    razonamiento filtrada, bucle de repetición o frase cortada. Se usa para forzar un
+    reintento."""
     if len(text.strip()) < 40:
         return True
     if _MARCADOR_PENSAMIENTO.search(text[:500]):
+        return True
+    if interpretacion_truncada(text):
         return True
     conteo: dict[str, int] = {}
     for linea in text.split("\n"):
@@ -102,10 +132,18 @@ def interpretacion_defectuosa(text: str) -> bool:
 
 
 class HFSpaceClient:
-    nombre = "medgemma-hf"
+    """Cliente del Space. Dos modos según `hf_space_estructurado`:
+
+    - prosa (`medgemma-hf`): el Space devuelve texto libre y se envuelve en `interpretacion`.
+    - estructurado (`medgemma-hf-json`): se le manda el JSON Schema y devuelve el objeto ya
+      formado. El nombre distinto NO es cosmético: el servicio decide por él si aplica el
+      system prompt de prosa, si exige campos estructurados y si suple `requiere_derivacion`.
+    """
 
     def __init__(self) -> None:
         cfg = obtener_config()
+        self.estructurado = cfg.hf_space_estructurado
+        self.nombre = "medgemma-hf-json" if self.estructurado else "medgemma-hf"
         if not cfg.hf_space_url:
             raise ErrorModelo(
                 "MORPHOS_HF_SPACE_URL no configurada para la ruta HF Space.", reintentable=False
@@ -157,6 +195,9 @@ class HFSpaceClient:
             while len(data) < 4:
                 data.append(None)
             data.append(prompt)
+            # 6.º elemento del contrato Gradio: el esquema. Cadena vacía = modo prosa, que es
+            # lo que el Space entiende como "sin restricción".
+            data.append(json.dumps(esquema_estructurado()) if self.estructurado else "")
 
             try:
                 r = await cliente.post(
@@ -204,17 +245,53 @@ class HFSpaceClient:
         if texto is None:
             raise ErrorModelo("Sin respuesta del modelo (HF Space).")
 
-        limpio = limpiar_respuesta(texto)
-        # Salida defectuosa (razonamiento filtrado / bucle) → error reintentable: el servicio
-        # vuelve a muestrear una vez y suele obtener una respuesta correcta.
-        if interpretacion_defectuosa(limpio):
-            raise ErrorModelo("El modelo devolvió razonamiento o texto repetido, no la interpretación.")
+        if self.estructurado:
+            return self._parsear_estructurado(texto)
 
+        limpio = limpiar_respuesta(texto)
+        # Salida defectuosa (razonamiento filtrado / bucle / frase cortada) → error
+        # reintentable: el servicio vuelve a muestrear una vez y suele obtener una respuesta
+        # correcta. Se distingue el motivo porque una respuesta truncada se ve completa y el
+        # mensaje genérico despistaría al diagnosticar.
+        if interpretacion_defectuosa(limpio):
+            truncada = interpretacion_truncada(limpio)
+            motivo = (
+                "la respuesta llegó cortada a mitad de frase"
+                if truncada
+                else "el modelo devolvió razonamiento o texto repetido, no la interpretación"
+            )
+            raise ErrorModelo(
+                f"Respuesta inutilizable del modelo: {motivo}.", truncado=truncada
+            )
+
+        # `requiere_derivacion=True` es un marcador de posición conservador, NO una lectura del
+        # modelo: en esta ruta el Space devuelve prosa y no puede rellenar campos estructurados.
+        # Quien le pone valor real es el servicio, desde el motor determinista
+        # (`_derivacion_en_ruta_de_prosa`). Dejarlo constante hacía que `acierto_derivacion`
+        # midiera este default y no al modelo, y contradecía al propio texto en un panel normal.
         return InterpretacionClinica(
             interpretacion=limpio,
             requiere_derivacion=True,
             idioma="es",
         )
+
+    @staticmethod
+    def _parsear_estructurado(texto: str) -> InterpretacionClinica:
+        """Valida el JSON restringido del Space contra el esquema.
+
+        La limpieza de prosa (`limpiar_respuesta`, `interpretacion_defectuosa`) NO se aplica
+        aquí: son heurísticas sobre texto libre y sobre un JSON darían falsos positivos. Si el
+        JSON no valida se trata como salida malformada —error reintentable—, que es justo el
+        caso para el que existe el reintento del servicio.
+        """
+        try:
+            datos = json.loads(texto)
+        except json.JSONDecodeError as exc:
+            raise ErrorModelo(f"El Space devolvió JSON inválido: {exc}") from exc
+        try:
+            return InterpretacionClinica.model_validate(datos)
+        except Exception as exc:  # noqa: BLE001 — ValidationError de pydantic
+            raise ErrorModelo(f"JSON del Space fuera de esquema: {exc}") from exc
 
     @staticmethod
     def _parsear_sse(stream: str) -> tuple[str | None, str | None]:

@@ -53,6 +53,38 @@ def test_reordenar_con_reranker_ordena_por_score(monkeypatch):
     assert [f["texto"] for f in top] == ["t4", "t3"]
 
 
+def test_diversidad_prefiere_no_repetir_libro():
+    filas = [_fila("A", "1", "t1"), _fila("A", "2", "t2"), _fila("A", "3", "t3"),
+             _fila("B", "1", "t4")]
+    top = R._aplicar_diversidad(filas, k=3, max_por_libro=2)
+    assert [f["libro"] for f in top] == ["A", "A", "B"]
+
+
+def test_diversidad_es_preferencia_no_limite_duro():
+    """Si no hay material de otras fuentes, se rellena igual: mejor 3 del mismo libro que 2."""
+    filas = [_fila("A", str(i), f"t{i}") for i in range(4)]
+    assert len(R._aplicar_diversidad(filas, k=3, max_por_libro=2)) == 3
+
+
+def test_suelo_de_relevancia_descarta_los_flojos():
+    fuerte, flojo = _fila("A", "1", "t1"), _fila("A", "2", "t2")
+    fuerte["_rerank_score"], flojo["_rerank_score"] = 2.0, -3.0
+    assert R._filtrar_por_score([fuerte, flojo], 0.0) == [fuerte]
+
+
+def test_suelo_de_relevancia_no_toca_lo_que_no_pasó_por_el_reranker():
+    """RRF y distancia densa están en otra escala: aplicarles el umbral sería mezclar métricas."""
+    filas = [_fila("A", "1", "t1")]
+    filas[0]["_rrf_score"] = 0.016
+    assert R._filtrar_por_score(filas, 0.5) == filas
+
+
+def test_suelo_desactivado_por_defecto_no_filtra():
+    filas = [_fila("A", "1", "t1")]
+    filas[0]["_rerank_score"] = -9.0
+    assert R._filtrar_por_score(filas, None) == filas
+
+
 def test_candidatos_sin_fts_cae_a_vectorial(monkeypatch):
     class Cfg:
         rag_hibrido = True

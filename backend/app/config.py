@@ -50,7 +50,20 @@ class Configuracion(BaseSettings):
     # medGemma; si se vacía `hf_space_url`, la ruta 'medgemma' cae a Ollama en `medgemma_base_url`.
     medgemma_base_url: str = Field(default="http://localhost:11434")
     medgemma_model: str = Field(default="medgemma:latest")
+    # La PRIMERA petición a Ollama carga el modelo en memoria, y eso domina el tiempo: un 14B
+    # cuantizado tarda minutos en frío y luego responde en segundos. Con 120 s la primera
+    # llamada se caía por timeout y las evals lo veían como "no se pudo conectar".
+    medgemma_timeout_s: int = Field(default=300)
     hf_space_url: str = Field(default="https://blackmistcode-morphos-medgemma.hf.space/gradio_api")
+    # Salida ESTRUCTURADA del Space: se le manda el JSON Schema de InterpretacionClinica y el
+    # Space restringe la decodificación a producirlo (como `format` en Ollama). Es la corrección
+    # de raíz de la ruta de prosa —de ella salen los campos estructurados vacíos, la cobertura
+    # medida sobre texto, la atribución reconstruida a mano y buena parte de la fragilidad al
+    # prompt—, pero exige que el Space tenga `lm-format-enforcer` y activa el salto de
+    # razonamiento (la restricción aplica desde el primer token). OFF hasta medirlo contra la
+    # puerta: cambia de golpe el system prompt, el contrato del cliente y cómo se mide la
+    # cobertura, así que no entra sin A/B.
+    hf_space_estructurado: bool = Field(default=False)
     # Acepta tanto MORPHOS_HF_API_KEY como el HF_API_KEY sin prefijo (convención heredada
     # del proxy PHP), para no obligar a renombrar la variable en .env.
     hf_api_key: str = Field(
@@ -79,6 +92,19 @@ class Configuracion(BaseSettings):
     rag_books_repo: str = Field(default="blackmistcode/morphos-books")
     rag_embed_model: str = Field(default="BAAI/bge-m3")
     rag_top_k: int = Field(default=6)
+    # Techo de literatura que se INCLUYE EN EL PROMPT de la ruta de prosa (HF Space), en
+    # caracteres. No limita la recuperación (el reranking sigue eligiendo entre `rag_top_k`),
+    # sólo cuánto se le enseña al modelo.
+    #
+    # Por qué existe: medGemma 1.5 razona antes de responder y el Space reparte un único
+    # presupuesto de 2048 tokens entre ese razonamiento —que descarta— y la respuesta. Cuanta
+    # más literatura entra, más largo es el razonamiento y menos presupuesto queda: con 6
+    # fragmentos (~3.600 caracteres) la respuesta se cortaba a mitad de frase en ~220 tokens,
+    # con 2 salía completa en ~950. Medido contra el Space el 2026-07-27.
+    #
+    # No se aplica a Ollama ni a Claude: ahí el razonamiento va desactivado o no comparte
+    # presupuesto con la respuesta, y más contexto sólo mejora la fundamentación.
+    rag_max_chars_prompt: int = Field(default=1800)
     rag_habilitado: bool = Field(default=True)
     # Idioma de la consulta de recuperación. "en" (por defecto) traduce el vocabulario clínico
     # controlado a inglés: el A/B con juez LLM mostró mejor precisión y, sobre todo, mejor
@@ -95,11 +121,57 @@ class Configuracion(BaseSettings):
     rag_rerank: bool = Field(default=True)
     rag_candidatos: int = Field(default=30)  # tamaño del pozo antes de reordenar
     rag_reranker_model: str = Field(default="BAAI/bge-reranker-v2-m3")
+    # Multi-consulta: en vez de concatenar todos los patrones y hallazgos en UNA cadena —que
+    # se embebe en un único vector donde "anemia regenerativa ; azotemia ; hipoalbuminemia" no
+    # es ninguno de los tres—, se lanza una consulta por patrón más una agregada de hallazgos
+    # y se fusionan por rango con RRF. El pozo de candidatos TOTAL no crece (se reparte entre
+    # las consultas), así que el coste de reranking es el mismo. Sin llamadas a ningún modelo
+    # generativo: la descomposición la da el motor determinista, que ya sabe qué patrones hay.
+    #
+    # OFF por defecto: medido el 2026-07-31 con `run_retrieval_eval.py --multiconsulta` sobre
+    # los 17 casos dorados, EMPEORA — precision@k 0.81→0.50 y MRR 0.91→0.86, con hit_rate
+    # intacto (0.94). Salvedad grande: el único juez disponible sin coste era el heurístico de
+    # solape de palabras, que favorece a la consulta concatenada (lleva descripción + analitos
+    # + signos, así que sus fragmentos comparten vocabulario con el diagnóstico esperado por
+    # construcción) frente a consultas de un solo analito, que traen pasajes mecanísticos con
+    # menos solape léxico. Inspeccionados a mano, varios de esos fragmentos eran mejores
+    # (p. ej. «Na:K ratio < 27 is diagnostic of hypoadrenocorticism» donde la consulta única
+    # traía una tabla de caso). Volver a medir con un juez LLM local (`ollama pull` de un
+    # modelo generativo, gratis) antes de decidir; hasta entonces no se cambia el defecto.
+    rag_multiconsulta: bool = Field(default=False)
+    rag_max_consultas: int = Field(default=4)
+    # Cuota de diversidad: preferencia (no límite duro) de fragmentos por libro, para no gastar
+    # el presupuesto del prompt en varias páginas del mismo capítulo. Si no hay material de
+    # otras fuentes, se rellena igualmente hasta `rag_top_k`. 0 la desactiva.
+    rag_max_por_libro: int = Field(default=2)
+    # Suelo de relevancia sobre la puntuación del cross-encoder: por debajo, el fragmento se
+    # descarta en vez de rellenar `rag_top_k`. Un fragmento flojo gasta presupuesto de prompt e
+    # invita a una cita que parece respaldo sin serlo. Por defecto None = desactivado: la escala
+    # del reranker son logits sin calibrar y fijar un umbral a ojo puede vaciar la recuperación.
+    # Calibrar con `evals/run_retrieval_eval.py` (mirar los scores de los juzgados relevantes)
+    # antes de ponerle valor. Sólo se aplica cuando el reranker corrió.
+    rag_score_minimo: float | None = Field(default=None)
     # Tier 3 (opcional, OFF por defecto; activar sólo si el A/B de evals muestra que Tier 2
     # se queda corto) — "contextual retrieval" estilo Anthropic: en la ingesta se antepone a
     # cada fragmento una frase de contexto generada con Claude ANTES de embeber (se almacena
     # el texto original; se embebe el enriquecido). Coste: una llamada a Claude por fragmento.
     rag_contextual: bool = Field(default=False)
+
+    # --- Composición del prompt ---
+    # Si los patrones del motor determinista se le enseñan al modelo. Ponerlo en False NO los
+    # quita de la petición: se siguen usando para construir la consulta de recuperación
+    # (`construir_consulta`) y para el suelo de derivación (`_derivacion_obligatoria`), que no
+    # dependen del modelo. Sólo deja de mostrárselos, bajo la hipótesis de que un modelo
+    # clínico ya deduce la correlación a partir de los valores alterados. Es una hipótesis
+    # medible: A/B con `run_evals.py` antes de cambiar el valor por defecto.
+    prompt_incluir_patrones: bool = Field(default=True)
+    # Si cada hallazgo lleva su etiqueta de gravedad (leve/moderado/grave) en el prompt. La duda
+    # es razonable: la gravedad es un JUICIO del motor, no un dato de laboratorio, y medido el
+    # 2026-07-31 una sola palabra la mueve entera —cambiar 'moderado' por 'grave' en el Hct de
+    # `imha-canino` hizo que el modelo dejara de nombrar la IMHA y alucinara analitos—. La
+    # dirección (alto/bajo) sí es objetiva y se mantiene siempre. A/B con `run_evals.py` antes de
+    # cambiar el valor por defecto.
+    prompt_incluir_gravedad: bool = Field(default=True)
 
     # --- Límites de subida (citologías) ---
     max_imagenes: int = Field(default=4)

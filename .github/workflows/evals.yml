@@ -48,9 +48,10 @@ jobs:
       # o subir un archivo de predicciones generado en un job con GPU.
       #
       # Sobre el juez: con --simular se omite a propósito (juzgaría el simulador, no el
-      # modelo). Sobre salidas reales se activa solo: juez local gratuito si el runner tiene
-      # Ollama, y Claude si ANTHROPIC_API_KEY está en los secrets. Sin ninguno de los dos la
-      # puerta sigue siendo válida, sólo más ciega.
+      # modelo). Sobre salidas reales se activa solo, en este orden: CLI de Claude Code (no
+      # existe en el runner), Ollama local (tampoco, salvo que se instale en el job) y SDK de
+      # Claude si ANTHROPIC_API_KEY está en los secrets. Sin ninguno la puerta sigue siendo
+      # válida, sólo más ciega: las métricas deterministas se calculan igual.
       - name: Ejecutar evals (puerta de CI — split dev)
         working-directory: backend
         env:
