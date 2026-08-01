@@ -224,11 +224,13 @@ header .barra-paciente select option {
 }
 
 header .boton-tema,
+header .boton-lab,
 header .boton-usuario {
     color: var(--header-text-action);
 }
 
 header .boton-tema:hover,
+header .boton-lab:hover,
 header .boton-usuario:hover {
     color: var(--header-text-hover);
 }
@@ -1652,8 +1654,9 @@ footer {
     background: var(--surface-2);
 }
 
-/*  THEME TOGGLE  */
-.boton-tema {
+/*  THEME TOGGLE + ANALIZADOR (mismos botones de icono de la cabecera)  */
+.boton-tema,
+.boton-lab {
     background: transparent;
     color: var(--text-2);
     border: 1px solid var(--border-1);
@@ -1664,10 +1667,23 @@ footer {
     min-height: 32px;
 }
 
-.boton-tema:hover {
+.boton-tema:hover,
+.boton-lab:hover {
     background: var(--surface-2);
     color: var(--text-1);
     border-color: var(--border-2);
+}
+
+.boton-lab svg {
+    width: 14px;
+    height: 14px;
+    fill: currentColor;
+}
+
+.boton-lab[aria-expanded="true"] {
+    background: var(--surface-2);
+    border-color: var(--accent);
+    color: var(--accent);
 }
 
 .icono-sol {
@@ -2108,6 +2124,12 @@ main {
         align-self: center;
     }
 
+    /* En móvil los controles del analizador están en línea dentro del panel de paciente: el
+       botón de la cabecera sobraría y abriría un modal con el mismo contenido. */
+    .boton-lab {
+        display: none;
+    }
+
     .acciones-cabecera .boton {
         padding: 6px 12px;
         font-size: var(--fs-sm);
@@ -2328,7 +2350,8 @@ main {
 }
 
 /* Modal*/
-.modal-auth {
+.modal-auth,
+.modal-lab {
     position: fixed;
     top: 50%;
     left: 50%;
@@ -2344,9 +2367,27 @@ main {
     transition: opacity var(--dur-base), transform var(--dur-base);
 }
 
-.modal-auth.visible {
+.modal-auth.visible,
+.modal-lab.visible {
     opacity: 1;
     transform: translate(-50%, -50%);
+}
+
+.modal-lab-ayuda {
+    margin: 0 0 var(--space-4);
+    font-size: var(--fs-sm);
+    color: var(--text-3);
+    line-height: 1.5;
+}
+
+/* Los controles del analizador se dimensionan para la columna estrecha del panel móvil; en el
+   modal comparten ancho, así que el ID de muestra ocupa la fila entera. */
+#modal-lab-cuerpo .fila-importar-lab {
+    margin-top: 0;
+}
+
+#modal-lab-cuerpo #lab-muestra-id {
+    width: 100%;
 }
 
 .modal-cerrar svg {

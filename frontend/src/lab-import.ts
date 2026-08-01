@@ -174,6 +174,72 @@ export function inicializarImportLab(evaluar: () => void): void {
   }));
 
   inicializarCola(cargarYAplicar, detener);
+  inicializarModalLab(detener);
+}
+
+// El botón del analizador en la cabecera (sólo escritorio, donde #panel-paciente está oculto).
+// En vez de duplicar los controles —que duplicaría los IDs y, peor, el estado del sondeo, con
+// dos búsquedas vivas a la vez— se MUEVE el nodo #lab-controles entre su sitio en el panel de
+// paciente (móvil) y el modal (escritorio). Al mover un elemento se conservan sus listeners,
+// así que el cableado de arriba sigue valiendo para los dos casos.
+function inicializarModalLab(detenerBusqueda: () => void): void {
+  const btn = document.getElementById('btn-lab');
+  const modal = document.getElementById('modal-lab');
+  const overlay = document.getElementById('modal-lab-overlay');
+  const cuerpo = document.getElementById('modal-lab-cuerpo');
+  const controles = document.getElementById('lab-controles');
+  const anclaje = document.getElementById('lab-anclaje-mob');
+  if (!btn || !modal || !overlay || !cuerpo || !controles || !anclaje) return;
+
+  const esEscritorio = (): boolean => window.innerWidth > 1100;
+
+  // Idempotente: si ya está donde toca no toca el DOM (se llama en cada `resize`).
+  const ubicar = (): void => {
+    if (esEscritorio()) {
+      if (controles.parentElement !== cuerpo) cuerpo.appendChild(controles);
+    } else if (controles.previousElementSibling !== anclaje) {
+      anclaje.after(controles);
+    }
+  };
+
+  const cerrar = (): void => {
+    modal.classList.remove('visible');
+    overlay.classList.remove('activo');
+    btn.setAttribute('aria-expanded', 'false');
+    setTimeout(() => modal.setAttribute('hidden', ''), 250);
+  };
+
+  const abrir = (): void => {
+    ubicar();
+    modal.removeAttribute('hidden');
+    overlay.classList.add('activo');
+    btn.setAttribute('aria-expanded', 'true');
+    requestAnimationFrame(() => modal.classList.add('visible'));
+    (document.getElementById('lab-muestra-id') as HTMLInputElement | null)?.focus();
+  };
+
+  btn.addEventListener('click', () => {
+    if (modal.hasAttribute('hidden')) abrir();
+    else cerrar();
+  });
+  overlay.addEventListener('click', cerrar);
+  document.getElementById('modal-lab-cerrar')?.addEventListener('click', cerrar);
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !modal.hasAttribute('hidden')) cerrar();
+  });
+
+  // Al cruzar el breakpoint hacia móvil los controles vuelven al panel de paciente. Si el modal
+  // estaba abierto se cierra, y con él cualquier búsqueda en curso: su botón dejaría de estar a
+  // la vista y el sondeo seguiría vivo en segundo plano sin forma de cancelarlo.
+  window.addEventListener('resize', () => {
+    if (!esEscritorio() && !modal.hasAttribute('hidden')) {
+      detenerBusqueda();
+      cerrar();
+    }
+    ubicar();
+  });
+
+  ubicar();
 }
 
 // Cola de resultados recibidos: lista para elegir sin teclear el ID de muestra.
