@@ -42,6 +42,21 @@ def _validar_imagenes(imagenes: list[str]) -> None:
             raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "Imagen demasiado grande.")
 
 
+@router.get("/modelos")
+async def get_modelos(_sesion: dict = Depends(usuario_actual)) -> dict:
+    """Modelos locales que el usuario puede elegir, para poblar el selector de la UI.
+
+    Devuelve sólo NOMBRES: la URL de Ollama no sale del servidor ni entra desde el cliente.
+    Lista vacía = el selector no se muestra y la ruta la sigue decidiendo el servidor, que es
+    el caso de la instancia pública (allí no hay Ollama que valga).
+    """
+    cfg = obtener_config()
+    return {
+        "locales": sorted(cfg.modelos_locales_permitidos()),
+        "defecto": cfg.medgemma_model,
+    }
+
+
 @router.post("/interpret", response_model=RespuestaInterpretacion)
 @limiter.limit(obtener_config().limite_interpret)
 # Segundo límite, con clave por usuario: el de arriba (por IP) frena ráfagas puntuales, éste

@@ -1293,14 +1293,17 @@ footer {
     outline-offset: 1px;
 }
 
-#ia-ollama-url,
-#ia-ollama-model {
-    color: var(--color-placeholder);
-}
-
 .ia-model-input {
     max-width: 130px;
     flex: 0 0 auto;
+}
+
+/* `display: flex` de las reglas de arriba gana al `display: none` del agente de usuario, así
+   que sin esto el atributo `hidden` que pone ia.ts no ocultaba nada. Se resuelve con
+   especificidad ([hidden] añade un selector de atributo), no con !important. */
+.ia-backend-config[hidden],
+.ia-ollama-fields[hidden] {
+    display: none;
 }
 
 .ia-hf-fields {

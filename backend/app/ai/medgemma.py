@@ -18,6 +18,7 @@ import httpx
 from ..config import obtener_config
 from ..schemas import InterpretacionClinica, esquema_estructurado
 from .base import ErrorModelo
+from .prosa import interpretacion_desde_prosa
 
 _DATA_URL = re.compile(r"^data:image/(?:jpeg|png|gif|webp);base64,(.+)$", re.DOTALL)
 
@@ -32,12 +33,22 @@ def _base64_imagenes(imagenes: list[str]) -> list[str]:
 
 
 class MedGemmaClient:
-    nombre = "medgemma"
+    """Cliente de Ollama. `modelo` lo puede fijar el usuario desde la UI, pero SÓLO con un
+    nombre ya validado contra la lista blanca (`PeticionInterpretacion.modelo_local`); la
+    base_url nunca sale de la configuración del servidor.
 
-    def __init__(self) -> None:
+    `prosa` desactiva la decodificación restringida para los modelos que la aceptan pero la
+    rellenan en hueco (ver `config.modelos_locales`). El nombre distinto NO es cosmético: el
+    servicio decide por `prosa` si usa el system prompt de prosa, si exige campos
+    estructurados y si suple `requiere_derivacion`.
+    """
+
+    def __init__(self, modelo: str | None = None, *, prosa: bool = False) -> None:
         cfg = obtener_config()
         self._url = cfg.medgemma_base_url.rstrip("/")
-        self._modelo = cfg.medgemma_model
+        self.modelo = modelo or cfg.medgemma_model
+        self.prosa = prosa
+        self.nombre = "medgemma-prosa" if prosa else "medgemma"
         self._timeout = cfg.medgemma_timeout_s
         self._esquema = esquema_estructurado()
 
@@ -50,13 +61,14 @@ class MedGemmaClient:
             mensaje_user["images"] = b64
 
         payload = {
-            "model": self._modelo,
+            "model": self.modelo,
             "messages": [{"role": "system", "content": sistema}, mensaje_user],
-            "format": self._esquema,  # salida estructurada nativa de Ollama
             "stream": False,
             "think": False,
             "options": {"temperature": 0.2, "num_predict": 1500},
         }
+        if not self.prosa:
+            payload["format"] = self._esquema  # salida estructurada nativa de Ollama
 
         try:
             async with httpx.AsyncClient(timeout=self._timeout) as cliente:
@@ -83,7 +95,9 @@ class MedGemmaClient:
             )
 
         contenido = resp.json().get("message", {}).get("content", "")
+        if self.prosa:
+            return interpretacion_desde_prosa(contenido)
         try:
             return InterpretacionClinica.model_validate_json(contenido)
         except Exception as exc:  # noqa: BLE001
-            raise ErrorModelo(f"Salida de medGemma no valida el esquema: {exc}") from exc
+            raise ErrorModelo(f"Salida de {self.modelo} no valida el esquema: {exc}") from exc

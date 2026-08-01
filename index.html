@@ -1030,13 +1030,16 @@
             <div class="seccion-resultado">
                 <h3 class="titulo-seccion-resultado">Interpretación IA</h3>
                 <div id="salida-ia">Envía todas las analíticas y citologías al modelo medGemma para obtener una evaluación integrada...</div>
-                <div class="ia-backend-config">
+                <!-- Selector de entorno. Se muestra sólo si el servidor declara modelos locales
+                     en MORPHOS_MODELOS_LOCALES; si no, lo oculta ia.ts. La URL de Ollama NO se
+                     configura aquí a propósito: la fija el servidor (aceptar una del cliente
+                     convertiría /api/interpret en un SSRF). -->
+                <div class="ia-backend-config" id="ia-backend-config" hidden>
                     <span class="ia-backend-label">Entorno IA</span>
-                    <label class="ia-backend-opt"><input type="radio" name="ia-backend" value="hf" id="ia-backend-hf" checked>HugginFace</label>
+                    <label class="ia-backend-opt"><input type="radio" name="ia-backend" value="hf" id="ia-backend-hf" checked>Alojado</label>
                     <label class="ia-backend-opt"><input type="radio" name="ia-backend" value="local" id="ia-backend-local">Local</label>
                     <div class="ia-ollama-fields" id="ia-ollama-fields">
-                        <input type="url" id="ia-ollama-url" class="ia-text-input" placeholder="http://localhost:11434" value="http://localhost:11434" aria-label="URL de Ollama">
-                        <input type="text" id="ia-ollama-model" class="ia-text-input ia-model-input" placeholder="medgemma1.5:latest" value="medgemma1.5:latest" aria-label="Modelo Ollama">
+                        <select id="ia-modelo-local" class="ia-text-input" aria-label="Modelo local"></select>
                     </div>
                 </div>
             </div>

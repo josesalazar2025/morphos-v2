@@ -9,9 +9,10 @@ from __future__ import annotations
 
 from functools import lru_cache
 from pathlib import Path
+from typing import Annotated
 
 from pydantic import AliasChoices, Field, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 # Raíz del repo (…/morphos). La BD y el índice RAG viven FUERA del directorio servido.
 RAIZ_REPO = Path(__file__).resolve().parents[2]
@@ -54,6 +55,29 @@ class Configuracion(BaseSettings):
     # cuantizado tarda minutos en frío y luego responde en segundos. Con 120 s la primera
     # llamada se caía por timeout y las evals lo veían como "no se pudo conectar".
     medgemma_timeout_s: int = Field(default=300)
+    # Modelos locales que el usuario puede ELEGIR desde la UI. Lista blanca cerrada: vacía por
+    # defecto, lo que deja el selector oculto y el comportamiento de siempre (la ruta 'medgemma'
+    # la decide el servidor). Formato de cada entrada: `nombre[=prosa|=estructurado]`.
+    #
+    #   MORPHOS_MODELOS_LOCALES="medgemma1.5:latest, qwen2.5:7b=prosa"
+    #
+    # Por qué una lista blanca y no un campo de texto libre: el nombre viaja del navegador al
+    # servidor y de ahí a Ollama, así que un campo libre deja al cliente decidir qué pesos se
+    # descargan en la máquina que aloja el servicio. Y por eso NO hay campo de URL: la base_url
+    # se queda en `medgemma_base_url`, del lado servidor. Aceptar una URL del cliente convierte
+    # /api/interpret en un SSRF (el servidor haría peticiones a donde diga el navegador).
+    #
+    # El sufijo declara si el modelo sabe emitir salida ESTRUCTURADA (decodificación restringida
+    # por JSON Schema) o hay que pedirle prosa y envolverla. No se infiere: qwen2.5:7b acepta el
+    # `format` de Ollama y devuelve JSON válido con `hallazgos_clave`, `diferenciales` y
+    # `siguientes_pruebas` VACÍOS, que valida el esquema y deja al veterinario sin lo que vino a
+    # buscar. Por defecto se asume `estructurado`, que es lo que hace medGemma.
+    #
+    # Sólo tiene sentido donde el servicio tiene un Ollama alcanzable: "local" es local al
+    # SERVIDOR, no al navegador. En el HF Space se deja vacía.
+    # `NoDecode`: sin él, la fuente de entorno intenta json.loads() del valor ANTES de que corra
+    # `_dividir_lista` y la forma separada por comas revienta el arranque con SettingsError.
+    modelos_locales: Annotated[list[str], NoDecode] = Field(default_factory=list)
     hf_space_url: str = Field(default="https://blackmistcode-morphos-medgemma.hf.space/gradio_api")
     # Salida ESTRUCTURADA del Space: se le manda el JSON Schema de InterpretacionClinica y el
     # Space restringe la decodificación a producirlo (como `format` en Ollama). Es la corrección
@@ -102,8 +126,11 @@ class Configuracion(BaseSettings):
     # fragmentos (~3.600 caracteres) la respuesta se cortaba a mitad de frase en ~220 tokens,
     # con 2 salía completa en ~950. Medido contra el Space el 2026-07-27.
     #
-    # No se aplica a Ollama ni a Claude: ahí el razonamiento va desactivado o no comparte
-    # presupuesto con la respuesta, y más contexto sólo mejora la fundamentación.
+    # No se aplica a las rutas con salida estructurada (Ollama por defecto, Claude): ahí el
+    # razonamiento va desactivado o no comparte presupuesto con la respuesta, y más contexto
+    # sólo mejora la fundamentación. Sí se aplica a un modelo local declarado `prosa` en
+    # `modelos_locales`: es el mismo modo de fallo (un modelo pequeño razonando en voz alta
+    # dentro del mismo presupuesto de generación), aunque no se haya medido caso por caso.
     rag_max_chars_prompt: int = Field(default=1800)
     rag_habilitado: bool = Field(default=True)
     # Idioma de la consulta de recuperación. "en" (por defecto) traduce el vocabulario clínico
@@ -191,17 +218,48 @@ class Configuracion(BaseSettings):
     # --- Integración de analizadores de laboratorio ---
     # Claves de API de los puentes locales (dispositivos headless). Autoriza /api/lab/ingesta.
     # Si está vacía, la ingesta queda DESHABILITADA (falla cerrado con 503). Acepta lista JSON
-    # o cadena separada por comas en MORPHOS_LAB_API_KEYS.
-    lab_api_keys: list[str] = Field(default_factory=list)
+    # o cadena separada por comas en MORPHOS_LAB_API_KEYS (`NoDecode`, ver `modelos_locales`:
+    # sin él la forma con comas fallaba al arrancar pese a estar documentada).
+    lab_api_keys: Annotated[list[str], NoDecode] = Field(default_factory=list)
     # Persistencia opcional de resultados en SQLite (sólo útil con volumen persistente).
     lab_persistir: bool = Field(default=False)
 
-    @field_validator("lab_api_keys", mode="before")
+    @field_validator("lab_api_keys", "modelos_locales", mode="before")
     @classmethod
-    def _dividir_keys(cls, v):
+    def _dividir_lista(cls, v):
+        """Acepta lista JSON o cadena separada por comas.
+
+        El decodificado JSON lo hacía antes la fuente de entorno, pero se ejecutaba ANTES que
+        este validador y hacía fallar el arranque con la forma de comas (que es la documentada).
+        Con `NoDecode` el valor llega crudo y se decide aquí: JSON si lo parece, comas si no.
+        """
         if isinstance(v, str):
-            return [k.strip() for k in v.split(",") if k.strip()]
+            crudo = v.strip()
+            if crudo.startswith("["):
+                import json
+
+                try:
+                    return json.loads(crudo)
+                except json.JSONDecodeError:
+                    pass
+            return [k.strip() for k in crudo.split(",") if k.strip()]
         return v
+
+    def modelos_locales_permitidos(self) -> dict[str, bool]:
+        """Lista blanca parseada: nombre del modelo → si hay que pedirle PROSA.
+
+        Se separa por '=' y no por ':' porque el nombre de un modelo de Ollama ya lleva ':'
+        (`medgemma1.5:latest`). Un sufijo desconocido se trata como `estructurado`, que es el
+        valor por defecto; no se lanza, para que una errata en el .env no impida arrancar el
+        servicio entero por un selector opcional.
+        """
+        permitidos: dict[str, bool] = {}
+        for entrada in self.modelos_locales:
+            nombre, _, modo = entrada.partition("=")
+            nombre = nombre.strip()
+            if nombre:
+                permitidos[nombre] = modo.strip().lower() == "prosa"
+        return permitidos
 
     def validar_prod(self) -> None:
         """Requisitos que sólo aplican en producción; falla cerrado si faltan."""

@@ -61,7 +61,7 @@ User clicks "Análisis IA"
 - **`frontend/src/main.ts`** — Orquestación: carga los JSON, cablea eventos del formulario, dispara el análisis, exporta PDF.
 - **`frontend/src/ui.ts`** — Tab navigation (8 panels, 4 exam sub-tabs), swipe gestures, mobile/desktop field sync, collapsible panels.
 - **`frontend/src/pdf-parser.ts`** — Client-side PDF extraction using PDF.js. 47 regex patterns to identify analytes in Spanish/English. Runs fully in the browser.
-- **`backend/app/ai/hf_space.py`** — Cliente del HF Space (Gradio) donde vive medGemma. **Es la única ruta que NO da salida estructurada**: el Space devuelve texto libre, así que `limpiar_respuesta()` mantiene la limpieza de tokens del modelo y se envuelve en el campo `interpretacion`.
+- **`backend/app/ai/hf_space.py`** — Cliente del HF Space (Gradio) donde vive medGemma. El Space devuelve texto libre, así que va por la ruta de prosa: `ai/prosa.py` limpia los tokens del modelo, detecta salida defectuosa (razonamiento filtrado, bucle, frase cortada) y envuelve el resultado en el campo `interpretacion`. Es la ruta por defecto sin salida estructurada; un modelo local declarado `=prosa` usa la misma.
 - **`backend/app/ai/claude.py`** — Ruta Claude vía tool use forzado: el `input_schema` es el JSON Schema de `InterpretacionClinica`, así que valida contra Pydantic sin regex.
 - **`data/valores_referencia.json`** — Reference ranges for 90 analytes per species.
 - **`data/alteraciones.json`** — 78 clinical entities used to enrich AI prompts with etiologic context.
@@ -73,6 +73,21 @@ La selección de ruta se aplica **en el servidor** (`MORPHOS_IA_BACKEND_DEFECTO`
 `MORPHOS_HF_SPACE_URL` está definida se usa el HF Space; si se vacía, cae a Ollama en
 `MORPHOS_MEDGEMMA_BASE_URL`. Ambas rutas aceptan hasta 4 imágenes (validadas en servidor:
 número, mime y tamaño).
+
+**Modelos locales elegibles desde la UI.** `MORPHOS_MODELOS_LOCALES` declara una lista blanca
+(`nombre[=prosa]`, vacía por defecto → selector oculto). Si el usuario elige uno, ese modelo
+manda sobre el Space y recibe **exactamente el mismo tratamiento**: RAG, prompt endurecido,
+atribución de citas y suelos de seguridad viven en `ai/service.py`, no en los clientes, así que
+son agnósticos del modelo. Dos invariantes que no se tocan:
+
+- **Nombres, nunca URLs.** La base_url se queda en `medgemma_base_url`; aceptar una del cliente
+  convierte `/api/interpret` en un SSRF. El nombre se valida contra la lista blanca en el
+  esquema (`PeticionInterpretacion`, → 422) y otra vez en `_crear_cliente` (para las evals).
+- **El modo de salida se declara, no se infiere.** `=prosa` manda el modelo por
+  `ai/prosa.py` (limpieza + envoltura) en vez de por la decodificación restringida de Ollama.
+  Existe porque qwen2.5:7b acepta el `format` y devuelve JSON válido con `hallazgos_clave`,
+  `diferenciales` y `siguientes_pruebas` vacíos. `cliente.prosa` —no el nombre del cliente— es
+  lo que el servicio consulta para elegir system prompt y suplir `requiere_derivacion`.
 
 Para la ruta Claude el modelo por defecto es `claude-opus-5`. No cambiar a `claude-fable-5`:
 cuesta el doble, exige retención de datos de 30 días (incompatible con el posicionamiento de

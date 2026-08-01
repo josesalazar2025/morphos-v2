@@ -61,6 +61,8 @@ def test_el_encuadre_no_se_duplica():
 
 class ClientePrescriptor:
     nombre = "medgemma-hf"
+    prosa = True
+    modelo = "hf-space"
 
     async def interpretar(self, *_a, **_k):
         return InterpretacionClinica(
@@ -77,7 +79,7 @@ async def test_el_servicio_encuadra_y_deriva(monkeypatch):
 
     for nombre in ("recuperar", "recuperar_multi"):
         monkeypatch.setattr(S, nombre, lambda *_a, **_k: [])
-    monkeypatch.setattr(S, "_crear_cliente", lambda _b: ClientePrescriptor())
+    monkeypatch.setattr(S, "_crear_cliente", lambda *_: ClientePrescriptor())
 
     pet = PeticionInterpretacion(
         paciente={"especie": "canino"},

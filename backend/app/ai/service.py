@@ -98,15 +98,32 @@ def _derivacion_en_ruta_de_prosa(pet: PeticionInterpretacion) -> bool:
     return bool(pet.hallazgos or pet.patrones)
 
 
-def _crear_cliente(backend: str) -> ClienteModelo:
+def _crear_cliente(backend: str, modelo_local: str | None = None) -> ClienteModelo:
     if backend == "claude":
         from .claude import ClaudeClient
 
         return ClaudeClient()
 
-    # Ruta 'medgemma': por defecto el HF Space (donde vive medGemma); si no hay Space
-    # configurado, cae a Ollama local.
     cfg = obtener_config()
+
+    # Modelo local elegido por el usuario. El nombre ya viene validado contra la lista blanca
+    # por `PeticionInterpretacion`; aquí se revalida porque este camino también lo usan las
+    # evals, que pueden construir la petición de otras formas. Tiene prioridad sobre el Space:
+    # elegir un modelo en la UI y que el servidor llamara igualmente al Space sería mentirle al
+    # usuario. Todo lo demás —RAG, prompt endurecido, atribución y suelos de seguridad— es
+    # idéntico, porque vive en este servicio y no en el cliente.
+    if modelo_local:
+        permitidos = cfg.modelos_locales_permitidos()
+        if modelo_local not in permitidos:
+            raise ErrorModelo(
+                f"Modelo local no permitido: {modelo_local!r}.", reintentable=False
+            )
+        from .medgemma import MedGemmaClient
+
+        return MedGemmaClient(modelo_local, prosa=permitidos[modelo_local])
+
+    # Ruta 'medgemma' por defecto: el HF Space (donde vive medGemma); si no hay Space
+    # configurado, cae a Ollama local.
     if cfg.hf_space_url:
         from .hf_space import HFSpaceClient
 
@@ -152,8 +169,8 @@ async def interpretar(pet: PeticionInterpretacion) -> RespuestaInterpretacion:
 
     # 2-3) Prompt endurecido con contexto recuperado y llamada al modelo, con un reintento
     # ante salida malformada. El HF Space devuelve texto libre → system prompt de prosa.
-    cliente = _crear_cliente(backend)
-    es_prosa = cliente.nombre == "medgemma-hf"
+    cliente = _crear_cliente(backend, pet.modelo_local)
+    es_prosa = cliente.prosa
     sistema = SISTEMA_PROSA if es_prosa else SISTEMA
     # Los fragmentos ENVIADOS pueden ser menos que los recuperados —por presupuesto de prompt
     # aquí, o por el recorte del reintento más abajo— y son ésos, no los recuperados, los que
@@ -242,12 +259,10 @@ async def interpretar(pet: PeticionInterpretacion) -> RespuestaInterpretacion:
         log.warning("El modelo no marcó derivación con hallazgos graves; se fuerza.")
         resultado.requiere_derivacion = True
 
-    if backend == "claude":
-        etiqueta = cfg.claude_model
-    elif cliente.nombre.startswith("medgemma-hf"):
-        etiqueta = "hf-space"
-    else:
-        etiqueta = cfg.medgemma_model
+    # La etiqueta sale del propio cliente y no de la configuración: con un modelo elegido en la
+    # UI, `cfg.medgemma_model` ya no es el que respondió, y la línea "Modelo:" de la tarjeta
+    # clínica es lo único que le dice al veterinario con qué se generó lo que está leyendo.
+    etiqueta = cliente.modelo
 
     return RespuestaInterpretacion(
         resultado=resultado,

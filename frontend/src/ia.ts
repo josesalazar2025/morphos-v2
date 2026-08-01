@@ -7,19 +7,62 @@
 import type { Hallazgo, Paciente, Patron } from './tipos.js';
 
 const BACKEND_KEY = 'mx-ia-backend';
+const MODELO_LOCAL_KEY = 'mx-ia-modelo-local';
 
-// Inicializa el panel de ajustes de backend. En el nuevo diseño el servidor decide la
-// ruta self-hosted concreta (Ollama vs Space) por configuración, así que las opciones
-// "local"/"hf" del formulario se colapsan en 'medgemma'; 'claude' queda como ruta híbrida.
-export function inicializarConfigBackend(): void {
+// Modelos locales que el servidor admite. Se pide una vez al arrancar; lista vacía = la
+// instancia no tiene Ollama alcanzable y el selector entero se queda oculto.
+let modelosLocales: string[] = [];
+
+// Modelo local elegido, o null si se usa la ruta que decide el servidor. Se lee al enviar la
+// petición: es lo único que el cliente puede decir sobre qué modelo responde, y aun así el
+// servidor lo revalida contra su lista blanca.
+function modeloLocalSeleccionado(): string | null {
+  const radioLocal = document.getElementById('ia-backend-local') as HTMLInputElement | null;
+  if (!radioLocal?.checked) return null;
+  const guardado = localStorage.getItem(MODELO_LOCAL_KEY);
+  return guardado && modelosLocales.includes(guardado) ? guardado : (modelosLocales[0] ?? null);
+}
+
+// Inicializa el panel de ajustes de backend. La ruta ('medgemma' | 'claude') la decide el
+// servidor; lo único que el usuario elige aquí es CUÁL de los modelos locales declarados
+// responde. No hay campo de URL: la de Ollama vive en la configuración del servidor.
+export async function inicializarConfigBackend(): Promise<void> {
   const guardado = localStorage.getItem(BACKEND_KEY);
   if (guardado !== 'claude' && guardado !== 'medgemma') {
     localStorage.setItem(BACKEND_KEY, 'medgemma');
   }
 
+  const contenedor = document.getElementById('ia-backend-config') as HTMLElement | null;
   const radioLocal = document.getElementById('ia-backend-local') as HTMLInputElement | null;
   const radioHF = document.getElementById('ia-backend-hf') as HTMLInputElement | null;
   const camposOllama = document.getElementById('ia-ollama-fields') as HTMLElement | null;
+  const selector = document.getElementById('ia-modelo-local') as HTMLSelectElement | null;
+
+  try {
+    const res = await fetch('/api/modelos', { credentials: 'same-origin' });
+    if (res.ok) modelosLocales = (await res.json()).locales ?? [];
+  } catch {
+    modelosLocales = [];  // sin lista, el selector no aparece y todo sigue como antes
+  }
+
+  if (!modelosLocales.length) return;
+  if (contenedor) contenedor.hidden = false;
+
+  if (selector) {
+    const previo = localStorage.getItem(MODELO_LOCAL_KEY);
+    selector.replaceChildren(
+      ...modelosLocales.map((m) => {
+        const opcion = document.createElement('option');
+        opcion.value = m;
+        opcion.textContent = m;
+        opcion.selected = m === previo;
+        return opcion;
+      }),
+    );
+    selector.addEventListener('change', () => {
+      localStorage.setItem(MODELO_LOCAL_KEY, selector.value);
+    });
+  }
 
   const aplicar = () => {
     if (camposOllama) camposOllama.hidden = !(radioLocal?.checked);
@@ -166,6 +209,7 @@ export async function llamarIA(
     signos_clinicos: signos,
     imagenes: getImagenes().slice(0, 4),
     backend,
+    modelo_local: modeloLocalSeleccionado(),
   };
 
   try {

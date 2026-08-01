@@ -130,11 +130,13 @@ async def test_el_servicio_elige_la_ruta_de_recuperacion_segun_la_bandera(monkey
 
     class ClienteQueNoResponde:
         nombre = "medgemma"
+        prosa = False
+        modelo = "medgemma:test"
 
         async def interpretar(self, *_a, **_k):
             raise ErrorModelo("no importa: sólo se mira la recuperación", reintentable=False)
 
-    monkeypatch.setattr(service, "_crear_cliente", lambda _b: ClienteQueNoResponde())
+    monkeypatch.setattr(service, "_crear_cliente", lambda *_: ClienteQueNoResponde())
     with pytest.raises(ErrorModelo):
         await service.interpretar(_peticion())
 

@@ -76,6 +76,30 @@ def test_flujo_registro_login_e_interpret(cliente, monkeypatch):
     assert ok.json()["resultado"]["idioma"] == "es"
 
 
+def test_modelos_requiere_sesion(cliente):
+    """La lista de modelos describe la configuración del servidor: no es pública."""
+    assert cliente.get("/api/modelos").status_code == 401
+
+
+def test_interpret_rechaza_modelo_fuera_de_la_lista_blanca(cliente):
+    """422 (error del cliente) y no 502: la petición es inválida, el modelo ni se llama."""
+    reg = cliente.post(
+        "/api/auth/registro",
+        json={"nombre": "Leo", "apellido": "Vet", "email": "leo@example.com", "password": "clave-segura-1"},
+    )
+    csrf = reg.json()["csrf"]
+
+    assert cliente.get("/api/modelos").json()["locales"] == []  # nada declarado por defecto
+
+    r = cliente.post(
+        "/api/interpret",
+        json={"paciente": {"especie": "canino"}, "modelo_local": "llama3:70b"},
+        headers={"X-CSRF-Token": csrf},
+    )
+    assert r.status_code == 422, r.text
+    assert "no permitido" in r.text
+
+
 def test_registro_rechaza_password_corta(cliente):
     r = cliente.post(
         "/api/auth/registro",

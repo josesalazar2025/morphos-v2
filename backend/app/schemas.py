@@ -62,11 +62,36 @@ class PeticionInterpretacion(BaseModel):
     signos_clinicos: str = Field(default="", max_length=2000)
     imagenes: list[str] = Field(default_factory=list)  # data URLs de citología
     backend: Literal["medgemma", "claude"] = "medgemma"
+    # Modelo local elegido por el usuario en la UI. Sólo se acepta si está en la lista blanca
+    # `MORPHOS_MODELOS_LOCALES`; si lo está, sustituye a la ruta que el servidor usaría por
+    # defecto para 'medgemma' (Space u Ollama). None = decide el servidor, como siempre.
+    modelo_local: str | None = Field(default=None, max_length=100)
 
     @field_validator("imagenes")
     @classmethod
     def _limitar_imagenes(cls, v: list[str]) -> list[str]:
         return v[:4]
+
+    @field_validator("modelo_local")
+    @classmethod
+    def _validar_lista_blanca(cls, v: str | None) -> str | None:
+        """Rechaza cualquier modelo fuera de la lista blanca.
+
+        Se valida en el ESQUEMA y no en el router para que valga igual para las evals, que
+        llaman a `interpretar()` sin pasar por HTTP, y para que FastAPI conteste 422 (error del
+        cliente) en vez del 502 al que el router traduce los ErrorModelo.
+        """
+        if v is None:
+            return None
+        from .config import obtener_config
+
+        permitidos = obtener_config().modelos_locales_permitidos()
+        if v not in permitidos:
+            disponibles = ", ".join(sorted(permitidos)) or "ninguno"
+            raise ValueError(
+                f"Modelo local no permitido: {v!r}. Configurados: {disponibles}."
+            )
+        return v
 
 
 # --- Salida estructurada del modelo ---

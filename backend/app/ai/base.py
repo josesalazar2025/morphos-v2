@@ -46,6 +46,13 @@ class ErrorModelo(Exception):
 
 class ClienteModelo(Protocol):
     nombre: str
+    modelo: str
+    # True si el cliente devuelve TEXTO libre envuelto en `interpretacion` en vez de rellenar
+    # los campos estructurados. El servicio lo consulta para elegir el system prompt, para no
+    # exigir campos que esta ruta no puede rellenar y para suplir `requiere_derivacion` desde
+    # el motor determinista. Antes se deducía del nombre del cliente, que dejó de bastar en
+    # cuanto la prosa pudo venir también de un modelo local.
+    prosa: bool
 
     async def interpretar(
         self,

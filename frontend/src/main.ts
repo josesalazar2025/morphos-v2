@@ -169,7 +169,7 @@ elId<HTMLSelectElement>('pt-edad-unidad').addEventListener('change', evaluar);
 elId<HTMLSelectElement>('pt-sexo').addEventListener('change', evaluar);
 
 inicializarSincMob(evaluar);
-inicializarConfigBackend();
+void inicializarConfigBackend();  // pide la lista de modelos al servidor; no bloquea el arranque
 inicializarParserPdf(evaluar);
 inicializarImportLab(evaluar);
 inicializarModalPapers();

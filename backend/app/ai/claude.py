@@ -40,6 +40,7 @@ def _bloques_imagen(imagenes: list[str]) -> list[dict]:
 
 class ClaudeClient:
     nombre = "claude"
+    prosa = False
 
     def __init__(self) -> None:
         cfg = obtener_config()
@@ -52,6 +53,7 @@ class ClaudeClient:
 
         self._cliente = AsyncAnthropic(api_key=cfg.anthropic_api_key)
         self._modelo = cfg.claude_model
+        self.modelo = cfg.claude_model
 
     async def interpretar(
         self, sistema: str, mensaje_usuario: str, imagenes: list[str]

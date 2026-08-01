@@ -35,6 +35,8 @@ PETICION = {
 
 class ClienteFalso:
     nombre = "medgemma-hf"
+    prosa = True
+    modelo = "hf-space"
 
     def __init__(self, error: ErrorModelo | None, exito_en: int | None = None):
         self.error = error
@@ -56,7 +58,7 @@ def sin_rag(monkeypatch):
 
 
 async def _interpretar_con(cliente, monkeypatch):
-    monkeypatch.setattr(service, "_crear_cliente", lambda _b: cliente)
+    monkeypatch.setattr(service, "_crear_cliente", lambda *_: cliente)
     return await service.interpretar(PeticionInterpretacion.model_validate(PETICION))
 
 
@@ -96,6 +98,8 @@ class ClienteProsa:
     """Ruta HF Space: devuelve prosa con marcadores [n], sin `diferenciales`."""
 
     nombre = "medgemma-hf"
+    prosa = True
+    modelo = "hf-space"
 
     def __init__(self, texto: str):
         self.texto = texto
@@ -129,6 +133,8 @@ class ClienteTruncaConContexto:
     siempre; sin ella (o con poca) sale completa."""
 
     nombre = "medgemma-hf"
+    prosa = True
+    modelo = "hf-space"
 
     def __init__(self, umbral_fragmentos: int):
         self.umbral = umbral_fragmentos
@@ -166,6 +172,8 @@ class ClienteEstructuraVacia:
     """Reproduce lo medido con qwen2.5:7b: JSON válido con los campos estructurados vacíos."""
 
     nombre = "medgemma"
+    prosa = False
+    modelo = "medgemma:test"
 
     def __init__(self, llenar_en: int | None = None):
         self.llenar_en = llenar_en
@@ -205,6 +213,8 @@ async def test_la_ruta_de_prosa_no_exige_campos_estructurados(sin_rag, monkeypat
 
 class ClienteSinDerivacion:
     nombre = "medgemma"
+    prosa = False
+    modelo = "medgemma:test"
 
     async def interpretar(self, *_a, **_k):
         return InterpretacionClinica(
@@ -224,6 +234,8 @@ async def test_la_derivacion_no_la_decide_el_modelo(sin_rag, monkeypatch):
 
 class ClienteProsaSimple:
     nombre = "medgemma-hf"
+    prosa = True
+    modelo = "hf-space"
 
     async def interpretar(self, *_a, **_k):
         # Igual que el cliente del Space: sólo prosa, con el default del esquema.
@@ -233,7 +245,7 @@ class ClienteProsaSimple:
 async def test_prosa_sin_alteraciones_no_deriva(sin_rag, monkeypatch):
     """El default del esquema hacía que un panel normal pidiera derivación contradiciendo su
     propio texto; el juez lo penalizó como incoherencia (2026-07-31, `normal-canino`)."""
-    monkeypatch.setattr(service, "_crear_cliente", lambda _b: ClienteProsaSimple())
+    monkeypatch.setattr(service, "_crear_cliente", lambda *_: ClienteProsaSimple())
     pet = PeticionInterpretacion(paciente={"especie": "canino"}, hallazgos=[], patrones=[])
 
     resp = await service.interpretar(pet)
@@ -242,7 +254,7 @@ async def test_prosa_sin_alteraciones_no_deriva(sin_rag, monkeypatch):
 
 
 async def test_prosa_con_alteraciones_sigue_derivando(sin_rag, monkeypatch):
-    monkeypatch.setattr(service, "_crear_cliente", lambda _b: ClienteProsaSimple())
+    monkeypatch.setattr(service, "_crear_cliente", lambda *_: ClienteProsaSimple())
 
     resp = await service.interpretar(PeticionInterpretacion.model_validate(PETICION))
 
@@ -255,6 +267,8 @@ async def test_la_ruta_estructurada_conserva_la_opinion_del_modelo(sin_rag, monk
 
     class ClienteEstructurado:
         nombre = "medgemma"
+        prosa = False
+        modelo = "medgemma:test"
 
         async def interpretar(self, *_a, **_k):
             return InterpretacionClinica(
@@ -264,7 +278,7 @@ async def test_la_ruta_estructurada_conserva_la_opinion_del_modelo(sin_rag, monk
                 requiere_derivacion=True,
             )
 
-    monkeypatch.setattr(service, "_crear_cliente", lambda _b: ClienteEstructurado())
+    monkeypatch.setattr(service, "_crear_cliente", lambda *_: ClienteEstructurado())
     pet = PeticionInterpretacion(paciente={"especie": "canino"}, hallazgos=[], patrones=[])
 
     resp = await service.interpretar(pet)
