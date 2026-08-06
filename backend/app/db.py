@@ -2,7 +2,7 @@
 
 Diferencias de seguridad frente a la versión PHP:
 - La BD SQLite vive en instance/ FUERA del directorio servido (no es descargable).
-- Sin credenciales por defecto: si se configura MySQL, usuario/clave vienen de entorno.
+- Esquema versionado con `PRAGMA user_version` (ver `_MIGRACIONES`).
 - Hash de contraseña con scrypt (stdlib), sal aleatoria por usuario.
 """
 
@@ -16,7 +16,7 @@ import sqlite3
 from collections.abc import Iterator
 from contextlib import contextmanager
 
-from .config import VOLUMEN_PERSISTENTE, obtener_config
+from .config import TENANT_POR_DEFECTO, VOLUMEN_PERSISTENTE, obtener_config
 
 log = logging.getLogger("morphos.db")
 
@@ -26,10 +26,11 @@ log = logging.getLogger("morphos.db")
 # Spaces, nadie puede llegar. Cada entrada de la lista es un paso; el índice+1 es la versión
 # resultante, y sólo se aplican los pasos por encima de la versión actual.
 #
-# Reglas: nunca se edita un paso ya publicado (una BD que lo aplicó no volvería a ejecutarlo),
-# los pasos se añaden al final, y cada uno debe poder correr sobre una BD que ya lo tuviera
-# —de ahí los `IF NOT EXISTS`—, porque las BD creadas antes de este mecanismo están en la
-# versión 0 con las tablas del paso 1 ya presentes.
+# Reglas: nunca se edita un paso ya publicado (una BD que lo aplicó no volvería a ejecutarlo) y
+# los pasos se añaden al final. La versión garantiza que cada paso corre UNA vez, así que no
+# tienen por qué ser idempotentes —el 3 es un ALTER TABLE, que no lo es—. Los `IF NOT EXISTS`
+# del paso 1 son por otro motivo: las BD creadas antes de este mecanismo están en la versión 0
+# con esas tablas ya presentes, y hay que poder ponerlas al día sin borrarlas.
 _MIGRACIONES: list[str] = [
     # 1 — esquema inicial (el que ya existía).
     """
@@ -60,6 +61,12 @@ CREATE TABLE IF NOT EXISTS resultados_lab (
     """
 CREATE INDEX IF NOT EXISTS idx_intentos_email_ip_momento
     ON intentos_login (email, ip, momento);
+""",
+    # 3 — clínica dueña de cada cuenta. Los usuarios que ya existan quedan en el tenant por
+    # defecto, que es donde también caen los dispositivos sin clínica declarada: un despliegue
+    # de una sola clínica no nota el cambio.
+    f"""
+ALTER TABLE usuarios ADD COLUMN tenant TEXT NOT NULL DEFAULT '{TENANT_POR_DEFECTO}';
 """,
 ]
 
@@ -127,17 +134,19 @@ def verificar_password(password: str, almacenado: str) -> bool:
 def buscar_usuario(email: str) -> sqlite3.Row | None:
     with _conexion() as con:
         cur = con.execute(
-            "SELECT id, nombre, apellido, email, password FROM usuarios WHERE email = ? LIMIT 1",
+            "SELECT id, nombre, apellido, email, password, tenant "
+            "FROM usuarios WHERE email = ? LIMIT 1",
             (email,),
         )
         return cur.fetchone()
 
 
-def crear_usuario(nombre: str, apellido: str, email: str, password: str) -> None:
+def crear_usuario(nombre: str, apellido: str, email: str, password: str, tenant: str) -> None:
     with _conexion() as con:
         con.execute(
-            "INSERT INTO usuarios (nombre, apellido, email, password) VALUES (?, ?, ?, ?)",
-            (nombre, apellido, email, hash_password(password)),
+            "INSERT INTO usuarios (nombre, apellido, email, password, tenant) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (nombre, apellido, email, hash_password(password), tenant),
         )
 
 

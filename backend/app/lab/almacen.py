@@ -1,5 +1,8 @@
 """Almacén en proceso de resultados de analizador, emparejados por ID de muestra.
 
+Segmentado por TENANT: cada resultado lleva la clínica dueña y las lecturas la exigen. Antes era
+un dict global y cualquier sesión autenticada podía leer la muestra de cualquier clínica.
+
 Deliberadamente NO es SQLite: HF Spaces tiene disco efímero, un único worker de uvicorn, y
 los resultados son de vida corta (se emparejan con el formulario en minutos). Un dict con
 TTL + tope LRU es la primitiva correcta. Clave normalizada (trim + minúsculas) en lectura y
@@ -40,16 +43,24 @@ class AlmacenResultados:
             while len(self._datos) > self._max:
                 self._datos.popitem(last=False)  # desaloja el más antiguo
 
-    def obtener(self, muestra_id: str) -> ResultadoMapeado | None:
+    def obtener(self, muestra_id: str, tenant: str) -> ResultadoMapeado | None:
+        """Resultado de ESE tenant, o None. Un ID de otra clínica se comporta como inexistente.
+
+        El tenant es obligatorio a propósito: si fuera opcional, olvidarlo en una llamada nueva
+        devolvería datos de todas las clínicas en silencio, que es justo el fallo que esto cierra.
+        """
         with self._lock:
             self._barrer_locked()
             item = self._datos.get(_clave(muestra_id))
-            return item[1] if item else None
+            if item is None or item[1].tenant != tenant:
+                return None
+            return item[1]
 
-    def pendientes(self) -> list[ResultadoMapeado]:
+    def pendientes(self, tenant: str) -> list[ResultadoMapeado]:
+        """Cola de ESE tenant, más recientes primero."""
         with self._lock:
             self._barrer_locked()
-            return [r for (_, r) in reversed(self._datos.values())]
+            return [r for (_, r) in reversed(self._datos.values()) if r.tenant == tenant]
 
     def _barrer_locked(self) -> None:
         ahora = time.monotonic()

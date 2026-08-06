@@ -7,6 +7,7 @@ lo necesario para una función concreta.
 
 from __future__ import annotations
 
+import hmac
 import logging
 import os
 from functools import lru_cache
@@ -23,6 +24,11 @@ RAIZ_REPO = Path(__file__).resolve().parents[2]
 
 # Punto de montaje del almacenamiento persistente en HF Spaces.
 VOLUMEN_PERSISTENTE = Path("/data")
+
+# Clínica a la que pertenecen los dispositivos y usuarios que no declaran otra. Un despliegue de
+# una sola clínica —el caso normal— se queda entero aquí y no nota el cambio; el aislamiento
+# aparece en cuanto se declaran tenants distintos.
+TENANT_POR_DEFECTO = "principal"
 
 
 def _ruta_db_por_defecto() -> Path:
@@ -344,15 +350,49 @@ class Configuracion(BaseSettings):
                 permitidos[nombre] = modo.strip().lower() == "prosa"
         return permitidos
 
+    def _allowlist_con_tenant(self) -> dict[str, str]:
+        """email → tenant. Formato `email` o `email=tenant`; sin sufijo, TENANT_POR_DEFECTO."""
+        mapa: dict[str, str] = {}
+        for entrada in self.registro_allowlist:
+            email, _, tenant = entrada.partition("=")
+            email = email.strip().lower()
+            if email:
+                mapa[email] = tenant.strip() or TENANT_POR_DEFECTO
+        return mapa
+
     def emails_registro_permitidos(self) -> set[str]:
         """Allowlist normalizada (minúsculas, sin espacios) para comparar con el email entrante."""
-        return {e.strip().lower() for e in self.registro_allowlist if e.strip()}
+        return set(self._allowlist_con_tenant())
 
     def registro_permitido(self, email: str) -> bool:
         """Si este email puede darse de alta."""
         if self.registro_abierto:
             return True
         return email.strip().lower() in self.emails_registro_permitidos()
+
+    def tenant_de_email(self, email: str) -> str:
+        """Clínica a la que pertenece un email al darse de alta.
+
+        Con el alta abierta (desarrollo) todo el mundo cae en el tenant por defecto: no hay
+        ninguna declaración de la que deducir otra cosa.
+        """
+        return self._allowlist_con_tenant().get(email.strip().lower(), TENANT_POR_DEFECTO)
+
+    def tenant_de_clave_dispositivo(self, token: str) -> str | None:
+        """Tenant dueño de esta API key de dispositivo, o None si no es válida.
+
+        Recorre TODAS las claves con `compare_digest` en vez de indexar un diccionario: un
+        lookup por hash sobre un secreto filtra por tiempo si coincide el prefijo, y esta
+        comparación es la única barrera de la ingesta.
+        """
+        encontrado: str | None = None
+        for entrada in self.lab_api_keys:
+            tenant, sep, clave = entrada.partition(":")
+            if not sep:
+                tenant, clave = TENANT_POR_DEFECTO, entrada
+            if hmac.compare_digest(token, clave.strip()):
+                encontrado = tenant.strip() or TENANT_POR_DEFECTO
+        return encontrado
 
     def avisar_de_configuracion(self) -> None:
         """Avisos de arranque que no justifican fallar, pero sí que se vean en el log."""

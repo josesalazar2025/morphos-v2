@@ -119,12 +119,15 @@ Dos defectos que se cerraron y **no se vuelven a abrir sin sustituirlos por algo
   el alta se convierte en un oráculo de qué cuentas hay (403 siempre, nunca 409, fuera de la
   lista). Es una **lista de emails y no un booleano** porque `instance/` es efímero: sin ella,
   el primer reinicio deja la instancia sin cuentas y sin forma de crear ninguna.
-- **`GET /api/lab/pendientes` está apagado** (`lab_pendientes_habilitado=False` → 404). Enumera
-  las muestras de todas las clínicas y cada `muestra_id` abre el panel completo más las pistas
-  de paciente. **Apagarlo no cierra el agujero y no hay que documentarlo como si lo hiciera**:
-  el `muestra_id` lo pone el analizador y suele ser correlativo, así que `/api/lab/resultados`
-  sigue siendo enumerable. Lo que elimina es el volcado en una petición. El cierre real es atar
-  cada resultado a un tenant y filtrar por sesión (ARCHITECTURE_REVIEW §2.1).
+- **Los resultados de analizador están segmentados por CLÍNICA (tenant).** El tenant lo pone
+  siempre el servidor: de la API key del dispositivo en la ingesta (`clinica:clave`) y de la
+  cookie firmada en la lectura. **Nunca del cuerpo ni de un parámetro** — si el puente pudiera
+  declarar su clínica, mentir en un campo bastaría para escribir en la de otro. Una muestra de
+  otra clínica devuelve 404, no 403. Sin tenants declarados todo cae en `principal`, así que un
+  despliegue de una sola clínica no nota nada.
+- **`GET /api/lab/pendientes` sigue apagado por defecto** (`lab_pendientes_habilitado=False` →
+  404). Ya no es un volcado global —sólo lista la clínica de la sesión—, pero dentro de ella
+  enumera todas las muestras, así que se enciende a propósito.
 
 Las pruebas describen el defecto CERRADO; las que sólo necesitan sesión piden el fixture
 `alta_abierta`. El fixture `_limitador_limpio` (autouse) vacía el contador de rate limiting

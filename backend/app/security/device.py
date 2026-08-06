@@ -7,15 +7,19 @@ verificar_password en db.py). Falla cerrado: sin keys configuradas, la ingesta n
 
 from __future__ import annotations
 
-import hmac
-
 from fastapi import Header, HTTPException, status
 
 from ..config import obtener_config
 
 
-def verificar_dispositivo(authorization: str | None = Header(default=None)) -> None:
-    """Dependencia para /api/lab/ingesta. 503 si no hay keys; 401 si la Bearer no coincide."""
+def verificar_dispositivo(authorization: str | None = Header(default=None)) -> str:
+    """Dependencia para /api/lab/ingesta: devuelve el TENANT dueño de la clave.
+
+    Antes devolvía None y la clave era anónima: cualquier dispositivo escribía en un almacén
+    global y cualquier sesión lo leía. El tenant sale de la configuración del servidor, nunca
+    del cuerpo de la petición: si el puente pudiera declarar su clínica, bastaría mentir en un
+    campo para escribir en la de otro.
+    """
     cfg = obtener_config()
     if not cfg.lab_api_keys:
         raise HTTPException(
@@ -25,5 +29,7 @@ def verificar_dispositivo(authorization: str | None = Header(default=None)) -> N
     token = ""
     if authorization and authorization.lower().startswith("bearer "):
         token = authorization[7:].strip()
-    if not token or not any(hmac.compare_digest(token, k) for k in cfg.lab_api_keys):
+    tenant = cfg.tenant_de_clave_dispositivo(token) if token else None
+    if tenant is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Dispositivo no autorizado.")
+    return tenant

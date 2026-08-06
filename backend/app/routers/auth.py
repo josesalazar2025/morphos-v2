@@ -14,7 +14,7 @@ import asyncio
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, EmailStr, Field
 
-from ..config import obtener_config
+from ..config import TENANT_POR_DEFECTO, obtener_config
 from ..db import (
     buscar_usuario,
     crear_usuario,
@@ -50,9 +50,11 @@ class RegistroBody(BaseModel):
     password: str = Field(min_length=8, max_length=200)
 
 
-def _emitir_sesion(resp: Response, email: str, nombre: str) -> str:
+def _emitir_sesion(resp: Response, email: str, nombre: str, tenant: str) -> str:
     cfg = obtener_config()
-    token = firmar_sesion({"email": email, "nombre": nombre})
+    # El tenant viaja en la cookie FIRMADA: el cliente no puede cambiarlo sin romper la firma,
+    # y así leerlo no cuesta una consulta a la BD en cada petición.
+    token = firmar_sesion({"email": email, "nombre": nombre, "tenant": tenant})
     csrf = nuevo_token_csrf()
     resp.set_cookie(
         COOKIE_SESION, token, httponly=True, secure=cfg.cookie_secure,
@@ -94,7 +96,9 @@ async def login(request: Request, body: LoginBody, response: Response) -> dict:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Email o contraseña incorrectos.")
 
     await asyncio.to_thread(limpiar_intentos, body.email)
-    csrf = _emitir_sesion(response, usuario["email"], usuario["nombre"])
+    csrf = _emitir_sesion(
+        response, usuario["email"], usuario["nombre"], usuario["tenant"] or TENANT_POR_DEFECTO
+    )
     return {"ok": True, "nombre": usuario["nombre"], "csrf": csrf}
 
 
@@ -112,8 +116,13 @@ async def registro(request: Request, body: RegistroBody, response: Response) -> 
     if await asyncio.to_thread(buscar_usuario, body.email):
         raise HTTPException(status.HTTP_409_CONFLICT, "Ya existe una cuenta con ese email.")
     # `crear_usuario` hashea con scrypt además de escribir: doble motivo para salir del bucle.
-    await asyncio.to_thread(crear_usuario, body.nombre, body.apellido, body.email, body.password)
-    csrf = _emitir_sesion(response, body.email, body.nombre)
+    # La clínica sale de la allowlist (`email=tenant`), no del cuerpo de la petición: dejar
+    # elegir tenant al que se registra permitiría entrar en los datos de otra clínica.
+    tenant = obtener_config().tenant_de_email(body.email)
+    await asyncio.to_thread(
+        crear_usuario, body.nombre, body.apellido, body.email, body.password, tenant
+    )
+    csrf = _emitir_sesion(response, body.email, body.nombre, tenant)
     return {"ok": True, "nombre": body.nombre, "csrf": csrf}
 
 

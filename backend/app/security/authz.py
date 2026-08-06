@@ -10,6 +10,7 @@ import hmac
 
 from fastapi import Cookie, Header, HTTPException, Request, status
 
+from ..config import TENANT_POR_DEFECTO
 from .session import CABECERA_CSRF, COOKIE_CSRF, COOKIE_SESION, leer_sesion
 
 
@@ -20,6 +21,17 @@ def usuario_actual(request: Request) -> dict:
     if not sesion or not sesion.get("email"):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="No autenticado.")
     return sesion
+
+
+def tenant_de_sesion(sesion: dict) -> str:
+    """Clínica del usuario de la sesión.
+
+    Las sesiones emitidas ANTES de que existiera el tenant no lo llevan en la cookie firmada, y
+    duran hasta `session_max_age_s`. Caen al tenant por defecto, que es donde también viven los
+    dispositivos que no declaran clínica: un despliegue de una sola clínica —el caso normal—
+    sigue funcionando durante la transición sin que nadie tenga que volver a entrar.
+    """
+    return sesion.get("tenant") or TENANT_POR_DEFECTO
 
 
 def verificar_csrf(

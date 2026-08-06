@@ -94,6 +94,10 @@ class ValorAnalito(BaseModel):
 class ResultadoMapeado(BaseModel):
     """Resultado listo para el frontend: analitos por clave canónica + no reconocidos."""
 
+    # Clínica dueña del resultado. Lo pone el SERVIDOR a partir de la API key del dispositivo
+    # (`verificar_dispositivo`), nunca el cuerpo de la ingesta: si el puente pudiera declararlo,
+    # mentir en un campo bastaría para escribir en la clínica de otro.
+    tenant: str = ""
     muestra_id: str
     instrumento_id: str
     momento: datetime

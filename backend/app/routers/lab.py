@@ -24,7 +24,7 @@ from ..schemas_lab import (
     ResultadoMapeado,
     ResumenPendiente,
 )
-from ..security.authz import usuario_actual
+from ..security.authz import tenant_de_sesion, usuario_actual
 from ..security.device import verificar_dispositivo
 from ..security.rate_limit import limiter
 
@@ -36,9 +36,10 @@ router = APIRouter()
 async def post_ingesta(
     request: Request,  # requerido por slowapi
     cuerpo: ResultadoAnalizador,
-    _disp: None = Depends(verificar_dispositivo),  # 503 sin keys / 401 sin Bearer válido
+    tenant: str = Depends(verificar_dispositivo),  # 503 sin keys / 401 sin Bearer válido
 ) -> RespuestaIngesta:
     mapeado = mapear_resultado(cuerpo)
+    mapeado.tenant = tenant  # del servidor, a partir de la API key; nunca del cuerpo
     almacen.guardar(mapeado)
     if obtener_config().lab_persistir:
         # A un hilo como el resto de SQLite: el analizador manda en ráfaga
@@ -61,9 +62,9 @@ async def post_ingesta(
 async def get_resultados(
     request: Request,
     muestra: str = Query(..., min_length=1, max_length=128),
-    _sesion: dict = Depends(usuario_actual),  # 401 si no hay sesión
+    sesion: dict = Depends(usuario_actual),  # 401 si no hay sesión
 ) -> ResultadoMapeado:
-    res = almacen.obtener(muestra)
+    res = almacen.obtener(muestra, tenant_de_sesion(sesion))
     if res is None:
         raise HTTPException(
             status.HTTP_404_NOT_FOUND,
@@ -76,7 +77,7 @@ async def get_resultados(
 @limiter.limit(obtener_config().limite_lab_consulta)
 async def get_pendientes(
     request: Request,
-    _sesion: dict = Depends(usuario_actual),
+    sesion: dict = Depends(usuario_actual),
 ) -> list[ResumenPendiente]:
     """Cola de resultados recibidos (más recientes primero) para elegir sin teclear el ID.
 
@@ -96,5 +97,5 @@ async def get_pendientes(
             analitos=len(r.analitos),
             no_mapeados=len(r.no_mapeados),
         )
-        for r in almacen.pendientes()
+        for r in almacen.pendientes(tenant_de_sesion(sesion))
     ]
