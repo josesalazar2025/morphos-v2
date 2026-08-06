@@ -10,6 +10,8 @@ la auth); la consulta usa la sesión existente. El mapeo código→analito ocurr
 
 from __future__ import annotations
 
+import asyncio
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
 from .. import db
@@ -39,7 +41,10 @@ async def post_ingesta(
     mapeado = mapear_resultado(cuerpo)
     almacen.guardar(mapeado)
     if obtener_config().lab_persistir:
-        db.guardar_resultado_lab(
+        # A un hilo como el resto de SQLite: el analizador manda en ráfaga
+        # (`limite_lab_ingesta` = 120/minute) y esto corre por cada muestra.
+        await asyncio.to_thread(
+            db.guardar_resultado_lab,
             mapeado.muestra_id.strip().lower(),
             mapeado.momento.isoformat(),
             mapeado.model_dump_json(),

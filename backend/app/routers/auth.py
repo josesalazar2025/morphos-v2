@@ -9,6 +9,8 @@ Mejoras de seguridad frente a auth.php:
 
 from __future__ import annotations
 
+import asyncio
+
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, EmailStr, Field
 
@@ -75,17 +77,21 @@ async def estado(request: Request) -> dict:
 @router.post("/auth/login")
 @limiter.limit(obtener_config().limite_login)
 async def login(request: Request, body: LoginBody, response: Response) -> dict:
+    # Todo lo que toca SQLite o scrypt va a un hilo: son llamadas SÍNCRONAS dentro de un
+    # endpoint `async`, así que en el bucle de eventos bloqueaban el proceso entero. scrypt es
+    # además caro A PROPÓSITO (n=2**14, decenas de ms): es justo el trabajo que no puede vivir
+    # en el bucle, y el login es el endpoint que más veces lo ejecuta.
     ip = request.client.host if request.client else "?"
-    if intentos_recientes(body.email, ip, _VENTANA_THROTTLE_S) >= _MAX_INTENTOS:
+    if await asyncio.to_thread(intentos_recientes, body.email, ip, _VENTANA_THROTTLE_S) >= _MAX_INTENTOS:
         raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Demasiados intentos. Espera unos minutos.")
 
-    usuario = buscar_usuario(body.email)
-    if not usuario or not verificar_password(body.password, usuario["password"]):
-        registrar_intento(body.email, ip)
+    usuario = await asyncio.to_thread(buscar_usuario, body.email)
+    if not usuario or not await asyncio.to_thread(verificar_password, body.password, usuario["password"]):
+        await asyncio.to_thread(registrar_intento, body.email, ip)
         # Mensaje genérico: no revela si el email existe.
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Email o contraseña incorrectos.")
 
-    limpiar_intentos(body.email)
+    await asyncio.to_thread(limpiar_intentos, body.email)
     csrf = _emitir_sesion(response, usuario["email"], usuario["nombre"])
     return {"ok": True, "nombre": usuario["nombre"], "csrf": csrf}
 
@@ -101,9 +107,10 @@ async def registro(request: Request, body: RegistroBody, response: Response) -> 
             status.HTTP_403_FORBIDDEN,
             "El alta de cuentas está restringida. Solicita acceso al administrador.",
         )
-    if buscar_usuario(body.email):
+    if await asyncio.to_thread(buscar_usuario, body.email):
         raise HTTPException(status.HTTP_409_CONFLICT, "Ya existe una cuenta con ese email.")
-    crear_usuario(body.nombre, body.apellido, body.email, body.password)
+    # `crear_usuario` hashea con scrypt además de escribir: doble motivo para salir del bucle.
+    await asyncio.to_thread(crear_usuario, body.nombre, body.apellido, body.email, body.password)
     csrf = _emitir_sesion(response, body.email, body.nombre)
     return {"ok": True, "nombre": body.nombre, "csrf": csrf}
 
