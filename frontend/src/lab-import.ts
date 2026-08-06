@@ -13,6 +13,7 @@ import {
   type PacienteInyectable,
 } from './form-inject.js';
 import { manejadorAsync } from './async.js';
+import { esGridEscritorio } from './dom.js';
 
 interface ValorAnalitoResp {
   clave: string;
@@ -191,7 +192,7 @@ function inicializarModalLab(detenerBusqueda: () => void): void {
   const anclaje = document.getElementById('lab-anclaje-mob');
   if (!btn || !modal || !overlay || !cuerpo || !controles || !anclaje) return;
 
-  const esEscritorio = (): boolean => window.innerWidth > 1100;
+  const esEscritorio = esGridEscritorio;
 
   // Idempotente: si ya está donde toca no toca el DOM (se llama en cada `resize`).
   const ubicar = (): void => {

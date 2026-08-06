@@ -19,3 +19,10 @@ export function qs<T extends Element = Element>(sel: string, root: ParentNode = 
 export function qsa<T extends Element = Element>(sel: string, root: ParentNode = document): T[] {
   return Array.from(root.querySelectorAll<T>(sel));
 }
+
+// Punto de corte del grid de escritorio. Vive aquí, en el módulo hoja, porque lo consultan
+// varios módulos que no deben depender unos de otros, y debe coincidir con la media query
+// `min-width: 1101px` de css/styles.css.
+export function esGridEscritorio(): boolean {
+  return window.innerWidth > 1100;
+}
