@@ -8,6 +8,7 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build && npm run copy-assets",
     "copy-assets": "mkdir -p ../dist/assets && cp -R ../assets/. ../dist/assets/",
+    "vendor-pdfjs": "cp node_modules/pdfjs-dist/build/pdf.min.mjs node_modules/pdfjs-dist/build/pdf.worker.min.mjs ../assets/lib/pdfjs/",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -20,6 +21,7 @@
     "@typescript-eslint/parser": "^8.20.0",
     "eslint": "^9.18.0",
     "jsdom": "^29.1.1",
+    "pdfjs-dist": "^6.2.108",
     "typescript": "^5.7.3",
     "vite": "^6.0.7",
     "vitest": "^3.0.2"
