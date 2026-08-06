@@ -12,6 +12,12 @@ on:
   pull_request:
   push:
     branches: [main]
+  # Disparo manual desde la pestaña Actions ("Run workflow"). Existe porque una cola atascada
+  # NO se puede relanzar: GitHub sólo ofrece "Re-run jobs" sobre ejecuciones TERMINADAS, así
+  # que tras la caída de Actions del 2026-08-06 (runs creados y nunca recogidos por un runner)
+  # la única forma de volver a probar era abrir otro PR. Con esto se relanza a voluntad.
+  # Requiere que el workflow esté en la rama por defecto para aparecer en la UI.
+  workflow_dispatch:
 
 jobs:
   backend:
