@@ -7,6 +7,7 @@ lo necesario para una función concreta.
 
 from __future__ import annotations
 
+import os
 from functools import lru_cache
 from pathlib import Path
 from typing import Annotated
@@ -18,9 +19,17 @@ from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 RAIZ_REPO = Path(__file__).resolve().parents[2]
 
 
+# El `.env` del desarrollador NO debe filtrarse a las pruebas: son las mismas que corren en CI,
+# donde ese fichero no existe, así que cualquier valor que se cuele hace que pasen o fallen según
+# la máquina. Medido el 2026-08-04: un `MORPHOS_MODELOS_LOCALES=qwen2.5:14b` en local tumbaba
+# `test_interpret_rechaza_modelo_fuera_de_la_lista_blanca`, que afirma la lista blanca vacía por
+# defecto. Las pruebas ponen esta variable en su conftest; el resto del mundo lee el `.env`.
+_SIN_ENV_FILE = os.environ.get("MORPHOS_IGNORAR_ENV_FILE") == "1"
+
+
 class Configuracion(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=str(RAIZ_REPO / "backend" / ".env"),
+        env_file=None if _SIN_ENV_FILE else str(RAIZ_REPO / "backend" / ".env"),
         env_prefix="MORPHOS_",
         extra="ignore",
     )

@@ -68,3 +68,17 @@ def test_el_esquema_por_defecto_sigue_siendo_permisivo():
 
     interp = InterpretacionClinica(interpretacion="Sólo prosa.")
     assert interp.diferenciales == []
+
+
+def test_analitos_medidos_es_opcional():
+    """Retrocompatible: una petición de un cliente que no lo manda sigue siendo válida, y el
+    prompt y la guarda de invención se apagan solos ante la lista vacía."""
+    pet = PeticionInterpretacion.model_validate({"paciente": {"especie": "canino"}})
+    assert pet.analitos_medidos == []
+
+
+def test_analitos_medidos_conserva_las_claves():
+    pet = PeticionInterpretacion.model_validate(
+        {"paciente": {"especie": "felino"}, "analitos_medidos": ["calc", "fosf", "creat"]}
+    )
+    assert pet.analitos_medidos == ["calc", "fosf", "creat"]

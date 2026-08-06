@@ -26,7 +26,11 @@ from ..schemas import (
 from .alcance import motivo_fuera_de_alcance, respuesta_fuera_de_alcance
 from .base import ClienteModelo, ErrorModelo
 from .citas import aplicar_atribucion
-from .coherencia import descartar_fabricados
+from .coherencia import (
+    alterados_declarados_normales,
+    analitos_fabricados_en_prosa,
+    descartar_fabricados,
+)
 from .prescripcion import detectar_prescripcion, encuadrar
 from .prompt import (
     LARGO_FRAGMENTO_PROMPT,
@@ -133,6 +137,54 @@ def _crear_cliente(backend: str, modelo_local: str | None = None) -> ClienteMode
     return MedGemmaClient()
 
 
+def detectar_infracciones(
+    resultado: InterpretacionClinica, pet: PeticionInterpretacion
+) -> tuple[list[str], list[str], list[str]]:
+    """(frases prescriptivas, analitos inventados, alterados dados por normales) de la prosa.
+
+    Las tres listas vacías = salida limpia.
+    """
+    return (
+        detectar_prescripcion(resultado.interpretacion),
+        analitos_fabricados_en_prosa(resultado.interpretacion, pet),
+        alterados_declarados_normales(resultado.interpretacion, pet),
+    )
+
+
+def instruccion_correctiva(
+    prescripciones: list[str], fabricados: list[str], normalizados: list[str]
+) -> str:
+    """Addendum al mensaje del segundo intento, nombrando lo que hay que quitar.
+
+    Nombrar la infracción concreta no es cosmético: la generación del Space es voraz (greedy),
+    así que repetir el MISMO prompt devuelve la MISMA respuesta y gasta otra reserva de GPU
+    para nada. Cambiar la entrada es lo único que cambia la salida — mismo razonamiento que la
+    rama de `exc.truncado`, que recorta la literatura por este motivo.
+    """
+    lineas = ["\n\nCORRECCIÓN OBLIGATORIA de tu respuesta anterior:"]
+    if prescripciones:
+        lineas.append(
+            "- Indicaste tratamiento, y no debes: "
+            + "; ".join(f"«{f}»" for f in prescripciones[:3])
+            + ". Reescribe esa parte como interpretación y, si procede, como prueba "
+            "diagnóstica a solicitar. El plan terapéutico es del veterinario presencial."
+        )
+    if fabricados:
+        lineas.append(
+            "- Afirmaste hallazgos sobre analitos que NO se han medido en este paciente: "
+            + ", ".join(fabricados[:5])
+            + ". Elimina esas afirmaciones. Puedes pedir esas pruebas, pero no dar por hecho "
+            "su resultado."
+        )
+    if normalizados:
+        lineas.append(
+            "- Diste por normales analitos que SÍ están fuera de rango en este paciente: "
+            + ", ".join(normalizados[:5])
+            + ". Corrige esa lectura: sus valores están en los hallazgos que se te entregaron."
+        )
+    return "\n".join(lineas)
+
+
 async def interpretar(pet: PeticionInterpretacion) -> RespuestaInterpretacion:
     cfg = obtener_config()
     backend = pet.backend or cfg.ia_backend_defecto
@@ -184,8 +236,9 @@ async def interpretar(pet: PeticionInterpretacion) -> RespuestaInterpretacion:
         )
     resultado: InterpretacionClinica | None = None
     ultimo_error: ErrorModelo | None = None
+    correccion = ""
     for intento in range(2):
-        mensaje = construir_mensaje_usuario(pet, enviados)
+        mensaje = construir_mensaje_usuario(pet, enviados) + correccion
         try:
             resultado = await cliente.interpretar(sistema, mensaje, pet.imagenes)
             # La ruta de prosa no puede rellenar los campos estructurados; el resto sí, y un
@@ -195,6 +248,26 @@ async def interpretar(pet: PeticionInterpretacion) -> RespuestaInterpretacion:
             if vacio:
                 resultado = None
                 raise ErrorModelo(f"El modelo dejó '{vacio}' vacío pese a haber hallazgos.")
+            # Infracciones de seguridad en la PROSA: se regenera en vez de parchear. Medido el
+            # 2026-08-04, la remediación anterior —anteponer el encuadre de `prescripcion.py`
+            # sin tocar la frase— dejaba un documento que se contradice a sí mismo, y el juez lo
+            # penalizó por ello: `hipotiroidismo-canino` 0.35 y `diabetes-felino-fructosamina`
+            # 0.50 en seguridad, los dos CON la nota de alcance ya puesta. Los pasos 4.6/4.7 de
+            # abajo siguen actuando como último recurso si el reintento vuelve a infringir, así
+            # que esto nunca deja la salida peor que antes.
+            if intento == 0:
+                prescripciones, fabricados, normalizados = detectar_infracciones(resultado, pet)
+                if prescripciones or fabricados or normalizados:
+                    log.warning(
+                        "Infracciones en la salida (prescripción: %s; inventados: %s; "
+                        "dados por normales: %s); se regenera con corrección.",
+                        "; ".join(prescripciones[:3]) or "ninguna",
+                        ", ".join(fabricados[:5]) or "ninguno",
+                        ", ".join(normalizados[:5]) or "ninguno",
+                    )
+                    correccion = instruccion_correctiva(prescripciones, fabricados, normalizados)
+                    resultado = None
+                    raise ErrorModelo("Salida con infracciones de seguridad; se vuelve a muestrear.")
             break
         except ErrorModelo as exc:
             ultimo_error = exc
@@ -246,9 +319,36 @@ async def interpretar(pet: PeticionInterpretacion) -> RespuestaInterpretacion:
     # no se le borra el texto (mutilar prosa clínica es peor) sino que se antepone el encuadre
     # que faltaba y se fuerza la derivación. Medido el 2026-07-31: sin esto, una recomendación
     # de insulina en un paciente hipopotasémico pasó como buena.
+    # Sólo se llega aquí con lenguaje prescriptivo si el reintento correctivo de arriba tampoco
+    # lo resolvió (o si no lo hubo, porque la infracción apareció en el segundo intento).
     if (frases := detectar_prescripcion(resultado.interpretacion)):
-        log.warning("Lenguaje prescriptivo en la salida (%s); se encuadra.", "; ".join(frases[:3]))
+        log.warning(
+            "Lenguaje prescriptivo que sobrevive al reintento (%s); se encuadra.",
+            "; ".join(frases[:3]),
+        )
         resultado.interpretacion = encuadrar(resultado.interpretacion)
+        resultado.requiere_derivacion = True
+
+    # Mismo caso para los analitos inventados en prosa: aquí no se puede borrar sin mutilar la
+    # frase, así que sólo queda dejar constancia y derivar. Se registra para poder medir en
+    # producción cuántas infracciones sobreviven al reintento; si son muchas, el problema es el
+    # modelo y no la guarda.
+    if correccion and (restantes := analitos_fabricados_en_prosa(resultado.interpretacion, pet)):
+        log.warning(
+            "Analitos inventados que sobreviven al reintento: %s; se fuerza derivación.",
+            ", ".join(restantes[:5]),
+        )
+        resultado.requiere_derivacion = True
+
+    # Y para lo simétrico: dar por normal un valor patológico invita a no actuar, así que si
+    # sobrevive al reintento se deriva. Mismo motivo que arriba para no tocar el texto.
+    if correccion and (
+        normalizados := alterados_declarados_normales(resultado.interpretacion, pet)
+    ):
+        log.warning(
+            "Analitos alterados dados por normales pese al reintento: %s; se fuerza derivación.",
+            ", ".join(normalizados[:5]),
+        )
         resultado.requiere_derivacion = True
 
     # 5) Suelo de seguridad. `requiere_derivacion` es una marca clínica, no una opinión: si el
