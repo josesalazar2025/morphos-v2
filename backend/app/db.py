@@ -10,14 +10,29 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import logging
 import secrets
 import sqlite3
 from collections.abc import Iterator
 from contextlib import contextmanager
 
-from .config import obtener_config
+from .config import VOLUMEN_PERSISTENTE, obtener_config
 
-_ESQUEMA = """
+log = logging.getLogger("morphos.db")
+
+# Migraciones versionadas con `PRAGMA user_version`. Antes esto era un único script de
+# `CREATE TABLE IF NOT EXISTS`: creaba el esquema en una BD vacía y no hacía NADA sobre una
+# existente, así que añadir una columna era una operación manual sobre un fichero al que, en
+# Spaces, nadie puede llegar. Cada entrada de la lista es un paso; el índice+1 es la versión
+# resultante, y sólo se aplican los pasos por encima de la versión actual.
+#
+# Reglas: nunca se edita un paso ya publicado (una BD que lo aplicó no volvería a ejecutarlo),
+# los pasos se añaden al final, y cada uno debe poder correr sobre una BD que ya lo tuviera
+# —de ahí los `IF NOT EXISTS`—, porque las BD creadas antes de este mecanismo están en la
+# versión 0 con las tablas del paso 1 ya presentes.
+_MIGRACIONES: list[str] = [
+    # 1 — esquema inicial (el que ya existía).
+    """
 CREATE TABLE IF NOT EXISTS usuarios (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     nombre TEXT NOT NULL,
@@ -39,14 +54,40 @@ CREATE TABLE IF NOT EXISTS resultados_lab (
     recibido_en DATETIME DEFAULT CURRENT_TIMESTAMP,
     payload_json TEXT NOT NULL
 );
-"""
+""",
+    # 2 — índice para el throttle de login: `intentos_recientes` filtra por email+ip+momento en
+    # cada intento y hacía scan completo de la tabla.
+    """
+CREATE INDEX IF NOT EXISTS idx_intentos_email_ip_momento
+    ON intentos_login (email, ip, momento);
+""",
+]
+
+
+def _migrar(con: sqlite3.Connection) -> int:
+    """Aplica los pasos pendientes y devuelve la versión resultante."""
+    version = con.execute("PRAGMA user_version").fetchone()[0]
+    for indice in range(version, len(_MIGRACIONES)):
+        con.executescript(_MIGRACIONES[indice])
+        # `PRAGMA` no admite parámetros; el valor es un índice entero nuestro, no entrada.
+        con.execute(f"PRAGMA user_version = {indice + 1}")
+    return len(_MIGRACIONES)
 
 
 def inicializar_db() -> None:
     cfg = obtener_config()
     cfg.db_path.parent.mkdir(parents=True, exist_ok=True)
     with _conexion() as con:
-        con.executescript(_ESQUEMA)
+        version = _migrar(con)
+    persistente = cfg.db_path.is_relative_to(VOLUMEN_PERSISTENTE)
+    log.info("BD en %s (esquema v%d, %s).", cfg.db_path, version,
+             "persistente" if persistente else "EFÍMERA: las cuentas no sobreviven al reinicio")
+    if not persistente:
+        log.warning(
+            "La base de usuarios está en almacenamiento EFÍMERO (%s): cada reinicio borra "
+            "cuentas, contraseñas e historial de intentos. Monta un volumen persistente o "
+            "apunta MORPHOS_DB_PATH a uno.", cfg.db_path,
+        )
 
 
 @contextmanager

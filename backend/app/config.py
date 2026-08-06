@@ -21,6 +21,23 @@ log = logging.getLogger(__name__)
 # Raíz del repo (…/morphos). La BD y el índice RAG viven FUERA del directorio servido.
 RAIZ_REPO = Path(__file__).resolve().parents[2]
 
+# Punto de montaje del almacenamiento persistente en HF Spaces.
+VOLUMEN_PERSISTENTE = Path("/data")
+
+
+def _ruta_db_por_defecto() -> Path:
+    """Volumen persistente si lo hay; si no, `instance/` (efímero) con aviso al arrancar.
+
+    En HF Spaces `instance/` se pierde en cada reinicio y con él TODAS las cuentas. Si el Space
+    tiene almacenamiento persistente contratado, se monta en /data y ahí sí sobreviven. Se elige
+    solo en vez de exigir configuración porque el fallo del defecto anterior era silencioso: la
+    app arrancaba igual y el problema sólo se veía cuando los usuarios ya no podían entrar.
+    Siempre se puede forzar con MORPHOS_DB_PATH.
+    """
+    if VOLUMEN_PERSISTENTE.is_dir() and os.access(VOLUMEN_PERSISTENTE, os.W_OK):
+        return VOLUMEN_PERSISTENTE / "morphos.db"
+    return RAIZ_REPO / "instance" / "morphos.db"
+
 
 # El `.env` del desarrollador NO debe filtrarse a las pruebas: son las mismas que corren en CI,
 # donde ese fichero no existe, así que cualquier valor que se cuele hace que pasen o fallen según
@@ -66,10 +83,16 @@ class Configuracion(BaseSettings):
     registro_allowlist: Annotated[list[str], NoDecode] = Field(default_factory=list)
 
     # --- Base de datos (usuarios). Ruta fuera del webroot. ---
-    db_path: Path = Field(default=RAIZ_REPO / "instance" / "morphos.db")
-    mysql_dsn: str = Field(default="")  # si se define, se usa en vez de SQLite
-    mysql_user: str = Field(default="")
-    mysql_password: str = Field(default="")
+    # Se prefiere el volumen persistente si existe (ver `_ruta_db_por_defecto`). `instance/` NO
+    # sobrevive a un reinicio en Spaces: allí cada rebuild se llevaba por delante las cuentas,
+    # los hashes y el historial de throttling, y los usuarios tenían que volver a registrarse.
+    db_path: Path = Field(default_factory=lambda: _ruta_db_por_defecto())
+
+    # NO hay soporte de MySQL. Existían `mysql_dsn`/`mysql_user`/`mysql_password` con el
+    # comentario «si se define, se usa en vez de SQLite», pero NADA en el código los leía: quien
+    # los configurara seguiría sobre SQLite sin enterarse. Se eliminan en vez de dejarlos: una
+    # opción de configuración que miente es peor que no tenerla. Para sacar los usuarios de
+    # SQLite, el camino es un volumen persistente (MORPHOS_DB_PATH) o portar `db.py`.
 
     # --- Ruta IA por defecto y proveedores ---
     ia_backend_defecto: str = Field(default="medgemma")  # medgemma | claude
