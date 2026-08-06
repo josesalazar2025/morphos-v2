@@ -12,7 +12,7 @@ import { verificarAuth, abrirModalAuth } from './auth.js';
 import { abrirModalPapers, inicializarModalPapers } from './papers.js';
 import { elId } from './dom.js';
 import { manejadorAsync, sinEsperar } from './async.js';
-import type { Alteraciones, Gravedad, Hallazgo, Paciente, Referencias, ResultadoAnalisis, ValoresFormulario } from './tipos.js';
+import type { AjustesClinicos, Alteraciones, Gravedad, Hallazgo, Paciente, Referencias, ResultadoAnalisis, ValoresFormulario } from './tipos.js';
 
 // Tema oscuro/claro
 
@@ -33,6 +33,10 @@ if (btnTema) {
 
 let referencias: Referencias = {};
 let alteraciones: Alteraciones = {};
+// Reglas clínicas compartidas con el motor del servidor. Se cargan como los demás datos y NO se
+// empaquetan en el bundle: si se inlinearan, editar el JSON no tendría efecto sin recompilar, y
+// el objetivo es justo que un veterinario pueda ajustar un umbral sin pasar por un build.
+let ajustes: AjustesClinicos | null = null;
 let ultimoAnalisis: ResultadoAnalisis = { hallazgos: [], patrones: [] };
 let ultimosValores: ValoresFormulario = {};
 
@@ -56,10 +60,21 @@ const cargarAlteraciones = async (): Promise<void> => {
   }
 };
 
+const cargarAjustes = async (): Promise<void> => {
+  try {
+    const response = await fetch('data/ajustes_clinicos.json');
+    if (!response.ok) throw new Error(`Error HTTP: ${response.status}`);
+    ajustes = await response.json();
+  } catch (error) {
+    console.error('Error cargando ajustes clínicos:', error);
+  }
+};
+
 // Precargas de arranque: nada que esperar aquí, pero un fallo no puede quedar en silencio
 // (sin rangos de referencia el motor no puede clasificar nada).
 sinEsperar('Carga de rangos de referencia', cargarReferencias());
 sinEsperar('Carga de alteraciones', cargarAlteraciones());
+sinEsperar('Carga de ajustes clínicos', cargarAjustes());
 
 // Colección de datos de formulario
 
@@ -136,15 +151,17 @@ const renderizarPatrones = (patrones: ResultadoAnalisis['patrones']): void => {
 const evaluar = (): void => {
   const paciente = obtenerDatosPaciente();
 
-  // Si no hay especie o aun no cargaron las referencias, limpia la UI para evitar falsos positivos
-  if (!paciente.especie || !referencias[paciente.especie]) {
+  // Si no hay especie o aun no cargaron los datos, limpia la UI para evitar falsos positivos.
+  // Sin `ajustes` no se evalúa: hacerlo con los rangos SIN ajustar sacaría hiperfosforémico a
+  // todo cachorro e hipotiroideo a todo galgo, que es justo lo que esos factores evitan.
+  if (!paciente.especie || !referencias[paciente.especie] || !ajustes) {
     actualizarClasesInputs([]);
     renderizarPatrones([]);
     return;
   }
 
   const valores = obtenerValoresFormulario();
-  const { hallazgos, patrones } = analizarResultados(valores, paciente, referencias, alteraciones);
+  const { hallazgos, patrones } = analizarResultados(valores, paciente, referencias, alteraciones, ajustes);
   ultimoAnalisis = { hallazgos, patrones };
   // Los valores crudos van aparte y NO dentro de ResultadoAnalisis: eso es la salida del motor,
   // que sólo devuelve lo alterado. Aquí interesa el panel completo, incluidos los que salieron

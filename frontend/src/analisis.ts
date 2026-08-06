@@ -4,7 +4,9 @@
 // clasifica gravedad y detecta patrones clínicos.
 
 import type {
+  AjustesClinicos,
   Alteraciones,
+  TablaAjustes,
   Especie,
   Gravedad,
   Hallazgo,
@@ -21,7 +23,6 @@ import type {
 // La desviación se mide en múltiplos del ancho del rango de referencia.
 // Ej: rango WBC 6-17 (ancho = 11). WBC = 28 → desviación = 11/11 = 1.0 → moderado.
 
-const UMBRALES_GRAVEDAD = { leve: 0.5, moderado: 1.5 };
 
 // Cortes clinicos explicitos para el lado BAJO, en la unidad del analito. La regla generica de
 // anchos de rango no sabe expresar la gravedad de estos dos: con rango 24-45, un gato
@@ -35,57 +36,29 @@ const UMBRALES_GRAVEDAD = { leve: 0.5, moderado: 1.5 };
 //     Fundamentals 3.a ed., p. 310.
 // Los cortes interiores del gato (14, 20) siguen la gradacion de uso comun; no estan en estas
 // dos obras, que no traen tabla de gradacion.
-type CortesBajo = { leveHasta: number; moderadoHasta: number };
 
-const CORTES_GRAVEDAD_BAJO: Record<string, Partial<Record<Especie, CortesBajo>>> = {
-  hct: {
-    canino: { leveHasta: 30, moderadoHasta: 20 },
-    felino: { leveHasta: 20, moderadoHasta: 14 },
-  },
-  plt: {
-    canino: { leveHasta: 100, moderadoHasta: 30 },
-    felino: { leveHasta: 100, moderadoHasta: 30 },
-  },
-};
 
-// Cortes explicitos para el lado ALTO. Los renales salen del estadiaje IRIS de ERC (guia
-// modificada en 2026, indexada en el RAG; la misma tabla esta en Fundamentals 3.a ed., p. 573,
-// Tabla 8.4). Se mapean los cuatro estadios sobre las tres gravedades del motor:
-// estadio 2 -> leve, estadio 3 -> moderado, estadio 4 -> grave.
-// El estadio 1 queda dentro del rango de referencia y no genera hallazgo.
-const CORTES_GRAVEDAD_ALTO: Record<string, Partial<Record<Especie, CortesBajo>>> = {
-  creat: {
-    canino: { leveHasta: 2.8, moderadoHasta: 5.0 },
-    felino: { leveHasta: 2.8, moderadoHasta: 5.0 },
-  },
-  sdma: {
-    canino: { leveHasta: 35, moderadoHasta: 54 },
-    felino: { leveHasta: 25, moderadoHasta: 38 },
-  },
-  // La proteinuria IRIS no se subestadia mas alla de "proteinurico": nunca llega a 'grave'.
-  upc: {
-    canino: { leveHasta: 0.5, moderadoHasta: Number.POSITIVE_INFINITY },
-    felino: { leveHasta: 0.4, moderadoHasta: Number.POSITIVE_INFINITY },
-  },
-};
+
 
 const clasificarGravedad = (
   valor: number,
   ref: RangoReferencia,
+  ajustes: AjustesClinicos,
   clave?: string,
   especie?: Especie,
 ): Gravedad => {
-  const cortesBajo = clave && especie ? CORTES_GRAVEDAD_BAJO[clave]?.[especie] : undefined;
+  const cortesBajo = clave && especie ? ajustes.cortes_gravedad_bajo[clave]?.[especie] : undefined;
   if (cortesBajo && valor < ref.inferior) {
-    if (valor < cortesBajo.moderadoHasta) return 'grave';
-    if (valor < cortesBajo.leveHasta) return 'moderado';
+    // `moderado_hasta: null` = ese analito nunca llega a 'grave' por este lado.
+    if (cortesBajo.moderado_hasta !== null && valor < cortesBajo.moderado_hasta) return 'grave';
+    if (valor < cortesBajo.leve_hasta) return 'moderado';
     return 'leve';
   }
 
-  const cortesAlto = clave && especie ? CORTES_GRAVEDAD_ALTO[clave]?.[especie] : undefined;
+  const cortesAlto = clave && especie ? ajustes.cortes_gravedad_alto[clave]?.[especie] : undefined;
   if (cortesAlto && valor > ref.superior) {
-    if (valor > cortesAlto.moderadoHasta) return 'grave';
-    if (valor > cortesAlto.leveHasta) return 'moderado';
+    if (cortesAlto.moderado_hasta !== null && valor > cortesAlto.moderado_hasta) return 'grave';
+    if (valor > cortesAlto.leve_hasta) return 'moderado';
     return 'leve';
   }
 
@@ -95,104 +68,34 @@ const clasificarGravedad = (
     ? (valor - ref.superior) / rango
     : (ref.inferior - valor) / rango;
 
-  if (desviacion <= UMBRALES_GRAVEDAD.leve) return 'leve';
-  if (desviacion <= UMBRALES_GRAVEDAD.moderado) return 'moderado';
+  if (desviacion <= ajustes.umbrales_gravedad.leve) return 'leve';
+  if (desviacion <= ajustes.umbrales_gravedad.moderado) return 'moderado';
   return 'grave';
 };
 
 // Edad
 
-const categorizarEdad = (edadMeses: number | null, especie: Especie): string => {
+// Orden de las categorías: la primera cuyo límite no se supera es la que aplica; si se superan
+// todas, la última. Los límites viven en data/ajustes_clinicos.json, junto a los factores que
+// seleccionan, para que cambiar "senior a partir de los 7 años" sea una edición de datos.
+const ORDEN_EDAD: Record<Especie, string[]> = {
+  canino: ['cachorro', 'adulto', 'senior', 'geriatrico'],
+  felino: ['cachorro', 'adulto', 'senior'],
+};
+
+const categorizarEdad = (edadMeses: number | null, especie: Especie, ajustes: AjustesClinicos): string => {
   if (edadMeses === null) return 'adulto';
-
-  if (especie === 'canino') {
-    if (edadMeses < 12) return 'cachorro';
-    if (edadMeses < 84) return 'adulto';
-    if (edadMeses < 120) return 'senior';
-    return 'geriatrico';
+  const limites = ajustes.limites_edad_meses[especie] ?? {};
+  const orden = ORDEN_EDAD[especie];
+  for (const categoria of orden.slice(0, -1)) {
+    if (edadMeses < (limites[categoria] ?? Infinity)) return categoria;
   }
-
-  // felino
-  if (edadMeses < 12) return 'cachorro';
-  if (edadMeses < 120) return 'adulto';
-  return 'senior';
+  return orden[orden.length - 1];
 };
 
-// Factores multiplicativos aplicados a los límites del rango de referencia.
-type FactorRango = { inferior?: number; superior?: number };
-type TablaAjustes = Record<string, FactorRango>;
 
-// Ajustes por edad
 
-// El fosforo del animal en crecimiento es el hueco que mas falsos positivos generaba: sin el,
-// TODO cachorro sale hiperfosforemico y arrastra patrones renales falsos. Fundamentals 3.a ed.,
-// p. 831: cachorros < 12 sem 5,7-10,8 mg/dL frente a 2,5-5,5 del adulto; gatitos 5,0-10,0 frente
-// a 1,8-6,4. La FAL del gatito se sube de x2,0 a x3,0: gatitos de 4 semanas 97-274 U/L frente a
-// 10-80 del adulto (x3,4 el limite superior, Thrall 3.a ed., p. 447), y Fundamentals p. 831 pone
-// el techo general del joven en "< 3 veces el limite superior del adulto".
-const AJUSTES_EDAD: Record<Especie, Record<string, TablaAjustes>> = {
-  canino: {
-    cachorro: { fal: { superior: 3.0 }, wbc: { superior: 1.25 }, fosf: { superior: 1.8 } },
-    adulto: {},
-    senior: { bun: { superior: 1.15 }, creat: { superior: 1.15 } },
-    geriatrico: { bun: { superior: 1.25 }, creat: { superior: 1.25 }, fal: { superior: 1.40 } },
-  },
-  felino: {
-    cachorro: { fal: { superior: 3.0 }, wbc: { superior: 1.20 }, fosf: { superior: 1.3 } },
-    adulto: {},
-    senior: { bun: { superior: 1.20 }, creat: { superior: 1.20 } },
-  },
-};
 
-// Ajustes por raza
-
-const AJUSTES_RAZA: Partial<Record<Especie, Array<{ razas: string[]; ajustes: TablaAjustes }>>> = {
-  canino: [
-    {
-      // Lebreles. Fundamentals 3.a ed., p. 213-214: los RI de Hct, Hgb y RBC son mas altos en
-      // greyhounds, afganos, salukis y whippets. Plaquetas mas bajas en lebreles (p. 307-310).
-      // La T4 es la trampa clinica: tT4 y fT4 por debajo del RI canino general en ~90% de los
-      // galgos sanos (p. 1065), asi que sin este ajuste un galgo sano sale hipotiroideo.
-      razas: ['galgo', 'greyhound', 'whippet', 'lebrel', 'afgano', 'afghan', 'saluki', 'sloughi'],
-      ajustes: {
-        rbc: { inferior: 1.15, superior: 1.15 },
-        hgb: { inferior: 1.12, superior: 1.12 },
-        hct: { inferior: 1.12, superior: 1.12 },
-        plt: { inferior: 0.75, superior: 0.75 },
-        t4_total: { inferior: 0.5, superior: 0.8 },
-        t4_libre: { inferior: 0.5, superior: 0.8 },
-        creat: { superior: 1.15 },
-      },
-    },
-    {
-      // Razas asiaticas con microcitosis fisiologica. Antes se les subia RBC/Hct/Hgb, que no es
-      // lo que dice la literatura: Fundamentals p. 221 documenta que "some healthy Akitas,
-      // shibas, Jindos, chow-chows, and shar-peis have lower MCV" — VCM bajo SIN anemia. Subir
-      // la serie roja generaba falsas anemias; bajar el VCM evita la falsa "anemia microcitica".
-      // El shiba inu ademas tiene plaquetas sustancialmente mas bajas (p. 307-310).
-      razas: ['shiba', 'akita', 'jindo', 'chow', 'shar pei', 'shar-pei', 'sharpei'],
-      ajustes: { vcm: { inferior: 0.85, superior: 0.92 } },
-    },
-    {
-      razas: ['shiba'],
-      ajustes: { plt: { inferior: 0.75, superior: 0.9 } },
-    },
-  ],
-  felino: [
-    // Fundamentals p. 213-214: los limites inferiores de Hgb y Hct del Maine Coon son
-    // sustancialmente mayores que los de las razas felinas tipicas.
-    {
-      razas: ['maine coon', 'maine'],
-      ajustes: { hct: { inferior: 1.15 }, hgb: { inferior: 1.15 } },
-    },
-    // Fundamentals p. 585: la creatinina de gatos Birman clinicamente sanos puede superar el
-    // limite superior de los RI felinos de rutina.
-    {
-      razas: ['birman', 'sagrado de birmania'],
-      ajustes: { creat: { superior: 1.2 } },
-    },
-  ],
-};
 
 // Ajustes por sexo
 
@@ -207,14 +110,13 @@ const AJUSTES_RAZA: Partial<Record<Especie, Array<{ razas: string[]; ajustes: Ta
 // Lo unico con respaldo por sexo es menor: en perro las plaquetas son hasta un 10% mayores en
 // hembras y en enteros (Fundamentals p. 310). No se implementa: por debajo de la resolucion
 // clinica del motor.
-const AJUSTES_SEXO: Partial<Record<Especie, Record<string, TablaAjustes>>> = {};
 
 // Combina TODOS los grupos que casan, no solo el primero: un shiba inu pertenece a la vez al
 // grupo de microcitosis fisiologica y al de plaquetas bajas, y quedarse con el primero perdia
 // el segundo en silencio.
-const obtenerAjustesRaza = (raza: string | null, especie: Especie): TablaAjustes => {
+const obtenerAjustesRaza = (raza: string | null, especie: Especie, ajustes: AjustesClinicos): TablaAjustes => {
   const razaNorm = raza?.toLowerCase().trim() ?? '';
-  const grupos = AJUSTES_RAZA[especie] ?? [];
+  const grupos = ajustes.ajustes_raza[especie] ?? [];
   return grupos
     .filter((g) => g.razas.some((r) => razaNorm.includes(r)))
     .reduce<TablaAjustes>((acc, grupo) => {
@@ -230,12 +132,16 @@ const obtenerAjustesRaza = (raza: string | null, especie: Especie): TablaAjustes
 
 // Ajuste de referencias
 
-const ajustarReferencias = (refsEspecie: ReferenciasEspecie, paciente: Paciente): ReferenciasEspecie => {
+const ajustarReferencias = (
+  refsEspecie: ReferenciasEspecie,
+  paciente: Paciente,
+  ajustes: AjustesClinicos,
+): ReferenciasEspecie => {
   const especie = paciente.especie as Especie;
-  const catEdad = categorizarEdad(paciente.edadMeses, especie);
-  const ajEdad = AJUSTES_EDAD[especie]?.[catEdad] ?? {};
-  const ajRaza = obtenerAjustesRaza(paciente.raza, especie);
-  const ajSexo = (paciente.sexo ? AJUSTES_SEXO[especie]?.[paciente.sexo] : undefined) ?? {};
+  const catEdad = categorizarEdad(paciente.edadMeses, especie, ajustes);
+  const ajEdad = ajustes.ajustes_edad[especie]?.[catEdad] ?? {};
+  const ajRaza = obtenerAjustesRaza(paciente.raza, especie, ajustes);
+  const ajSexo = (paciente.sexo ? ajustes.ajustes_sexo[especie]?.[paciente.sexo] : undefined) ?? {};
 
   // Multiplica los limites inferiores y superiores por los factores de edad, raza y sexo
   return Object.entries(refsEspecie).reduce<ReferenciasEspecie>((acc, [clave, ref]) => {
@@ -1026,13 +932,14 @@ export const analizarResultados = (
   paciente: Paciente,
   referencias: Referencias,
   alteraciones: Alteraciones,
+  ajustes: AjustesClinicos,
 ): ResultadoAnalisis => {
   const especie = paciente.especie;
   const refsEspecie = especie ? referencias[especie] : undefined;
   if (!refsEspecie || !especie) return { hallazgos: [], patrones: [] };
 
   // Ajusta los rangos segun edad, raza y sexo antes de comparar
-  const refsAjustadas = ajustarReferencias(refsEspecie, paciente);
+  const refsAjustadas = ajustarReferencias(refsEspecie, paciente, ajustes);
   const hallazgos: Hallazgo[] = [];
 
   for (const [clave, ref] of Object.entries(refsAjustadas)) {
@@ -1045,12 +952,12 @@ export const analizarResultados = (
     if (valorNum > ref.superior) {
       hallazgos.push({
         clave, nombre: ref.nombre, valor: valorNum, unidad: ref.unidad,
-        direccion: 'alto', gravedad: clasificarGravedad(valorNum, ref, clave, especie),
+        direccion: 'alto', gravedad: clasificarGravedad(valorNum, ref, ajustes, clave, especie),
       });
     } else if (valorNum < ref.inferior) {
       hallazgos.push({
         clave, nombre: ref.nombre, valor: valorNum, unidad: ref.unidad,
-        direccion: 'bajo', gravedad: clasificarGravedad(valorNum, ref, clave, especie),
+        direccion: 'bajo', gravedad: clasificarGravedad(valorNum, ref, ajustes, clave, especie),
       });
     }
   }

@@ -78,6 +78,23 @@ User clicks "Análisis IA"
 - **`backend/app/ai/hf_space.py`** — Cliente del HF Space (Gradio) donde vive medGemma. El Space devuelve texto libre, así que va por la ruta de prosa: `ai/prosa.py` limpia los tokens del modelo, detecta salida defectuosa (razonamiento filtrado, bucle, frase cortada) y envuelve el resultado en el campo `interpretacion`. Es la ruta por defecto sin salida estructurada; un modelo local declarado `=prosa` usa la misma.
 - **`backend/app/ai/claude.py`** — Ruta Claude vía tool use forzado: el `input_schema` es el JSON Schema de `InterpretacionClinica`, así que valida contra Pydantic sin regex.
 - **`data/valores_referencia.json`** — Reference ranges for 90 analytes per species.
+- **`data/ajustes_clinicos.json`** — **Fuente única de las reglas del suelo de seguridad**:
+  umbrales de gravedad, límites de las categorías de edad y factores de ajuste por edad y raza.
+  Lo leen LOS DOS motores —`frontend/src/analisis.ts` (fetch, como los demás datos) y
+  `backend/app/motor/gravedad.py` (disco)— y también `evals/engine_runner.ts`.
+  - **No volver a incrustar estos valores en el código.** Estaban duplicados como constantes en
+    ambos motores, y eso es lo que de verdad se desincroniza: la lógica de comparar no cambia
+    casi nunca, los umbrales sí, y son justo lo que un veterinario querría ajustar sin pasar por
+    un build. Hay una prueba a cada lado (`test_el_motor_obedece_al_json_y_no_a_constantes` y su
+    gemela en `analisis.test.ts`) que muta el JSON y exige que el veredicto cambie: si alguien
+    vuelve a fijar los umbrales en el código, fallan.
+  - **Tampoco empaquetarlo en el bundle.** Un `import` de JSON lo inlinearía en tiempo de build
+    y editar el fichero dejaría de tener efecto sin recompilar, que es justo lo que se quiere
+    evitar. Se carga con `fetch`, como `valores_referencia.json`.
+  - `moderado_hasta: null` significa que ese analito **nunca** llega a `grave` por ese lado (es
+    el caso de `upc`, que la guía IRIS no subestadia más allá de «proteinúrico»).
+  - `backend/tests/test_paridad_motor.py` ejecuta el motor TS REAL contra el puerto Python sobre
+    18 casos: es el guardarraíl de que las dos implementaciones sigan de acuerdo.
 - **`data/alteraciones.json`** — 78 clinical entities used to enrich AI prompts with etiologic context.
 
 ### AI Backend Configuration

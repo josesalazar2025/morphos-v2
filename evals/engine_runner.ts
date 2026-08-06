@@ -7,12 +7,13 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { analizarResultados } from '../frontend/src/analisis.ts';
-import type { Alteraciones, Paciente, Referencias } from '../frontend/src/tipos.ts';
+import type { AjustesClinicos, Alteraciones, Paciente, Referencias } from '../frontend/src/tipos.ts';
 
 const aquí = dirname(fileURLToPath(import.meta.url));
 const datos = resolve(aquí, '../data');
 const referencias = JSON.parse(readFileSync(resolve(datos, 'valores_referencia.json'), 'utf8')) as Referencias;
 const alteraciones = JSON.parse(readFileSync(resolve(datos, 'alteraciones.json'), 'utf8')) as Alteraciones;
+const ajustes = JSON.parse(readFileSync(resolve(datos, 'ajustes_clinicos.json'), 'utf8')) as AjustesClinicos;
 
 const entrada = JSON.parse(readFileSync(0, 'utf8')) as {
   valores: Record<string, number>;
@@ -26,5 +27,5 @@ const paciente: Paciente = {
   sexo: entrada.paciente.sexo ?? null,
 };
 
-const { hallazgos, patrones } = analizarResultados(entrada.valores, paciente, referencias, alteraciones);
+const { hallazgos, patrones } = analizarResultados(entrada.valores, paciente, referencias, alteraciones, ajustes);
 process.stdout.write(JSON.stringify({ hallazgos, patrones }));

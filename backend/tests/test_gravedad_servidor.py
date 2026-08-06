@@ -13,6 +13,8 @@ coincide con `analisis.ts` en los casos que deciden la derivación.
 
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from app.ai.service import _derivacion_obligatoria, con_verdad_del_servidor, hallazgos_efectivos
@@ -154,3 +156,37 @@ def test_sin_especie_no_se_inventan_hallazgos():
 def test_valores_no_numericos_se_ignoran():
     canino = PacienteEntrada.model_validate(CANINO)
     assert evaluar({"hct": float("nan")}, canino) == []
+
+
+# --- Las reglas son DATOS, no código ---
+
+def test_el_motor_obedece_al_json_y_no_a_constantes(monkeypatch):
+    """Cambiar `data/ajustes_clinicos.json` tiene que cambiar el veredicto.
+
+    Es la prueba de que el fichero es la fuente de verdad y no una copia decorativa: si alguien
+    volviera a incrustar los umbrales en el código, esto seguiría dando 'grave' y fallaría.
+    """
+    from app.motor import gravedad
+
+    base = gravedad.cargar_ajustes()
+    relajado = json.loads(json.dumps(base))
+    # Hct 12 en perro es 'grave' por el corte explícito; se sube el corte para que sea 'leve'.
+    relajado["cortes_gravedad_bajo"]["hct"]["canino"] = {"leve_hasta": 5, "moderado_hasta": 1}
+    monkeypatch.setattr(gravedad, "cargar_ajustes", lambda: relajado)
+
+    canino = PacienteEntrada.model_validate(CANINO)
+    assert evaluar({"hct": 12.0}, canino)[0].gravedad is Gravedad.leve
+
+
+def test_los_limites_de_edad_tambien_salen_del_json(monkeypatch):
+    """Que 'senior' empiece a los 7 años es una decisión clínica, no una constante del código."""
+    from app.motor import gravedad
+
+    modificado = json.loads(json.dumps(gravedad.cargar_ajustes()))
+    modificado["limites_edad_meses"]["canino"]["cachorro"] = 1
+    monkeypatch.setattr(gravedad, "cargar_ajustes", lambda: modificado)
+
+    # Con el límite de cachorro en 1 mes, un perro de 4 meses ya es adulto y pierde el ajuste
+    # de fósforo que evitaba el falso positivo.
+    cachorro = PacienteEntrada.model_validate({"especie": "canino", "edad_meses": 4})
+    assert [h.clave for h in evaluar({"fosf": 8.0}, cachorro)] == ["fosf"]
