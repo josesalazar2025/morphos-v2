@@ -94,6 +94,25 @@ def construir_muestras(casos: list[dict], preds: dict[str, dict]) -> list:
     return muestras
 
 
+def evaluar_umbrales(puntuaciones: dict, umbrales: dict | None = None) -> tuple[list[str], list[str]]:
+    """(fallos, incalculables) a partir de las puntuaciones de Ragas.
+
+    Ragas devuelve NaN cuando el juez agotó el tiempo o no supo puntuar. Eso NO es un 0 (no
+    significa "poco fundamentado"): es una métrica que no se midió, y hay que decirlo en vez
+    de dejar pasar la puerta con un agregado incompleto o suspenderla por algo que no ocurrió.
+    """
+    fallos, incalculables = [], []
+    for metrica, umbral in (umbrales or UMBRALES).items():
+        valor = puntuaciones.get(metrica)
+        if valor is None:
+            continue
+        if valor != valor:  # NaN
+            incalculables.append(metrica)
+        elif valor < umbral:
+            fallos.append(f"{metrica}={valor:.2f} < {umbral:.2f}")
+    return fallos, incalculables
+
+
 def construir_evaluadores(embed_modelo: str):
     """LLM y embeddings locales envueltos para Ragas."""
     from langchain_ollama import ChatOllama, OllamaEmbeddings
@@ -178,19 +197,7 @@ def main() -> int:
     print("\n=== RESUMEN RAGAS ===")
     print(resultado)
 
-    puntuaciones = getattr(resultado, "_repr_dict", {})
-    fallos, incalculables = [], []
-    for metrica, umbral in UMBRALES.items():
-        valor = puntuaciones.get(metrica)
-        if valor is None:
-            continue
-        # Ragas devuelve NaN cuando el juez agotó el tiempo o no supo puntuar. Eso no es un
-        # 0 (no significa "poco fundamentado"): es una métrica que no se midió, y hay que
-        # decirlo en vez de dejar pasar la puerta con un agregado incompleto.
-        if valor != valor:
-            incalculables.append(metrica)
-        elif valor < umbral:
-            fallos.append(f"{metrica}={valor:.2f} < {umbral:.2f}")
+    fallos, incalculables = evaluar_umbrales(getattr(resultado, "_repr_dict", {}))
 
     if incalculables:
         print(f"\n⚠ Métricas sin calcular (el juez no respondió a tiempo): {', '.join(incalculables)}")

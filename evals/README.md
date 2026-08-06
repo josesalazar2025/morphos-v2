@@ -31,6 +31,19 @@ opción explícita.
 6. **promptfoo** (`promptfooconfig.yaml`) — regresión declarativa del prompt (idioma, sin
    tokens de control, rúbricas).
 
+## Quién evalúa al evaluador
+
+`tests/` son las pruebas unitarias de estos scripts: métricas de recuperación, léxico de
+cobertura, rúbrica del juez, umbrales de ambas puertas y esquema del dataset. Son puras —sin
+modelo, sin juez, sin índice— y corren en CI **antes** que la puerta. La razón es simple: un
+medidor roto no da un resultado malo, da un resultado sin significado, y el primer fallo que
+atraparon fue justo eso (el simulador de `--simular` no declaraba `fuera_de_alcance` y
+suspendía por su cuenta una métrica de tolerancia cero).
+
+```bash
+make evals-unit
+```
+
 ## Ejecutar
 
 ```bash

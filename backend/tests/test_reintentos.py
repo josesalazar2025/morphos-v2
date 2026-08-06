@@ -284,3 +284,95 @@ async def test_la_ruta_estructurada_conserva_la_opinion_del_modelo(sin_rag, monk
     resp = await service.interpretar(pet)
 
     assert resp.resultado.requiere_derivacion is True
+
+
+# --- Reintento correctivo ante infracción de seguridad (2026-08-04) ---
+#
+# Antes, una pauta terapéutica detectada se remediaba anteponiendo el encuadre de
+# `prescripcion.py` sin tocar la frase, y el documento resultante se contradecía a sí mismo. El
+# juez lo penalizó por ello: `hipotiroidismo-canino` 0.35 y `diabetes-felino-fructosamina` 0.50
+# en seguridad, los dos CON la nota de alcance ya puesta. Ahora se regenera; el encuadre queda
+# como último recurso.
+
+from app.ai.prescripcion import ENCUADRE  # noqa: E402
+
+# Frase real de `diabetes-felino-fructosamina`.
+PRESCRIPTIVA = (
+    "El paciente presenta hiperglucemia marcada. Se recomienda iniciar un tratamiento con "
+    "insulina para confirmar el diagnóstico de diabetes mellitus. "
+)
+LIMPIA = (
+    "El paciente presenta hiperglucemia marcada compatible con diabetes mellitus. "
+    "Procede confirmar con fructosamina y descartar causas de hiperglucemia por estrés. "
+)
+
+
+class ClienteSegunIntento:
+    """Devuelve un texto distinto en cada llamada, para medir qué se hace con el primero."""
+
+    nombre = "medgemma-hf"
+    prosa = True
+    modelo = "hf-space"
+
+    def __init__(self, *textos: str):
+        self.textos = textos
+        self.mensajes: list[str] = []
+
+    async def interpretar(self, _sistema, mensaje, *_a, **_k):
+        self.mensajes.append(mensaje)
+        texto = self.textos[min(len(self.mensajes), len(self.textos)) - 1]
+        return InterpretacionClinica(interpretacion=texto, requiere_derivacion=True)
+
+
+async def test_la_prescripcion_se_regenera_en_vez_de_encuadrarse(sin_rag, monkeypatch):
+    cliente = ClienteSegunIntento(PRESCRIPTIVA, LIMPIA)
+    resp = await _interpretar_con(cliente, monkeypatch)
+
+    assert len(cliente.mensajes) == 2, "la infracción debe costar un reintento"
+    assert ENCUADRE not in resp.resultado.interpretacion, "regenerar, no parchear"
+    assert resp.resultado.interpretacion.startswith("El paciente presenta hiperglucemia marcada c")
+
+
+async def test_el_segundo_mensaje_nombra_lo_que_hay_que_quitar(sin_rag, monkeypatch):
+    """La generación del Space es voraz: repetir el mismo prompt devuelve la misma respuesta."""
+    cliente = ClienteSegunIntento(PRESCRIPTIVA, LIMPIA)
+    await _interpretar_con(cliente, monkeypatch)
+
+    correccion = cliente.mensajes[1]
+    assert "CORRECCIÓN OBLIGATORIA" in correccion
+    assert "insulina" in correccion
+    assert correccion != cliente.mensajes[0]
+
+
+async def test_si_el_reintento_vuelve_a_infringir_se_encuadra_como_antes(sin_rag, monkeypatch):
+    """No-regresión: el comportamiento nunca queda peor que el que había."""
+    cliente = ClienteSegunIntento(PRESCRIPTIVA, PRESCRIPTIVA)
+    resp = await _interpretar_con(cliente, monkeypatch)
+
+    assert len(cliente.mensajes) == 2
+    assert resp.resultado.interpretacion.startswith(ENCUADRE)
+    assert resp.resultado.requiere_derivacion is True
+
+
+async def test_una_salida_limpia_no_gasta_reintento(sin_rag, monkeypatch):
+    cliente = ClienteSegunIntento(LIMPIA)
+    resp = await _interpretar_con(cliente, monkeypatch)
+
+    assert len(cliente.mensajes) == 1
+    assert ENCUADRE not in resp.resultado.interpretacion
+
+
+async def test_el_analito_inventado_tambien_dispara_el_reintento(sin_rag, monkeypatch):
+    """El otro modo de fallo del 2026-08-04, sobre un panel sin hemograma."""
+    inventada = "La leucograma muestra neutrofilia y linfopenia marcadas. "
+    cliente = ClienteSegunIntento(inventada, LIMPIA)
+    monkeypatch.setattr(service, "_crear_cliente", lambda *_: cliente)
+    pet = PeticionInterpretacion.model_validate(
+        PETICION | {"analitos_medidos": ["hct", "creat", "gluc"]}
+    )
+
+    resp = await service.interpretar(pet)
+
+    assert len(cliente.mensajes) == 2
+    assert "Neutrófilos" in cliente.mensajes[1]
+    assert resp.resultado.interpretacion.startswith("El paciente presenta hiperglucemia")

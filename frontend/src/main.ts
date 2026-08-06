@@ -6,6 +6,7 @@ import { analizarResultados } from './analisis.js';
 import { colapsarPatrones, inicializarSincMob, imagenesDataUrl, capturasMicroscopio } from './ui.js';
 import { llamarIA, inicializarConfigBackend } from './ia.js';
 import { inicializarParserPdf } from './pdf-parser.js';
+import { inicializarPanelesVacios } from './panel-vacio.js';
 import { inicializarImportLab } from './lab-import.js';
 import { verificarAuth, abrirModalAuth } from './auth.js';
 import { abrirModalPapers, inicializarModalPapers } from './papers.js';
@@ -33,6 +34,7 @@ if (btnTema) {
 let referencias: Referencias = {};
 let alteraciones: Alteraciones = {};
 let ultimoAnalisis: ResultadoAnalisis = { hallazgos: [], patrones: [] };
+let ultimosMedidos: string[] = [];
 
 const cargarReferencias = async (): Promise<void> => {
   try {
@@ -144,6 +146,9 @@ const evaluar = (): void => {
   const valores = obtenerValoresFormulario();
   const { hallazgos, patrones } = analizarResultados(valores, paciente, referencias, alteraciones);
   ultimoAnalisis = { hallazgos, patrones };
+  // Los medidos van aparte y NO dentro de ResultadoAnalisis: eso es la salida del motor, que
+  // sólo devuelve lo alterado. Aquí interesa el panel completo, incluidos los valores en rango.
+  ultimosMedidos = Object.keys(valores);
 
   actualizarClasesInputs(hallazgos);
   renderizarPatrones(patrones);
@@ -170,6 +175,7 @@ elId<HTMLSelectElement>('pt-sexo').addEventListener('change', evaluar);
 
 inicializarSincMob(evaluar);
 void inicializarConfigBackend();  // pide la lista de modelos al servidor; no bloquea el arranque
+inicializarPanelesVacios();
 inicializarParserPdf(evaluar);
 inicializarImportLab(evaluar);
 inicializarModalPapers();
@@ -202,7 +208,10 @@ const imagenesActuales = (): string[] =>
 const dispararIA = (): void => {
   colapsarPatrones(true);
   // Se encola desde un callback síncrono (abrirModalAuth), así que no se puede await aquí.
-  sinEsperar('Análisis IA', llamarIA(obtenerDatosPaciente, () => ultimoAnalisis, imagenesActuales));
+  sinEsperar(
+    'Análisis IA',
+    llamarIA(obtenerDatosPaciente, () => ({ ...ultimoAnalisis, medidos: ultimosMedidos }), imagenesActuales),
+  );
 };
 
 const botonAnalizar = document.querySelector<HTMLElement>('.boton-analizar');

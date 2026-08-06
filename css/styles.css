@@ -450,6 +450,62 @@ main {
     scrollbar-color: var(--border-2) transparent;
 }
 
+/*  ESTADO VACÍO DE LOS PANELES DE EXÁMENES (sólo escritorio)
+    En móvil los paneles son pestañas a pantalla completa y el formulario va directo: la zona de
+    arrastre no aporta (no se arrastra con el dedo) y metería un paso de más. Por eso el bloque
+    nace oculto y sólo la media query de escritorio lo enciende. */
+.panel-vacio {
+    display: none;
+}
+
+.panel-vacio svg {
+    width: 34px;
+    height: 34px;
+    fill: var(--text-4);
+}
+
+.panel-vacio-texto {
+    margin: 0;
+    font-size: var(--fs-sm);
+    line-height: 1.6;
+    color: var(--text-3);
+    text-align: center;
+    text-wrap: balance;
+}
+
+.panel-vacio-explorar {
+    padding: 0;
+    background: none;
+    border: none;
+    font: inherit;
+    color: var(--accent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+}
+
+.panel-vacio-explorar:hover {
+    color: var(--accent-hover);
+}
+
+.panel-vacio-manual {
+    padding: var(--space-2) var(--space-4);
+    background: transparent;
+    color: var(--text-2);
+    border: 1px solid var(--border-2);
+    border-radius: var(--radius-md);
+    font: inherit;
+    font-size: var(--fs-sm);
+    cursor: pointer;
+    transition: background var(--dur-fast), color var(--dur-fast), border-color var(--dur-fast);
+}
+
+.panel-vacio-manual:hover {
+    background: var(--surface-2);
+    color: var(--text-1);
+    border-color: var(--accent);
+}
+
 /*  ENCABEZADOS DE COLUMNA  */
 .cabecera-columnas {
     display: flex;
@@ -1966,6 +2022,38 @@ main {
 
 /*  SOLO DESKTOP */
 @media (min-width: 1101px) {
+    /* Mientras el panel no tenga datos, su cuerpo es la zona de adjuntar: se oculta TODO lo
+       demás (cabecera de columnas y grupos de campos) en vez de enumerarlo, para que añadir un
+       grupo nuevo al formulario no obligue a tocar esta regla. */
+    .subpanel.sin-datos .panel-cuerpo > :not(.panel-vacio),
+    .subpanel.sin-datos .subpanel-cuerpo > :not(.panel-vacio) {
+        display: none;
+    }
+
+    .subpanel.sin-datos .panel-vacio {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: var(--space-3);
+        /* Los dos paneles altos (hema/bioquim) centran el bloque en el alto disponible; los
+           colapsables se ajustan al contenido, que es lo que anima su altura. */
+        height: 100%;
+        min-height: 8rem;
+        padding: var(--space-5) var(--space-4);
+    }
+
+    /* Realce al arrastrar un fichero por encima. Va en el <section> porque el drop se escucha
+       ahí: también funciona sobre un panel que ya muestra el formulario. */
+    .subpanel.arrastrando {
+        outline: 2px dashed var(--accent);
+        outline-offset: -4px;
+    }
+
+    .subpanel.arrastrando .panel-vacio svg {
+        fill: var(--accent);
+    }
+
     .cabecera-columnas--mobile-only {
         display: none;
     }

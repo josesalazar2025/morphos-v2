@@ -1,7 +1,7 @@
 # Morphos — tareas de desarrollo y despliegue
 
 .PHONY: help frontend-install frontend-test frontend-build backend-sync backend-test \
-        ingest curar-indice dev lint evals evals-test ragas revision retrieval-eval \
+        ingest curar-indice dev lint evals evals-test evals-unit ragas revision retrieval-eval \
         docker-build publish-index fetch-index publish-books
 
 # Los repos del Hub se declaran en scripts/hub.py (y deben coincidir con rag_index_repo /
@@ -21,6 +21,7 @@ help:
 	@echo "  publish-books     Sube books/*.pdf al dataset privado (sólo para reingerir)"
 	@echo "  evals             Suite de evaluación clínica (split dev, casos validados)"
 	@echo "  evals-test        Igual sobre el split reservado (sólo antes de desplegar)"
+	@echo "  evals-unit        Pruebas unitarias de los propios scripts de evals/"
 	@echo "  ragas             Groundedness RAG con juez local gratuito (ARGS=--modelo …)"
 	@echo "  revision          Hoja de revisión veterinaria de los casos pendientes"
 	@echo "  dev               Levanta el backend FastAPI en local"
@@ -41,6 +42,12 @@ backend-sync:
 
 backend-test:
 	cd backend && uv run pytest -q
+
+# Pruebas unitarias de los scripts de evaluación (métricas, rúbrica, umbrales, dataset). No
+# necesitan modelo, juez ni índice: son puras. Corren con el venv del backend porque los
+# scripts importan `app.*`.
+evals-unit:
+	cd backend && uv run pytest -q ../evals/tests
 
 # Requiere el grupo pesado 'rag'. Coloca los PDFs con licencia en books/ primero.
 ingest:

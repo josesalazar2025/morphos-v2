@@ -1,0 +1,59 @@
+name: ci
+
+# Puerta de calidad del CÓDIGO (rápida). La puerta clínica —motor determinista y evals— vive
+# en `evals.yml`, que sí filtra por rutas porque su coste es otro.
+#
+# Este workflow NO lleva filtro `paths` a propósito: antes, un PR que tocara sólo
+# `backend/app/security/` o `backend/app/routers/` no disparaba NINGÚN workflow, así que toda
+# la superficie de autenticación, sesiones, CSRF y ingesta de laboratorio se fusionaba sin que
+# nadie ejecutara `backend/tests/`. Cualquier PR corre esto.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - name: Sincronizar backend
+        working-directory: backend
+        # Sin `--group rag`: los grupos pesados son opt-in (ver pyproject) y las dos suites que
+        # dependen de LanceDB/sentence-transformers ya se auto-omiten
+        # (`test_retriever_integracion.py`, `test_alcance_corpus.py`). Instalarlos aquí añadiría
+        # GBs y minutos a cambio de una prueba de integración sintética. Si algún día la
+        # recuperación regresa sin que nadie se entere, ese es el momento de añadirlos.
+        run: uv sync
+      - name: Ruff (backend + scripts)
+        working-directory: backend
+        # Mismo alcance que `make lint`: evals/ y bridge/ quedan fuera a propósito, aún no
+        # están saneados bajo estas reglas.
+        run: uv run ruff check . ../scripts
+      - name: Pruebas del backend
+        working-directory: backend
+        run: uv run pytest -q
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Instalar frontend
+        working-directory: frontend
+        run: npm ci
+      - name: Tipos (tsc --noEmit)
+        working-directory: frontend
+        # `npm run build` ya lo corría, pero nada ejecutaba el build en CI.
+        run: npm run typecheck
+      - name: ESLint
+        working-directory: frontend
+        run: npm run lint

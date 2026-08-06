@@ -2,6 +2,8 @@
 // y el de analizadores (lab-import.ts). La clave de unión es el atributo `name` del input
 // (== clave canónica de valores_referencia.json). Fuente única para no duplicar la lógica.
 
+import { revelarPanelDeCampo } from './panel-vacio.js';
+
 export type ValoresInyectables = Record<string, number | string>;
 
 export interface PacienteInyectable {
@@ -32,6 +34,8 @@ export function aplicarValoresAFormulario(
   for (const [campo, value] of Object.entries(resultados)) {
     const el = document.querySelector(`[name="${campo}"]`) as HTMLInputElement | HTMLSelectElement | null;
     if (!el) continue;
+    // Un valor importado a un panel en estado vacío quedaría escondido tras la zona de arrastre.
+    revelarPanelDeCampo(el);
     const valorCadena = String(value);
     if (el.tagName === 'SELECT') {
       const select = el as HTMLSelectElement;

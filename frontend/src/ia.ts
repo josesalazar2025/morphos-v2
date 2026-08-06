@@ -183,7 +183,7 @@ function renderizar(resp: RespuestaInterpretacion): string {
 
 export async function llamarIA(
   obtenerDatosPaciente: () => Paciente,
-  getUltimoAnalisis: () => { hallazgos: Hallazgo[]; patrones: Patron[] },
+  getUltimoAnalisis: () => { hallazgos: Hallazgo[]; patrones: Patron[]; medidos?: string[] },
   getImagenes: () => string[],
 ): Promise<void> {
   const salidaEl = document.getElementById('salida-ia');
@@ -191,7 +191,7 @@ export async function llamarIA(
 
   const backend = (localStorage.getItem(BACKEND_KEY) ?? 'medgemma') === 'claude' ? 'claude' : 'medgemma';
   const paciente = obtenerDatosPaciente();
-  const { hallazgos, patrones } = getUltimoAnalisis();
+  const { hallazgos, patrones, medidos } = getUltimoAnalisis();
   const signos = (document.getElementById('signos-clinicos') as HTMLTextAreaElement | null)?.value.trim() ?? '';
 
   salidaEl.textContent = 'Consultando al modelo de I.A…';
@@ -206,6 +206,9 @@ export async function llamarIA(
     },
     hallazgos,
     patrones,
+    // El panel COMPLETO, no sólo lo alterado: es lo que le permite al modelo saber que un
+    // analito ausente no se ha medido y que uno presente pero sin hallazgo salió en rango.
+    analitos_medidos: medidos ?? [],
     signos_clinicos: signos,
     imagenes: getImagenes().slice(0, 4),
     backend,

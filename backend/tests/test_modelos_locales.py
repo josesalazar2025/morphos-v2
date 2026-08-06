@@ -159,3 +159,14 @@ async def test_el_modelo_elegido_recibe_rag_y_se_reporta_en_la_respuesta(
     assert resp.fuentes_rag == 1
     # La etiqueta debe nombrar el modelo QUE RESPONDIÓ, no el de la configuración.
     assert resp.modelo == "medgemma:medgemma1.5:latest"
+
+
+def test_las_pruebas_no_heredan_el_env_del_desarrollador():
+    """La lista blanca vacía por defecto sólo se sostiene si nadie lee el `.env` local.
+
+    Este fichero afirma que sin declaración no hay modelos elegibles. Un
+    `MORPHOS_MODELOS_LOCALES=…` en `backend/.env` —perfectamente legítimo para trabajar en
+    local— hacía fallar esa afirmación en la máquina del desarrollador y pasarla en CI, que es
+    la peor combinación posible: la prueba deja de describir el código y describe la máquina.
+    """
+    assert Configuracion.model_config["env_file"] is None

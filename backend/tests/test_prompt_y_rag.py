@@ -188,3 +188,32 @@ def test_presupuesto_desactivado_no_recorta():
     from app.ai.service import recortar_a_presupuesto
 
     assert len(recortar_a_presupuesto(_frags(6), 0)) == 6
+
+
+# --- Bloque de panel completo (2026-08-04) ---
+
+def test_el_panel_nombra_lo_medido_en_rango_y_cierra_la_lista():
+    """`hallazgos` sólo trae lo alterado, así que sin esto el modelo no distingue «no se midió»
+    de «se midió y salió normal» y rellena el hueco (leucograma inventado, corrida 2026-08-04)."""
+    pet = _peticion().model_copy(update={"analitos_medidos": ["hct", "plt", "gluc"]})
+    msg = construir_mensaje_usuario(pet, [])
+    assert "DENTRO de rango" in msg
+    assert "Plaquetas" in msg and "Glucosa" in msg
+    assert "Hematocrito (Hct)" not in msg, "el alterado ya va en su propio bloque"
+    assert "panel COMPLETO" in msg
+
+
+def test_sin_analitos_medidos_el_bloque_desaparece_entero():
+    """Cliente antiguo: anunciar un «panel completo» vacío sería peor que no decir nada, y el
+    relleno se lee como contenido (mismo motivo que test_panel_normal_no_mete_lineas_de_relleno)."""
+    msg = construir_mensaje_usuario(_peticion(), [])
+    assert "DENTRO de rango" not in msg
+    assert "panel COMPLETO" not in msg
+
+
+def test_el_panel_sin_ninguno_en_rango_conserva_el_cierre():
+    """Todo lo medido salió alterado: no hay lista que enseñar, pero sí que decir que no hay más."""
+    pet = _peticion().model_copy(update={"analitos_medidos": ["hct"]})
+    msg = construir_mensaje_usuario(pet, [])
+    assert "DENTRO de rango" not in msg
+    assert "panel COMPLETO" in msg

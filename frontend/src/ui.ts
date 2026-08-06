@@ -1,7 +1,7 @@
 // Navegación, gestos, paneles colapsables, sincronización móvil, imágenes y cámara.
 // Puerto TS de js/ui.js — comportamiento idéntico; sólo tipado + helpers de DOM.
 
-import { elId, qs, qsa } from './dom.js';
+import { elId, esGridEscritorio, qs, qsa } from './dom.js';
 
 // Navegación-Pestañas
 
@@ -126,7 +126,8 @@ const mainEl = qs<HTMLElement>('main')!;
 let filaColapsada = '';
 let filaExpandida = '';
 
-const esGridEscritorio = (): boolean => window.innerWidth > 1100;
+// Reexportado desde dom.ts: el mismo corte lo consultan panel-vacio.ts y lab-import.ts, que no
+// deben depender de este módulo (toca el DOM al cargarse).
 
 function inicializarFilasGrid(): void {
   if (!esGridEscritorio()) return;

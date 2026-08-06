@@ -13,6 +13,7 @@ import {
   type PacienteInyectable,
 } from './form-inject.js';
 import { manejadorAsync } from './async.js';
+import { esGridEscritorio } from './dom.js';
 
 interface ValorAnalitoResp {
   clave: string;
@@ -191,7 +192,7 @@ function inicializarModalLab(detenerBusqueda: () => void): void {
   const anclaje = document.getElementById('lab-anclaje-mob');
   if (!btn || !modal || !overlay || !cuerpo || !controles || !anclaje) return;
 
-  const esEscritorio = (): boolean => window.innerWidth > 1100;
+  const esEscritorio = esGridEscritorio;
 
   // Idempotente: si ya está donde toca no toca el DOM (se llama en cada `resize`).
   const ubicar = (): void => {
@@ -295,6 +296,13 @@ function inicializarCola(
       const resp = await fetch('/api/lab/pendientes', { credentials: 'same-origin' });
       if (resp.status === 401) {
         mostrarToast('Inicia sesión para ver los resultados recibidos.', true);
+        return;
+      }
+      // 404 = la cola está desactivada en el servidor (MORPHOS_LAB_PENDIENTES_HABILITADO).
+      // No es un error del usuario: se retira el botón en vez de dejarlo fallando.
+      if (resp.status === 404) {
+        btn.hidden = true;
+        lista.hidden = true;
         return;
       }
       if (!resp.ok) {

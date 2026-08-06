@@ -60,7 +60,21 @@ User clicks "Análisis IA"
 - **`frontend/src/ia.ts`** — Cliente tipado de `POST /api/interpret`; renderiza la salida estructurada (hallazgos, diferenciales con citas, banner de derivación). No construye el prompt (eso vive en el backend).
 - **`frontend/src/main.ts`** — Orquestación: carga los JSON, cablea eventos del formulario, dispara el análisis, exporta PDF.
 - **`frontend/src/ui.ts`** — Tab navigation (8 panels, 4 exam sub-tabs), swipe gestures, mobile/desktop field sync, collapsible panels.
-- **`frontend/src/pdf-parser.ts`** — Client-side PDF extraction using PDF.js. 47 regex patterns to identify analytes in Spanish/English. Runs fully in the browser.
+- **`frontend/src/pdf-parser.ts`** — Client-side PDF extraction using PDF.js. 47 regex patterns to identify analytes in Spanish/English. Runs fully in the browser. También cablea el arrastrar-y-soltar sobre los paneles de exámenes.
+  - **pdf.js va vendorizado y la versión es un invariante.** Los ficheros de `assets/lib/pdfjs/`
+    se copian de la devDependency `pdfjs-dist` con `npm run vendor-pdfjs`, para que la versión que
+    usa el navegador y la que usan las pruebas sean la misma. **No volver a la 3.x**: leía mal los
+    CMap `ToUnicode` con destinos de un byte —fuera de especificación, pero los emiten informes de
+    laboratorio reales generados con Ghostscript— y devolvía cada carácter desplazado 8 bits
+    ('H' → U+4800), con lo que la importación fallaba entera con «No se encontraron datos
+    reconocibles». El desplazamiento **no se puede reparar a posteriori**: el '0' desplazado cae
+    en U+3000 y el extractor lo normaliza a espacio, así que una ALT de 260 U/L se leería como 26.
+    Por eso `textoIlegible()` detecta el caso y aborta en vez de importar números equivocados.
+    Fijado en `frontend/tests/pdf-parser.test.ts` con un PDF construido con esa anomalía.
+  - Un valor sólo se acepta en la línea de su etiqueta o en la línea `RESULTADO` que sigue a su
+    cabecera. La ventana ciega anterior saltaba de sección: importaba el cociente A/G como
+    albúmina y una densidad urinaria sacada de un párrafo interpretativo.
+- **`frontend/src/panel-vacio.ts`** — Estado vacío de los seis paneles de exámenes **en escritorio**: la clase `.sin-datos` del `<section>` cambia el formulario por una zona de adjuntar (arrastrar / explorar / «Insertar resultados manualmente»). En móvil no aplica: el CSS que la enciende vive dentro de `@media (min-width: 1101px)`. Los importadores llaman a `revelarPanelDeCampo()` por cada valor inyectado, así que un panel que recibe datos sale del estado vacío solo. **Sólo depende de `dom.ts`**: lo importa `form-inject.ts`, que es la base común de los dos importadores, y colgarlo de `ui.ts` —que toca el DOM al cargarse— rompería sus tests.
 - **`backend/app/ai/hf_space.py`** — Cliente del HF Space (Gradio) donde vive medGemma. El Space devuelve texto libre, así que va por la ruta de prosa: `ai/prosa.py` limpia los tokens del modelo, detecta salida defectuosa (razonamiento filtrado, bucle, frase cortada) y envuelve el resultado en el campo `interpretacion`. Es la ruta por defecto sin salida estructurada; un modelo local declarado `=prosa` usa la misma.
 - **`backend/app/ai/claude.py`** — Ruta Claude vía tool use forzado: el `input_schema` es el JSON Schema de `InterpretacionClinica`, así que valida contra Pydantic sin regex.
 - **`data/valores_referencia.json`** — Reference ranges for 90 analytes per species.
@@ -93,6 +107,29 @@ Para la ruta Claude el modelo por defecto es `claude-opus-5`. No cambiar a `clau
 cuesta el doble, exige retención de datos de 30 días (incompatible con el posicionamiento de
 privacidad) y sus clasificadores pueden rechazar trabajo clínico legítimo con
 `stop_reason="refusal"` — ver el comentario en `backend/app/config.py`.
+
+### Admisión de cuentas y superficie de laboratorio
+
+Dos defectos que se cerraron y **no se vuelven a abrir sin sustituirlos por algo mejor**:
+
+- **El alta está CERRADA** (`registro_abierto=False` + `registro_allowlist`). Una cuenta llega
+  a `/api/interpret`, que gasta cuota de ZeroGPU compartida y dinero real por la ruta Claude:
+  con el alta abierta, `limite_interpret_usuario` protegía una identidad que costaba una
+  petición HTTP acuñar. La comprobación de allowlist va **antes** que la de existencia, si no
+  el alta se convierte en un oráculo de qué cuentas hay (403 siempre, nunca 409, fuera de la
+  lista). Es una **lista de emails y no un booleano** porque `instance/` es efímero: sin ella,
+  el primer reinicio deja la instancia sin cuentas y sin forma de crear ninguna.
+- **`GET /api/lab/pendientes` está apagado** (`lab_pendientes_habilitado=False` → 404). Enumera
+  las muestras de todas las clínicas y cada `muestra_id` abre el panel completo más las pistas
+  de paciente. **Apagarlo no cierra el agujero y no hay que documentarlo como si lo hiciera**:
+  el `muestra_id` lo pone el analizador y suele ser correlativo, así que `/api/lab/resultados`
+  sigue siendo enumerable. Lo que elimina es el volcado en una petición. El cierre real es atar
+  cada resultado a un tenant y filtrar por sesión (ARCHITECTURE_REVIEW §2.1).
+
+Las pruebas describen el defecto CERRADO; las que sólo necesitan sesión piden el fixture
+`alta_abierta`. El fixture `_limitador_limpio` (autouse) vacía el contador de rate limiting
+entre pruebas: es de proceso y el TestClient sale siempre de la misma IP, así que sin él los
+429 aparecían según el orden de ejecución.
 
 ### Pattern Detection Logic (`analisis.ts`)
 

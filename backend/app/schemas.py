@@ -59,6 +59,13 @@ class PeticionInterpretacion(BaseModel):
     paciente: PacienteEntrada
     hallazgos: list[HallazgoEntrada] = Field(default_factory=list)
     patrones: list[PatronEntrada] = Field(default_factory=list)
+    # Claves de TODOS los analitos que el usuario introdujo, alterados o no. `hallazgos` sólo
+    # trae los que salieron fuera de rango, así que sin esto el modelo no puede distinguir «no
+    # se midió» de «se midió y salió normal» y rellena el hueco: medido el 2026-08-04, medGemma
+    # afirmó un leucograma con neutrofilia sobre un panel de calcio/fósforo/BUN/creatinina, y
+    # llamó «trombocitopenia leve» a unas plaquetas de 190 que estaban en rango.
+    # Vacío = cliente antiguo que no lo manda; el prompt omite el bloque y se comporta como antes.
+    analitos_medidos: list[str] = Field(default_factory=list, max_length=200)
     signos_clinicos: str = Field(default="", max_length=2000)
     imagenes: list[str] = Field(default_factory=list)  # data URLs de citología
     backend: Literal["medgemma", "claude"] = "medgemma"

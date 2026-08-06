@@ -73,7 +73,16 @@ async def get_pendientes(
     request: Request,
     _sesion: dict = Depends(usuario_actual),
 ) -> list[ResumenPendiente]:
-    """Cola de resultados recibidos (más recientes primero) para elegir sin teclear el ID."""
+    """Cola de resultados recibidos (más recientes primero) para elegir sin teclear el ID.
+
+    Desactivada por defecto (`MORPHOS_LAB_PENDIENTES_HABILITADO`): el almacén no está
+    segmentado, así que esto enumera las muestras de TODAS las clínicas y cada ID abre el panel
+    completo en `/lab/resultados`. 404 —y no 403— para que apagada sea indistinguible de no
+    existir. Ver el comentario en `config.py`: apagarla reduce el volcado masivo, no sustituye
+    al filtrado por tenant.
+    """
+    if not obtener_config().lab_pendientes_habilitado:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No disponible.")
     return [
         ResumenPendiente(
             muestra_id=r.muestra_id,

@@ -4,7 +4,8 @@
 import { aplicarValoresAFormulario, aplicarPacienteAFormulario, mostrarToast } from './form-inject.js';
 import { manejadorAsync } from './async.js';
 
-const PDFJS_WORKER = 'assets/lib/pdfjs/pdf.worker.min.js';
+const PDFJS_MODULO = 'assets/lib/pdfjs/pdf.min.mjs';
+const PDFJS_WORKER = 'assets/lib/pdfjs/pdf.worker.min.mjs';
 
 interface AnalitoDef { campo: string; re: RegExp; claveConv?: string }
 interface ConversionRegla { re: RegExp; factor: number | ((v: number) => number) }
@@ -12,14 +13,16 @@ type Resultados = Record<string, number | string>;
 
 interface PdfjsLib {
   GlobalWorkerOptions: { workerSrc: string };
-  getDocument(opts: { data: ArrayBuffer }): { promise: Promise<PdfDoc> };
+  getDocument(opts: { data: ArrayBuffer | Uint8Array }): { promise: Promise<PdfDoc> };
 }
 interface PdfDoc { numPages: number; getPage(n: number): Promise<PdfPage> }
 interface PdfPage { getTextContent(): Promise<{ items: Array<{ str: string; hasEOL?: boolean }> }> }
 
 const DEFS_ANALITOS: AnalitoDef[] = [
   // Hematología: Serie Roja
-  { campo: 'rbc', re: /\b(?:eritrocit\w*|gl[oó]bulos?\s+rojos?|r\.?b\.?c\.?|eri)\b/i },
+  // `hematies` es como lo etiquetan los laboratorios españoles (el texto llega ya sin acentos,
+  // ver `sinAcentos`).
+  { campo: 'rbc', re: /\b(?:eritrocit\w*|hematies|gl[oó]bulos?\s+rojos?|r\.?b\.?c\.?|eri)\b/i },
   { campo: 'hgb', re: /\b(?:hemoglobin[ao]?\w*|hgb|hb)\b(?!a\d)/i },
   { campo: 'hct', re: /\b(?:hematocrit[oo]?\w*|hct|pcv)\b/i },
   { campo: 'vcm', re: /\b(?:v\.?c\.?m\.?|m\.?c\.?v\.?|vol(?:umen)?\s+corp\w*)\b/i },
@@ -34,7 +37,10 @@ const DEFS_ANALITOS: AnalitoDef[] = [
   // Hematología: Serie Blanca
   { campo: 'wbc', re: /\b(?:leucocit\w*|w\.?b\.?c\.?|white\s+blood\s+cell|leu)\b/i },
   { campo: 'neutro_abs', re: /\bgran?#/i },
-  { campo: 'neutro', re: /\b(?:neutr[oó]fil\w*|neut\b|neu\b|gran?(?!#))\b/i },
+  // «SEGMENTADOS» es como los informes españoles nombran a los neutrófilos maduros; sin él la
+  // fórmula leucocitaria de esos informes se importaba sin neutrófilos, que es el dato que más
+  // pesa en la detección de inflamación.
+  { campo: 'neutro', re: /\b(?:neutr[oó]fil\w*|segmentad\w*|neut\b|neu\b|gran?(?!#))\b/i },
   { campo: 'linfo_abs', re: /\blymp?#/i },
   { campo: 'linfo', re: /\b(?:linf[oa]cit\w*|lymph\w*|linf\b|lym(?!#))\b/i },
   { campo: 'mono_abs', re: /\bmon\w*#/i },
@@ -88,12 +94,13 @@ const DEFS_ANALITOS: AnalitoDef[] = [
 
   // Bioquímica: Enzimas
   { campo: 'lipasa', re: /\b(?:lipas[ae]\b|lipa\b)\b/i },
-  { campo: 'ck', re: /\b(?:c\.?k\.?\b|creatina?\s+kinas[ae]|creatine\s+kinas[ae])\b/i },
+  // «CREATINKINASA», en una palabra, es como la etiquetan los informes españoles.
+  { campo: 'ck', re: /\b(?:c\.?k\.?\b|creatin[ae]?\s*kinas[ae]|creatine\s+kinas[ae])\b/i },
 
   // Perfil Endocrino
   { campo: 'cortisol_bas', re: /\b(?:cortisol\s+bas[ae]?l?)\b/i },
   { campo: 'cortisol_acth', re: /\b(?:cortisol\s+(?:post[-\s]?acth|post)\b)/i },
-  { campo: 't4_total', re: /\b(?:t4\s+total|t4\s+libre|tiroxin\w*|thyroxin\w*)\b/i },
+  { campo: 't4_total', re: /\b(?:t4(?:\s+(?:total|libre))?|tiroxin\w*|thyroxin\w*)\b/i },
   { campo: 'insulina', re: /\b(?:insulin[ao]?\w*)\b/i },
 
   // Urianálisis
@@ -167,11 +174,20 @@ function aplicarConversion(campo: string, claveConv: string | undefined, value: 
   return value;
 }
 
-function extraerValorYUnidad(contexto: string): { num: number | null; unit: string } {
+// Campos donde 0 es un resultado clínico legítimo y no ruido de parseo. En el resto se sigue
+// descartando: un 0 suelto suele venir de una fecha o un número de página, no de una medición.
+// «BASÓFILOS 0 %» es la lectura normal de un hemograma sano y se estaba tirando.
+const PERMITEN_CERO = new Set([
+  'neutro', 'neutro_abs', 'linfo', 'linfo_abs', 'mono', 'mono_abs',
+  'eosino', 'eosino_abs', 'baso', 'baso_abs', 'reti', 'reti_abs', 'nrbc',
+]);
+
+function extraerValorYUnidad(contexto: string, campo = ''): { num: number | null; unit: string } {
   const m = contexto.match(/[<>≤≥]?\s*(\d+(?:[.,]\d+)?)([\s\S]*)/);
   if (!m) return { num: null, unit: '' };
   const v = parseFloat(m[1].replace(',', '.'));
-  if (!isFinite(v) || v <= 0) return { num: null, unit: '' };
+  const minimo = PERMITEN_CERO.has(campo) ? 0 : Number.MIN_VALUE;
+  if (!isFinite(v) || v < minimo) return { num: null, unit: '' };
   return { num: v, unit: m[2].slice(0, 50) };
 }
 
@@ -185,17 +201,91 @@ function parsearSemiCuantitativo(text: string): string | null {
   return null;
 }
 
-function parsearTextoLab(textoCrudo: string): Resultados {
+// Los informes españoles escriben los analitos en mayúsculas Y acentuados (EOSINÓFILOS,
+// BASÓFILOS, HEMATÍES). `\w` no cubre 'Ó', así que `eosino\w*` no casa con «EOSINÓFILOS» y toda
+// la fórmula leucocitaria se perdía. Se quitan los diacríticos ANTES de buscar; las posiciones
+// se conservan porque NFD + borrado de marcas no cambia el número de caracteres base.
+function sinAcentos(texto: string): string {
+  return texto.normalize('NFD').replace(/\p{M}/gu, '');
+}
+
+// Dónde puede estar el valor de una etiqueta. Antes era una ventana ciega de 150 caracteres, que
+// se saltaba líneas y secciones enteras: medido con un informe real, «densidad urinaria» —citada
+// de pasada en el párrafo interpretativo del SDMA— capturaba el resultado de la CREATINKINASA
+// dos líneas más abajo e importaba una densidad urinaria de 90 en una analítica sin orina. Un
+// valor equivocado es peor que un valor ausente: el que falta se ve, el que sobra se interpreta.
+//
+// Las dos disposiciones reales son:
+//   1. En la misma línea:  `HEMATOCRITO....... 48,1 %`
+//   2. Bajo una cabecera:  `CREATININA / SUERO` / `Química seca - …` / `RESULTADO....... 1,73`
+// Así que se lee el resto de la línea y, si no hay número, se avanza hasta una línea RESULTADO,
+// parando en cuanto aparece otra cabecera en mayúsculas (es decir, otro analito).
+const MAX_LINEAS_BUSCADAS = 6;
+const RE_LINEA_RESULTADO = /^\s*(?:resultado|result)\b/i;
+
+function esCabecera(linea: string): boolean {
+  const letras = linea.replace(/[^A-Za-zÁÉÍÓÚÑáéíóúñ]/g, '');
+  if (letras.length < 3) return false;
+  return letras === letras.toUpperCase();
+}
+
+// Se prueban TODAS las apariciones de la etiqueta, no sólo la primera, y gana la primera que
+// venga acompañada de un número. Los informes nombran el analito antes de medirlo —«FÓRMULA
+// LEUCOCITARIA» es el título de la sección y «LEUCOCITOS....... 7.510» el dato—, así que quedarse
+// con la primera aparición perdía el valor. El orden importa: si la primera sí trae número, es la
+// que se usa, igual que antes.
+const MAX_APARICIONES = 5;
+const globales = new Map<RegExp, RegExp>();
+
+function comoGlobal(re: RegExp): RegExp {
+  let g = globales.get(re);
+  if (!g) {
+    g = new RegExp(re.source, re.flags.includes('g') ? re.flags : re.flags + 'g');
+    globales.set(re, g);
+  }
+  g.lastIndex = 0;
+  return g;
+}
+
+function primerValorDe(texto: string, def: AnalitoDef): number | null {
+  const re = comoGlobal(def.re);
+  for (let i = 0; i < MAX_APARICIONES; i++) {
+    const match = re.exec(texto);
+    if (!match) return null;
+    const contexto = contextoDeValor(texto, match.index + match[0].length);
+    const { num, unit } = extraerValorYUnidad(contexto, def.campo);
+    if (num !== null) return aplicarConversion(def.campo, def.claveConv, num, unit);
+  }
+  return null;
+}
+
+function contextoDeValor(texto: string, desde: number): string {
+  const lineas = texto.slice(desde, desde + 600).split('\n');
+  const resto = lineas[0] ?? '';
+  if (/\d/.test(resto)) return resto;
+
+  for (const linea of lineas.slice(1, MAX_LINEAS_BUSCADAS)) {
+    if (RE_LINEA_RESULTADO.test(linea)) return linea;
+    // Otra cabecera en mayúsculas o una línea que YA trae un número: en ambos casos lo que
+    // viene después pertenece a otro analito. Sin la segunda condición, «COCIENTE ALBÚMINA /
+    // GLOBULINA» se saltaba la línea `ALBUMINA... 40 g/L` y se quedaba con el RESULTADO de
+    // debajo, que es el cociente A/G (1,11) y no la albúmina.
+    if (esCabecera(linea) || /\d/.test(linea)) break;
+  }
+  return '';
+}
+
+// Exportadas para las pruebas: son puras (texto → datos) y concentran toda la lógica de
+// reconocimiento, que es donde han estado los fallos.
+export function parsearTextoLab(textoCrudo: string): Resultados {
   const resultados: Resultados = {};
+  const texto = sinAcentos(textoCrudo);
 
   for (const def of DEFS_ANALITOS) {
     if (resultados[def.campo] !== undefined) continue;
-    const match = def.re.exec(textoCrudo);
-    if (!match) continue;
-    const contexto = textoCrudo.slice(match.index + match[0].length, match.index + match[0].length + 150);
-    const { num, unit } = extraerValorYUnidad(contexto);
-    if (num === null) continue;
-    resultados[def.campo] = aplicarConversion(def.campo, def.claveConv, num, unit);
+    const encontrado = primerValorDe(texto, def);
+    if (encontrado === null) continue;
+    resultados[def.campo] = encontrado;
   }
 
   // Derivar % desde conteos absolutos si el % no se encontro directamente y se conoce el WBC
@@ -220,9 +310,9 @@ function parsearTextoLab(textoCrudo: string): Resultados {
 
   for (const def of DEFS_SEMICUANTITATIVOS) {
     if (resultados[def.campo] !== undefined) continue;
-    const match = def.re.exec(textoCrudo);
+    const match = def.re.exec(texto);
     if (!match) continue;
-    const contexto = textoCrudo.slice(match.index, match.index + 80);
+    const contexto = texto.slice(match.index, match.index + 80);
     const val = parsearSemiCuantitativo(contexto);
     if (val) resultados[def.campo] = val;
   }
@@ -266,7 +356,7 @@ function inferEspecie(raza: string): string | null {
   return null;
 }
 
-function parsearTextoPaciente(textoCrudo: string): PacientePdf {
+export function parsearTextoPaciente(textoCrudo: string): PacientePdf {
   const p: PacientePdf = {};
 
   const coincEsp = textoCrudo.match(/\b(?:especies?|species|tipo(?:\s+de)?\s+animal)\s*:?\s{0,4}([A-Za-záéíóúÁÉÍÓÚñÑ]{3,20})/i);
@@ -275,6 +365,17 @@ function parsearTextoPaciente(textoCrudo: string): PacientePdf {
     if (/can[io]|perro|dog/.test(v)) p.especie = 'Canino';
     else if (/fel[io]|gat[ao]|cat/.test(v)) p.especie = 'Felino';
   }
+
+  // Muchos informes no rotulan «Especie:»: escriben el nombre científico o el común junto al
+  // nombre del animal («EDNA / Perra, Canis lupus familiaris»). Se busca sólo si la etiqueta
+  // explícita no dio nada, para que ésta siga mandando.
+  if (!p.especie) {
+    if (/\bcanis\s+(?:lupus\s+)?familiaris\b|\bperr[ao]\b/i.test(textoCrudo)) p.especie = 'Canino';
+    else if (/\bfelis\s+(?:silvestris\s+)?catus\b|\bgat[ao]\b/i.test(textoCrudo)) p.especie = 'Felino';
+  }
+
+  // Y el sexo se deduce del mismo sitio: «Perra»/«Gata» sólo existen en femenino.
+  if (/\b(?:perra|gata)\b/i.test(textoCrudo)) p.sexo = 'Hembra';
 
   const coincRaza = textoCrudo.match(/\b(?:raza|breed|race|cruce)\s*:?\s{0,4}([^\n\r;:]{2,60})/i);
   if (coincRaza) {
@@ -307,23 +408,58 @@ function parsearTextoPaciente(textoCrudo: string): PacientePdf {
   return p;
 }
 
-async function cargarPdfJs(): Promise<PdfjsLib | undefined> {
-  const w = window as unknown as { pdfjsLib?: PdfjsLib };
-  if (w.pdfjsLib) return w.pdfjsLib;
-  await new Promise<void>((resolve, reject) => {
-    const script = document.createElement('script');
-    script.src = 'assets/lib/pdfjs/pdf.min.js';
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error('no se pudo cargar pdf.js'));
-    document.head.appendChild(script);
-  });
-  return w.pdfjsLib;
+class ErrorTextoIlegible extends Error {
+  constructor() {
+    super('el texto del PDF no se pudo decodificar de forma fiable');
+    this.name = 'ErrorTextoIlegible';
+  }
+}
+
+let pdfjsCargado: PdfjsLib | undefined;
+
+// pdf.js 4+ se distribuye como módulo ES y ya no publica `window.pdfjsLib`, así que se carga
+// con import() dinámico en vez de inyectar un <script>. Sigue siendo perezoso a propósito:
+// son ~1,7 MB entre módulo y worker, y sólo hacen falta si el usuario adjunta un PDF.
+//
+// La versión importa. La 3.11 leía mal los CMap `ToUnicode` con destinos de UN byte —fuera de
+// especificación, pero los emiten productores reales (informes de laboratorio generados con
+// Ghostscript)— y devolvía cada carácter desplazado 8 bits: 'H' (0x48) salía como U+4800. El
+// texto extraído no casaba con ningún analito y la importación fallaba entera. Ver
+// `frontend/tests/pdf-parser.test.ts`, que fija el caso con un PDF de ese tipo.
+async function cargarPdfJs(): Promise<PdfjsLib> {
+  if (pdfjsCargado) return pdfjsCargado;
+  // @vite-ignore: es un asset vendorizado que se resuelve en tiempo de ejecución; la build no
+  // debe intentar empaquetarlo.
+  const modulo = (await import(
+    /* @vite-ignore */ new URL(PDFJS_MODULO, document.baseURI).href
+  )) as unknown as PdfjsLib;
+  modulo.GlobalWorkerOptions.workerSrc = new URL(PDFJS_WORKER, document.baseURI).href;
+  pdfjsCargado = modulo;
+  return modulo;
+}
+
+/** Texto que salió del extractor con los bytes descolocados (ver `cargarPdfJs`).
+ *
+ * No se intenta reparar aunque la transformación sea reversible sobre el papel: el extractor
+ * normaliza a espacio los códigos que caen en un espacio Unicode, y '0' (0x30) desplazado es
+ * U+3000 (espacio ideográfico). Los ceros se pierden ANTES de que este código vea el texto, así
+ * que «reparar» convertiría una ALT de 260 U/L en 26. Vale más no importar nada que importar un
+ * número equivocado en una analítica.
+ */
+function textoIlegible(texto: string): boolean {
+  let noAscii = 0;
+  let desplazados = 0;
+  for (const ch of texto) {
+    const c = ch.codePointAt(0) as number;
+    if (c <= 0x7f) continue;
+    noAscii++;
+    if ((c & 0xff) === 0 && c >>> 8 >= 0x20) desplazados++;
+  }
+  return noAscii >= 20 && desplazados / noAscii > 0.5;
 }
 
 async function extraerTextoPdf(file: File): Promise<string> {
   const pdfjs = await cargarPdfJs();
-  if (!pdfjs) throw new Error('PDF.js no cargado');
-  pdfjs.GlobalWorkerOptions.workerSrc = PDFJS_WORKER;
 
   const buf = await file.arrayBuffer();
   const pdf = await pdfjs.getDocument({ data: buf }).promise;
@@ -333,7 +469,67 @@ async function extraerTextoPdf(file: File): Promise<string> {
     const content = await page.getTextContent();
     paginas.push(content.items.map((i) => i.str + (i.hasEOL ? '\n' : ' ')).join(''));
   }
-  return paginas.join('\n');
+  const texto = paginas.join('\n');
+  if (textoIlegible(texto)) throw new ErrorTextoIlegible();
+  return texto;
+}
+
+// Lee un PDF y vuelca lo que reconozca en el formulario. El PDF se parsea entero, sin importar
+// desde qué panel se haya adjuntado: los valores caen en el panel al que pertenece cada analito.
+async function importarPdf(file: File, evaluar: () => void): Promise<void> {
+  try {
+    const textoCrudo = await extraerTextoPdf(file);
+    const resultados = parsearTextoLab(textoCrudo);
+    const contadorLab = aplicarValoresAFormulario(resultados, evaluar);
+    const patient = parsearTextoPaciente(textoCrudo);
+    const contadorPac = aplicarPacienteAFormulario(patient);
+    const partes: string[] = [];
+    if (contadorLab > 0) partes.push(`${contadorLab} valor${contadorLab !== 1 ? 'es' : ''}`);
+    if (contadorPac > 0) partes.push('datos del paciente');
+    mostrarToast(partes.length > 0
+      ? `${partes.join(' y ')} importados del PDF.`
+      : 'No se encontraron datos reconocibles en el PDF.', partes.length === 0);
+  } catch {
+    mostrarToast('Error al leer el PDF. ¿Es un PDF con texto (no escaneado)?', true);
+  }
+}
+
+// Arrastrar y soltar sobre un panel de exámenes. Se escucha en el <section> entero y no sólo en
+// la zona vacía: una vez el panel muestra el formulario la zona desaparece, y soltar otro PDF
+// encima del panel debe seguir funcionando.
+function inicializarArrastre(evaluar: () => void): void {
+  document.querySelectorAll<HTMLElement>('.subpanel[id^="panel-"]').forEach((panel) => {
+    if (!panel.querySelector('.panel-vacio')) return;
+
+    // `dragover` con preventDefault es lo que le dice al navegador que aquí se puede soltar;
+    // sin él, el drop lo captura la ventana y navega al fichero.
+    panel.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      panel.classList.add('arrastrando');
+    });
+    // `dragleave` salta también al pasar sobre un hijo; sólo cuenta salir del panel de verdad.
+    panel.addEventListener('dragleave', (e) => {
+      if (!panel.contains((e as DragEvent).relatedTarget as Node | null)) {
+        panel.classList.remove('arrastrando');
+      }
+    });
+    panel.addEventListener('drop', manejadorAsync('Importar PDF', async (e: Event) => {
+      e.preventDefault();
+      panel.classList.remove('arrastrando');
+      const file = (e as DragEvent).dataTransfer?.files?.[0];
+      if (!file) return;
+      if (file.type !== 'application/pdf' && !/\.pdf$/i.test(file.name)) {
+        mostrarToast('Sólo se pueden adjuntar archivos PDF.', true);
+        return;
+      }
+      await importarPdf(file, evaluar);
+    }));
+  });
+
+  // Soltar FUERA de un panel no debe abrir el PDF sustituyendo la aplicación (con el formulario
+  // a medio rellenar, eso es perder el trabajo por un gesto impreciso).
+  document.addEventListener('dragover', (e) => e.preventDefault());
+  document.addEventListener('drop', (e) => e.preventDefault());
 }
 
 export function inicializarParserPdf(evaluar: () => void): void {
@@ -349,21 +545,9 @@ export function inicializarParserPdf(evaluar: () => void): void {
       const file = input.files?.[0];
       if (!file) return;
       input.value = '';
-      try {
-        const textoCrudo = await extraerTextoPdf(file);
-        const resultados = parsearTextoLab(textoCrudo);
-        const contadorLab = aplicarValoresAFormulario(resultados, evaluar);
-        const patient = parsearTextoPaciente(textoCrudo);
-        const contadorPac = aplicarPacienteAFormulario(patient);
-        const partes: string[] = [];
-        if (contadorLab > 0) partes.push(`${contadorLab} valor${contadorLab !== 1 ? 'es' : ''}`);
-        if (contadorPac > 0) partes.push('datos del paciente');
-        mostrarToast(partes.length > 0
-          ? `${partes.join(' y ')} importados del PDF.`
-          : 'No se encontraron datos reconocibles en el PDF.', partes.length === 0);
-      } catch {
-        mostrarToast('Error al leer el PDF. ¿Es un PDF con texto (no escaneado)?', true);
-      }
+      await importarPdf(file, evaluar);
     }));
   });
+
+  inicializarArrastre(evaluar);
 }

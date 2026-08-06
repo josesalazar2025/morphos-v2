@@ -11,6 +11,7 @@ from __future__ import annotations
 from ..config import obtener_config
 from ..rag.retriever import Fragmento
 from ..schemas import PeticionInterpretacion
+from .lexico import nombre_clinico
 
 # Cuánto texto de cada fragmento se le enseña al modelo. El recorte por presupuesto total
 # (config.rag_max_chars_prompt) cuenta en esta misma unidad.
@@ -25,6 +26,16 @@ Reglas estrictas:
 - Responde SIEMPRE en español.
 - Cíñete a los datos aportados (señalamiento, valores de laboratorio, patrones detectados,
   literatura recuperada e imágenes). No inventes valores ni hallazgos.
+- Sólo puedes afirmar hallazgos sobre los analitos del panel que se te entrega. Un analito que
+  no aparece NO se ha medido: nombrarlo como resultado es un error grave. Si lo necesitas,
+  pídelo como siguiente prueba.
+- Lo mismo con los signos clínicos: sólo puedes atribuir al paciente los que figuren en
+  "Signos clínicos referidos". No añadas otros para redondear un cuadro.
+- Respeta la gravedad que se te indica de cada valor: no la rebajes ni la exageres al
+  describirla en tu texto.
+- Si citas una cifra de corte de la literatura, di explícitamente dónde cae el valor real de
+  este paciente respecto a ella. Un umbral suelto se lee como si el paciente lo cumpliera.
+- Propón sólo pruebas aplicables a la especie del paciente.
 - Cuando afirmes algo respaldado por la literatura recuperada, cítalo en el campo `citas`
   del diferencial correspondiente, usando el número entre corchetes con el que se te
   presentó el fragmento ([1], [2]…). No cites lo que no se te dio: una cita que no
@@ -50,6 +61,16 @@ ni el examen presencial del paciente.
 Reglas estrictas:
 - Responde SIEMPRE en español.
 - Cíñete a los datos aportados; no inventes valores ni hallazgos.
+- Sólo puedes afirmar hallazgos sobre los analitos del panel que se te entrega. Un analito que
+  no aparece NO se ha medido: nombrarlo como resultado es un error grave. Si lo necesitas,
+  pídelo como siguiente prueba.
+- Lo mismo con los signos clínicos: sólo puedes atribuir al paciente los que figuren en
+  "Signos clínicos referidos". No añadas otros para redondear un cuadro.
+- Respeta la gravedad que se te indica de cada valor: no la rebajes ni la exageres al
+  describirla en tu texto.
+- Si citas una cifra de corte de la literatura, di explícitamente dónde cae el valor real de
+  este paciente respecto a ella. Un umbral suelto se lee como si el paciente lo cumpliera.
+- Propón sólo pruebas aplicables a la especie del paciente.
 - Si se te entrega literatura recuperada, marca cada afirmación que se apoye en ella con su
   número entre corchetes justo después de la frase ([1], [2]…). Es la ÚNICA forma de citar
   en esta ruta: no escribas títulos de libros ni páginas, y no uses números que no estén en
@@ -86,6 +107,37 @@ def _linea_hallazgo(h, con_gravedad: bool = True) -> str:
     juicio del motor y se puede omitir con `prompt_incluir_gravedad` — ver config.py."""
     etiqueta = f" · {h.gravedad.value}" if con_gravedad else ""
     return f"  {h.nombre} ({h.clave}): {h.valor} {h.unidad} — {h.direccion.value}{etiqueta}"
+
+
+def _bloque_panel(pet: PeticionInterpretacion) -> str:
+    """Qué se ha medido: los que salieron en rango, y el cierre de que no hay nada más.
+
+    `hallazgos` sólo trae lo ALTERADO, así que sin esto el modelo no puede distinguir «no se
+    midió» de «se midió y salió normal», y rellena el hueco. Medido el 2026-08-04 sobre el
+    Space: sobre un panel de calcio/fósforo/BUN/creatinina escribió «La leucograma muestra
+    neutrofilia y linfopenia» —la única violación de seguridad de la corrida—, y en otro caso
+    afirmó «aumento de reticulocitos» sin recuento reticulocitario.
+
+    Se omite ENTERO si la petición no trae `analitos_medidos` (cliente antiguo). El criterio es
+    el mismo que rige los otros bloques de esta función: el relleno se lee como contenido, y una
+    lista vacía anunciada como «panel completo» sería peor que no decir nada.
+    """
+    if not pet.analitos_medidos:
+        return ""
+    alterados = {h.clave for h in pet.hallazgos}
+    en_rango = [c for c in pet.analitos_medidos if c not in alterados]
+    bloque = ""
+    if en_rango:
+        nombres = ", ".join(nombre_clinico(c) for c in en_rango)
+        bloque = (
+            "\n\nAnalitos medidos que salieron DENTRO de rango (no los describas como "
+            f"alterados):\n  {nombres}"
+        )
+    return bloque + (
+        "\n\nÉse es el panel COMPLETO que se ha realizado. Cualquier analito que no aparezca "
+        "arriba NO se ha determinado en este paciente: no afirmes su valor, su dirección ni "
+        "ningún hallazgo basado en él. Si lo consideras necesario, pídelo como siguiente prueba."
+    )
 
 
 def _bloque_contexto_rag(fragmentos: list[Fragmento]) -> str:
@@ -126,6 +178,7 @@ def construir_mensaje_usuario(
         if pet.patrones and cfg.prompt_incluir_patrones
         else ""
     )
+    bloque_panel = _bloque_panel(pet)
     sin_alteraciones = not pet.hallazgos and not pet.patrones
 
     signos = f"\nSignos clínicos referidos: {pet.signos_clinicos.strip()}" if pet.signos_clinicos.strip() else ""
@@ -164,7 +217,7 @@ def construir_mensaje_usuario(
 
     return f"""\
 Paciente: {p.especie or 'desconocido'}, raza {p.raza or 'NE'}, edad {edad}, sexo {p.sexo or 'NE'}\
-{bloque_hallazgos}{bloque_patrones}{signos}{imagenes}
+{bloque_hallazgos}{bloque_patrones}{bloque_panel}{signos}{imagenes}
 {_bloque_contexto_rag(fragmentos)}
 
 {instruccion}"""
