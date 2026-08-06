@@ -12,7 +12,7 @@ import { verificarAuth, abrirModalAuth } from './auth.js';
 import { abrirModalPapers, inicializarModalPapers } from './papers.js';
 import { elId } from './dom.js';
 import { manejadorAsync, sinEsperar } from './async.js';
-import type { Alteraciones, Gravedad, Hallazgo, Paciente, Referencias, ResultadoAnalisis } from './tipos.js';
+import type { Alteraciones, Gravedad, Hallazgo, Paciente, Referencias, ResultadoAnalisis, ValoresFormulario } from './tipos.js';
 
 // Tema oscuro/claro
 
@@ -34,7 +34,7 @@ if (btnTema) {
 let referencias: Referencias = {};
 let alteraciones: Alteraciones = {};
 let ultimoAnalisis: ResultadoAnalisis = { hallazgos: [], patrones: [] };
-let ultimosMedidos: string[] = [];
+let ultimosValores: ValoresFormulario = {};
 
 const cargarReferencias = async (): Promise<void> => {
   try {
@@ -146,9 +146,11 @@ const evaluar = (): void => {
   const valores = obtenerValoresFormulario();
   const { hallazgos, patrones } = analizarResultados(valores, paciente, referencias, alteraciones);
   ultimoAnalisis = { hallazgos, patrones };
-  // Los medidos van aparte y NO dentro de ResultadoAnalisis: eso es la salida del motor, que
-  // sólo devuelve lo alterado. Aquí interesa el panel completo, incluidos los valores en rango.
-  ultimosMedidos = Object.keys(valores);
+  // Los valores crudos van aparte y NO dentro de ResultadoAnalisis: eso es la salida del motor,
+  // que sólo devuelve lo alterado. Aquí interesa el panel completo, incluidos los que salieron
+  // en rango. El backend los recalcula por su cuenta (§1.1): lo que manda este cliente es una
+  // PISTA, y el suelo de seguridad ya no depende de que sea correcta.
+  ultimosValores = valores;
 
   actualizarClasesInputs(hallazgos);
   renderizarPatrones(patrones);
@@ -210,7 +212,7 @@ const dispararIA = (): void => {
   // Se encola desde un callback síncrono (abrirModalAuth), así que no se puede await aquí.
   sinEsperar(
     'Análisis IA',
-    llamarIA(obtenerDatosPaciente, () => ({ ...ultimoAnalisis, medidos: ultimosMedidos }), imagenesActuales),
+    llamarIA(obtenerDatosPaciente, () => ({ ...ultimoAnalisis, valores: ultimosValores }), imagenesActuales),
   );
 };
 
