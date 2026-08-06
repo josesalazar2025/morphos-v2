@@ -7,6 +7,7 @@ Un reintento ante fallo de validación; si persiste, error tipado (nunca texto c
 
 from __future__ import annotations
 
+import asyncio
 import logging
 
 from ..config import obtener_config
@@ -208,13 +209,20 @@ async def interpretar(pet: PeticionInterpretacion) -> RespuestaInterpretacion:
     # consulta concatenada).
     nombres_patrones = [p.nombre for p in pet.patrones]
     nombres_hallazgos = [h.nombre for h in pet.hallazgos]
+    # `asyncio.to_thread` y no llamada directa: la recuperación es SÍNCRONA y cara —embedding
+    # bge-m3, búsqueda en LanceDB y cross-encoder bge-reranker-v2-m3 sobre hasta
+    # `rag_candidatos` filas—, del orden de segundos en cpu-basic. Ejecutada en el bucle de
+    # eventos dejaba el proceso entero sordo mientras durase: ni health check, ni el login de
+    # otro veterinario, ni una ingesta del puente. La concurrencia efectiva era 1.
     if cfg.rag_multiconsulta:
-        fragmentos = recuperar_multi(
+        fragmentos = await asyncio.to_thread(
+            recuperar_multi,
             construir_consultas(nombres_patrones, nombres_hallazgos),
             especie=pet.paciente.especie,
         )
     else:
-        fragmentos = recuperar(
+        fragmentos = await asyncio.to_thread(
+            recuperar,
             construir_consulta(nombres_patrones, nombres_hallazgos),
             especie=pet.paciente.especie,
         )
