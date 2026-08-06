@@ -53,7 +53,7 @@ def test_ingesta_bearer_erroneo_es_401(cliente, monkeypatch):
     assert r.status_code == 401
 
 
-def test_ingesta_y_consulta_completa(cliente, monkeypatch):
+def test_ingesta_y_consulta_completa(cliente, monkeypatch, alta_abierta):
     monkeypatch.setattr(obtener_config(), "lab_api_keys", ["k-secreta"])
 
     # Ingesta con key válida.
@@ -89,10 +89,19 @@ def test_ingesta_rechaza_observaciones_vacias(cliente, monkeypatch):
 
 
 def test_pendientes_requiere_sesion(cliente):
+    """401 antes que 404: la dependencia de sesión corre antes del cuerpo del endpoint, así que
+    la cola apagada no convierte esto en un endpoint anónimo."""
     assert cliente.get("/api/lab/pendientes").status_code == 401
 
 
-def test_pendientes_lista_mas_reciente_primero(cliente, monkeypatch):
+def test_pendientes_desactivada_por_defecto_es_404(cliente, alta_abierta):
+    """Con sesión válida y la cola apagada (el defecto), 404: indistinguible de no existir."""
+    _con_sesion(cliente, email="pend-off@example.com")
+    assert cliente.get("/api/lab/pendientes").status_code == 404
+
+
+def test_pendientes_lista_mas_reciente_primero(cliente, monkeypatch, alta_abierta):
+    monkeypatch.setattr(obtener_config(), "lab_pendientes_habilitado", True)
     monkeypatch.setattr(obtener_config(), "lab_api_keys", ["k-secreta"])
     for muestra in ("PEND-1", "PEND-2"):
         cliente.post(

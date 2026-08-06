@@ -108,6 +108,29 @@ cuesta el doble, exige retención de datos de 30 días (incompatible con el posi
 privacidad) y sus clasificadores pueden rechazar trabajo clínico legítimo con
 `stop_reason="refusal"` — ver el comentario en `backend/app/config.py`.
 
+### Admisión de cuentas y superficie de laboratorio
+
+Dos defectos que se cerraron y **no se vuelven a abrir sin sustituirlos por algo mejor**:
+
+- **El alta está CERRADA** (`registro_abierto=False` + `registro_allowlist`). Una cuenta llega
+  a `/api/interpret`, que gasta cuota de ZeroGPU compartida y dinero real por la ruta Claude:
+  con el alta abierta, `limite_interpret_usuario` protegía una identidad que costaba una
+  petición HTTP acuñar. La comprobación de allowlist va **antes** que la de existencia, si no
+  el alta se convierte en un oráculo de qué cuentas hay (403 siempre, nunca 409, fuera de la
+  lista). Es una **lista de emails y no un booleano** porque `instance/` es efímero: sin ella,
+  el primer reinicio deja la instancia sin cuentas y sin forma de crear ninguna.
+- **`GET /api/lab/pendientes` está apagado** (`lab_pendientes_habilitado=False` → 404). Enumera
+  las muestras de todas las clínicas y cada `muestra_id` abre el panel completo más las pistas
+  de paciente. **Apagarlo no cierra el agujero y no hay que documentarlo como si lo hiciera**:
+  el `muestra_id` lo pone el analizador y suele ser correlativo, así que `/api/lab/resultados`
+  sigue siendo enumerable. Lo que elimina es el volcado en una petición. El cierre real es atar
+  cada resultado a un tenant y filtrar por sesión (ARCHITECTURE_REVIEW §2.1).
+
+Las pruebas describen el defecto CERRADO; las que sólo necesitan sesión piden el fixture
+`alta_abierta`. El fixture `_limitador_limpio` (autouse) vacía el contador de rate limiting
+entre pruebas: es de proceso y el TestClient sale siempre de la misma IP, así que sin él los
+429 aparecían según el orden de ejecución.
+
 ### Pattern Detection Logic (`analisis.ts`)
 
 Severity thresholds are based on deviation from the reference range. Reference ranges are dynamically adjusted for:

@@ -298,6 +298,13 @@ function inicializarCola(
         mostrarToast('Inicia sesión para ver los resultados recibidos.', true);
         return;
       }
+      // 404 = la cola está desactivada en el servidor (MORPHOS_LAB_PENDIENTES_HABILITADO).
+      // No es un error del usuario: se retira el botón en vez de dejarlo fallando.
+      if (resp.status === 404) {
+        btn.hidden = true;
+        lista.hidden = true;
+        return;
+      }
       if (!resp.ok) {
         mostrarToast('Error al consultar los resultados recibidos.', true);
         return;

@@ -93,6 +93,14 @@ async def login(request: Request, body: LoginBody, response: Response) -> dict:
 @router.post("/auth/registro")
 @limiter.limit(obtener_config().limite_login)
 async def registro(request: Request, body: RegistroBody, response: Response) -> dict:
+    # ANTES que la comprobación de existencia, a propósito: si se hiciera después, un email
+    # fuera de la lista distinguiría «ya existe» (409) de «no existe» (403) y el alta se
+    # convertiría en un oráculo de qué cuentas hay. Fuera de la lista, siempre 403.
+    if not obtener_config().registro_permitido(body.email):
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "El alta de cuentas está restringida. Solicita acceso al administrador.",
+        )
     if buscar_usuario(body.email):
         raise HTTPException(status.HTTP_409_CONFLICT, "Ya existe una cuenta con ese email.")
     crear_usuario(body.nombre, body.apellido, body.email, body.password)

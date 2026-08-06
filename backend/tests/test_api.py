@@ -38,7 +38,7 @@ def test_cabeceras_seguridad_presentes(cliente):
     assert r.headers.get("X-Frame-Options") == "DENY"
 
 
-def test_flujo_registro_login_e_interpret(cliente, monkeypatch):
+def test_flujo_registro_login_e_interpret(cliente, monkeypatch, alta_abierta):
     # Registro emite sesión + CSRF.
     reg = cliente.post(
         "/api/auth/registro",
@@ -81,7 +81,7 @@ def test_modelos_requiere_sesion(cliente):
     assert cliente.get("/api/modelos").status_code == 401
 
 
-def test_interpret_rechaza_modelo_fuera_de_la_lista_blanca(cliente):
+def test_interpret_rechaza_modelo_fuera_de_la_lista_blanca(cliente, alta_abierta):
     """422 (error del cliente) y no 502: la petición es inválida, el modelo ni se llama."""
     reg = cliente.post(
         "/api/auth/registro",
@@ -100,7 +100,7 @@ def test_interpret_rechaza_modelo_fuera_de_la_lista_blanca(cliente):
     assert "no permitido" in r.text
 
 
-def test_registro_rechaza_password_corta(cliente):
+def test_registro_rechaza_password_corta(cliente, alta_abierta):
     r = cliente.post(
         "/api/auth/registro",
         json={"nombre": "B", "apellido": "C", "email": "b@example.com", "password": "corta"},

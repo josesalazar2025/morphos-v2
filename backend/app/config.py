@@ -7,6 +7,7 @@ lo necesario para una función concreta.
 
 from __future__ import annotations
 
+import logging
 import os
 from functools import lru_cache
 from pathlib import Path
@@ -14,6 +15,8 @@ from typing import Annotated
 
 from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
+
+log = logging.getLogger(__name__)
 
 # Raíz del repo (…/morphos). La BD y el índice RAG viven FUERA del directorio servido.
 RAIZ_REPO = Path(__file__).resolve().parents[2]
@@ -46,6 +49,21 @@ class Configuracion(BaseSettings):
     session_secret: str = Field(default="")  # obligatorio en prod; validado al arrancar
     cookie_secure: bool = Field(default=False)  # True en prod (HTTPS)
     session_max_age_s: int = Field(default=60 * 60 * 8)
+
+    # --- Alta de cuentas ---
+    # El alta era ABIERTA: cualquiera podía POSTear /api/auth/registro y alcanzar
+    # /api/interpret, que gasta cuota de ZeroGPU compartida y, por la ruta Claude, dinero real.
+    # El techo por usuario (`limite_interpret_usuario`) protege una identidad que costaba una
+    # petición HTTP acuñar, así que no era un techo.
+    #
+    # Por defecto CERRADA con lista blanca de emails. La lista (y no un simple booleano) es
+    # deliberada: `instance/` es efímero en Spaces, así que las cuentas desaparecen en cada
+    # reinicio. Con `registro_abierto=False` y sin lista, tras un reinicio no habría forma de
+    # crear ninguna cuenta y la app quedaría inservible; con lista, los aprobados se vuelven a
+    # dar de alta solos. Cuando los usuarios vivan en almacenamiento persistente, la lista pasa
+    # a ser sólo el control de admisión.
+    registro_abierto: bool = Field(default=False)
+    registro_allowlist: Annotated[list[str], NoDecode] = Field(default_factory=list)
 
     # --- Base de datos (usuarios). Ruta fuera del webroot. ---
     db_path: Path = Field(default=RAIZ_REPO / "instance" / "morphos.db")
@@ -232,8 +250,23 @@ class Configuracion(BaseSettings):
     lab_api_keys: Annotated[list[str], NoDecode] = Field(default_factory=list)
     # Persistencia opcional de resultados en SQLite (sólo útil con volumen persistente).
     lab_persistir: bool = Field(default=False)
+    # Cola de muestras recibidas (`GET /api/lab/pendientes`). DESACTIVADA por defecto: enumera
+    # TODAS las muestras del almacén —que no está segmentado por clínica ni por usuario— y cada
+    # `muestra_id` que devuelve abre `GET /api/lab/resultados`, o sea el panel completo de
+    # analitos más las pistas de paciente (nombre de la mascota, raza, sexo). Cualquier sesión
+    # la podía llamar.
+    #
+    # Apagarla NO cierra el agujero y no hay que venderlo así: el `muestra_id` lo pone el
+    # analizador (el puente sólo lo recorta) y suele ser un correlativo corto, así que
+    # `/api/lab/resultados` sigue siendo enumerable a fuerza bruta dentro de
+    # `limite_lab_consulta`. Lo que se elimina es el volcado en UNA petición. El cierre real es
+    # atar cada resultado a un tenant y filtrar por la sesión (ver ARCHITECTURE_REVIEW §2.1).
+    #
+    # Se enciende en despliegues de una sola clínica, donde el conjunto de sesiones es el
+    # personal invitado. El frontend oculta el botón si el endpoint responde 404.
+    lab_pendientes_habilitado: bool = Field(default=False)
 
-    @field_validator("lab_api_keys", "modelos_locales", mode="before")
+    @field_validator("lab_api_keys", "modelos_locales", "registro_allowlist", mode="before")
     @classmethod
     def _dividir_lista(cls, v):
         """Acepta lista JSON o cadena separada por comas.
@@ -270,6 +303,30 @@ class Configuracion(BaseSettings):
                 permitidos[nombre] = modo.strip().lower() == "prosa"
         return permitidos
 
+    def emails_registro_permitidos(self) -> set[str]:
+        """Allowlist normalizada (minúsculas, sin espacios) para comparar con el email entrante."""
+        return {e.strip().lower() for e in self.registro_allowlist if e.strip()}
+
+    def registro_permitido(self, email: str) -> bool:
+        """Si este email puede darse de alta."""
+        if self.registro_abierto:
+            return True
+        return email.strip().lower() in self.emails_registro_permitidos()
+
+    def avisar_de_configuracion(self) -> None:
+        """Avisos de arranque que no justifican fallar, pero sí que se vean en el log."""
+        if self.registro_abierto:
+            log.warning(
+                "MORPHOS_REGISTRO_ABIERTO=true: cualquiera puede crear una cuenta y gastar "
+                "cuota de modelo. Sólo para desarrollo local."
+            )
+        elif not self.emails_registro_permitidos():
+            # El caso que deja la instancia inservible tras un reinicio con `instance/` efímero.
+            log.warning(
+                "Alta de cuentas cerrada y MORPHOS_REGISTRO_ALLOWLIST vacía: nadie puede "
+                "registrarse. Si la base de usuarios está vacía, nadie podrá entrar."
+            )
+
     def validar_prod(self) -> None:
         """Requisitos que sólo aplican en producción; falla cerrado si faltan."""
         if self.entorno != "prod":
@@ -289,4 +346,5 @@ class Configuracion(BaseSettings):
 def obtener_config() -> Configuracion:
     cfg = Configuracion()
     cfg.validar_prod()
+    cfg.avisar_de_configuracion()
     return cfg
