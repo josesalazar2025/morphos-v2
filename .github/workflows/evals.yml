@@ -1,14 +1,20 @@
 name: evals
 
-# Puerta de calidad: bloquea el merge si el motor determinista regresa o si la suite
-# de evaluación clínica cae bajo sus umbrales o registra violaciones de seguridad.
+# Puerta de calidad CLÍNICA: bloquea el merge si el motor determinista regresa o si la suite
+# de evaluación cae bajo sus umbrales o registra violaciones de seguridad.
+#
+# Este sí filtra por rutas —es el workflow caro— pero el filtro anterior era demasiado
+# estrecho: nombraba `backend/app/ai/**` y `backend/app/rag/**`, dejando fuera `schemas.py`
+# (que define `InterpretacionClinica`, la forma misma que las evals puntúan) y `config.py`
+# (umbrales y ruta de modelo por defecto). Un cambio ahí alteraba la salida evaluada sin
+# disparar la puerta. Las puertas de código —ruff, pytest, tsc, eslint— viven en `ci.yml`,
+# que corre en TODOS los PR sin filtro.
 
 on:
   pull_request:
     paths:
-      - "frontend/src/**"
-      - "backend/app/ai/**"
-      - "backend/app/rag/**"
+      - "frontend/**"
+      - "backend/**"
       - "evals/**"
       - "data/**"
   push:
@@ -44,6 +50,13 @@ jobs:
       - name: Instalar deps del motor (para el puente Node)
         working-directory: frontend
         run: npm ci
+      # Antes de la puerta, la puerta misma: métricas, rúbrica, umbrales y esquema del dataset
+      # son código sin cobertura de nadie más. Si el medidor está roto, el resultado de la
+      # puerta no significa nada (visto: el simulador dejaba `fuera_de_alcance` sin declarar y
+      # suspendía una métrica de tolerancia cero por su cuenta).
+      - name: Pruebas unitarias de los scripts de evals
+        working-directory: backend
+        run: uv run pytest -q ../evals/tests
       # En CI real, sustituir --simular por --modelo medgemma apuntando a un endpoint,
       # o subir un archivo de predicciones generado en un job con GPU.
       #
