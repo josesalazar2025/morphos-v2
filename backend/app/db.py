@@ -15,6 +15,7 @@ import secrets
 import sqlite3
 from collections.abc import Iterator
 from contextlib import contextmanager
+from datetime import UTC, datetime
 
 from .config import TENANT_POR_DEFECTO, VOLUMEN_PERSISTENTE, obtener_config
 
@@ -67,6 +68,22 @@ CREATE INDEX IF NOT EXISTS idx_intentos_email_ip_momento
     # de una sola clínica no nota el cambio.
     f"""
 ALTER TABLE usuarios ADD COLUMN tenant TEXT NOT NULL DEFAULT '{TENANT_POR_DEFECTO}';
+""",
+    # 4 — revocación de sesiones. Las cookies firmadas son válidas hasta que caducan mirándolas
+    # sólo a ellas, así que no había forma de invalidar una copiada ni de echar a nadie tras un
+    # incidente. Dos mecanismos, porque resuelven cosas distintas:
+    #   - `sesiones_revocadas`: una sesión concreta (logout). Se guarda hasta su caducidad; a
+    #     partir de ahí la firma ya no vale por sí sola y la fila sobra.
+    #   - `usuarios.sesiones_validas_desde`: TODAS las de una cuenta a la vez (cambio de
+    #     contraseña, robo). Un sello temporal en vez de un contador de versión porque la
+    #     pregunta que hay que responder es «¿se emitió antes del corte?».
+    """
+CREATE TABLE IF NOT EXISTS sesiones_revocadas (
+    jti TEXT PRIMARY KEY,
+    expira_en DATETIME NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_sesiones_revocadas_expira ON sesiones_revocadas (expira_en);
+ALTER TABLE usuarios ADD COLUMN sesiones_validas_desde DATETIME;
 """,
 ]
 
@@ -148,6 +165,55 @@ def crear_usuario(nombre: str, apellido: str, email: str, password: str, tenant:
             "VALUES (?, ?, ?, ?, ?)",
             (nombre, apellido, email, hash_password(password), tenant),
         )
+
+
+# --- Revocación de sesiones ---
+
+def _ahora_iso() -> str:
+    """Instante actual en ISO-8601 UTC con microsegundos.
+
+    Se genera en Python y NO con `datetime('now')` de SQLite por dos motivos: SQLite tiene
+    resolución de SEGUNDO —una sesión emitida en el mismo segundo que un corte de revocación
+    sobrevivía— y usa un espacio en vez de 'T', así que comparar sus cadenas con las ISO de las
+    sesiones daba órdenes incorrectos.
+    """
+    return datetime.now(UTC).isoformat()
+
+
+def revocar_sesion(jti: str, expira_en: str) -> None:
+    """Invalida UNA sesión (logout) hasta que su firma caduque por sí sola."""
+    with _conexion() as con:
+        con.execute(
+            "INSERT OR REPLACE INTO sesiones_revocadas (jti, expira_en) VALUES (?, ?)",
+            (jti, expira_en),
+        )
+        # Poda oportunista: pasada su caducidad la firma ya no vale, así que la fila no aporta.
+        # El corte va como parámetro, en el MISMO formato que lo guardado.
+        con.execute("DELETE FROM sesiones_revocadas WHERE expira_en < ?", (_ahora_iso(),))
+
+
+def sesion_revocada(jti: str) -> bool:
+    with _conexion() as con:
+        cur = con.execute("SELECT 1 FROM sesiones_revocadas WHERE jti = ? LIMIT 1", (jti,))
+        return cur.fetchone() is not None
+
+
+def revocar_todas_las_sesiones(email: str) -> None:
+    """Corta TODAS las sesiones de una cuenta: las emitidas antes de ahora dejan de valer."""
+    with _conexion() as con:
+        con.execute(
+            "UPDATE usuarios SET sesiones_validas_desde = ? WHERE email = ?",
+            (_ahora_iso(), email),
+        )
+
+
+def sesiones_validas_desde(email: str) -> str | None:
+    with _conexion() as con:
+        cur = con.execute(
+            "SELECT sesiones_validas_desde FROM usuarios WHERE email = ? LIMIT 1", (email,)
+        )
+        fila = cur.fetchone()
+        return fila["sesiones_validas_desde"] if fila else None
 
 
 # --- Registro de intentos de login (para throttling) ---

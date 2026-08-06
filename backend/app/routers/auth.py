@@ -21,6 +21,8 @@ from ..db import (
     intentos_recientes,
     limpiar_intentos,
     registrar_intento,
+    revocar_sesion,
+    revocar_todas_las_sesiones,
     verificar_password,
 )
 from ..security.authz import usuario_actual
@@ -28,6 +30,7 @@ from ..security.rate_limit import ip_cliente, limiter
 from ..security.session import (
     COOKIE_CSRF,
     COOKIE_SESION,
+    caducidad_de,
     firmar_sesion,
     nuevo_token_csrf,
 )
@@ -126,8 +129,36 @@ async def registro(request: Request, body: RegistroBody, response: Response) -> 
     return {"ok": True, "nombre": body.nombre, "csrf": csrf}
 
 
+def _borrar_cookies(resp: Response) -> None:
+    """Borra las cookies con los MISMOS atributos con que se pusieron.
+
+    `delete_cookie()` a secas emite un Set-Cookie sin `samesite`/`secure`/`path`, y varios
+    navegadores lo tratan como una cookie DISTINTA de la original: la sesión seguía en el
+    navegador después de «cerrar sesión».
+    """
+    cfg = obtener_config()
+    for nombre in (COOKIE_SESION, COOKIE_CSRF):
+        resp.delete_cookie(nombre, path="/", samesite="strict", secure=cfg.cookie_secure)
+
+
 @router.post("/auth/logout")
-async def logout(response: Response, _sesion: dict = Depends(usuario_actual)) -> dict:
-    response.delete_cookie(COOKIE_SESION)
-    response.delete_cookie(COOKIE_CSRF)
+async def logout(response: Response, sesion: dict = Depends(usuario_actual)) -> dict:
+    """Cierra ESTA sesión. Borrar la cookie no bastaba: el token seguía siendo válido allá
+    donde se hubiera copiado, hasta `session_max_age_s` (8h por defecto)."""
+    if jti := sesion.get("jti"):
+        await asyncio.to_thread(revocar_sesion, jti, caducidad_de(sesion))
+    _borrar_cookies(response)
+    return {"ok": True}
+
+
+@router.post("/auth/logout-todas")
+async def logout_todas(response: Response, sesion: dict = Depends(usuario_actual)) -> dict:
+    """Cierra la sesión en TODOS los dispositivos.
+
+    Es la respuesta a «me han robado el portátil» o a un cambio de contraseña: sin esto, la
+    única forma de invalidar una sesión filtrada era rotar `MORPHOS_SESSION_SECRET`, que echa a
+    todos los usuarios de la instancia.
+    """
+    await asyncio.to_thread(revocar_todas_las_sesiones, sesion["email"])
+    _borrar_cookies(response)
     return {"ok": True}
