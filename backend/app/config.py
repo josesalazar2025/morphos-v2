@@ -231,6 +231,24 @@ class Configuracion(BaseSettings):
     max_imagenes: int = Field(default=4)
     max_bytes_imagen: int = Field(default=6 * 1024 * 1024)
 
+    # --- Proxy inverso ---
+    # Saltos de proxy DE CONFIANZA delante de la app. 0 = no confiar en `X-Forwarded-For`.
+    #
+    # Por qué existe: el limitador usaba `request.client.host`, que detrás de un proxy (HF
+    # Spaces, cualquier CDN) es la dirección del PROXY, no la del cliente. Con eso,
+    # `limite_login` (5/minute) y `limite_papers` dejaban de ser por IP y pasaban a ser
+    # GLOBALES: a la vez un bypass (fuerza bruta desde muchas IPs no se limitaba por IP) y una
+    # auto-denegación de servicio (un cliente ruidoso agotaba el login de todos).
+    #
+    # Se declara el número de saltos en vez de leer la cabecera a ciegas porque `X-Forwarded-For`
+    # la pone el cliente: confiar en ella sin más permite falsificar la IP y saltarse cualquier
+    # límite poniendo una distinta en cada petición. Cada proxy AÑADE la dirección de su par, así
+    # que con N saltos de confianza el cliente real es el elemento -N de la lista; todo lo que
+    # haya a la izquierda lo escribió alguien no confiable y se descarta.
+    #
+    # En HF Spaces detrás de su router: 1.
+    proxy_saltos_confiables: int = Field(default=0)
+
     # --- Rate limiting ---
     limite_interpret: str = Field(default="10/minute")
     # Techo por USUARIO además del de IP. La cuota de ZeroGPU es por cuenta y compartida entre
@@ -325,6 +343,15 @@ class Configuracion(BaseSettings):
             log.warning(
                 "Alta de cuentas cerrada y MORPHOS_REGISTRO_ALLOWLIST vacía: nadie puede "
                 "registrarse. Si la base de usuarios está vacía, nadie podrá entrar."
+            )
+
+        if self.entorno == "prod" and self.proxy_saltos_confiables <= 0:
+            # Silencioso y caro: los límites siguen "funcionando", sólo que compartidos por todo
+            # el mundo, así que no se nota hasta que alguien agota el login de los demás.
+            log.warning(
+                "MORPHOS_PROXY_SALTOS_CONFIABLES=0 en producción: si hay un proxy delante "
+                "(HF Spaces lo tiene), los límites por IP son en realidad GLOBALES. Declara "
+                "cuántos saltos de confianza hay."
             )
 
     def validar_prod(self) -> None:

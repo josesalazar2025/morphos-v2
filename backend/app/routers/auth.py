@@ -24,7 +24,7 @@ from ..db import (
     verificar_password,
 )
 from ..security.authz import usuario_actual
-from ..security.rate_limit import limiter
+from ..security.rate_limit import ip_cliente, limiter
 from ..security.session import (
     COOKIE_CSRF,
     COOKIE_SESION,
@@ -81,7 +81,9 @@ async def login(request: Request, body: LoginBody, response: Response) -> dict:
     # endpoint `async`, así que en el bucle de eventos bloqueaban el proceso entero. scrypt es
     # además caro A PROPÓSITO (n=2**14, decenas de ms): es justo el trabajo que no puede vivir
     # en el bucle, y el login es el endpoint que más veces lo ejecuta.
-    ip = request.client.host if request.client else "?"
+    # `ip_cliente` y no `request.client.host`: detrás del proxy este último es el proxy, así
+    # que el throttle por email+IP degeneraba en un contador global.
+    ip = ip_cliente(request)
     if await asyncio.to_thread(intentos_recientes, body.email, ip, _VENTANA_THROTTLE_S) >= _MAX_INTENTOS:
         raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Demasiados intentos. Espera unos minutos.")
 
