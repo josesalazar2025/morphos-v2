@@ -5,17 +5,40 @@ Casos validados por veterinario, en `casos.jsonl` (un caso JSON por línea).
 > **Origen de los casos.** Se construyen a partir de los resultados de laboratorio y
 > citologías reales aportados por veterinarios ejercientes (ver `USO_DE_IA.md`). Cada caso
 > debe llevar sus diferenciales aceptables revisados por un profesional antes de entrar al
-> set. Hay **17 casos**: los **7 primeros** son la semilla validada; los **10 siguientes**
-> (imha, hipertiroidismo, cushing, pancreatitis, leucocitosis inflamatoria, trombocitopenia,
-> hipercalcemia, enteropatía perdedora, hepatocelular agudo, gammapatía) fueron **redactados
-> con IA como borrador y están PENDIENTES de validación veterinaria** — clínicamente
-> plausibles y con claves/valores verificados contra `valores_referencia.json`, pero un
-> profesional debe revisar sus `diferenciales_aceptables` antes de tratarlos como oro.
-> Amplíalo continuamente y mantén un split de validación reservado.
+> set. Hay **43 casos** en tres tandas:
+>
+> | Tanda | N | Estado |
+> |---|---|---|
+> | Semilla original | 7 | ✅ validada (`semilla-veterinaria`) |
+> | Ampliación 2026-07 (imha, cushing, pancreatitis…) | 10 | ✅ firmada por Jose Salazar el 2026-08-01 |
+> | **Ampliación 2026-08-03 (cobertura de analitos)** | **26** | ⏳ **PENDIENTES de validación** |
+>
+> La tercera tanda se redactó **con IA como borrador** para cubrir los 58 analitos que ningún
+> caso ejercitaba (coagulación, gasometría, hormonas, urianálisis, fármacos, SDMA). Está
+> verificada de tres formas —claves y rangos contra `valores_referencia.json`, hallazgos
+> confirmados uno a uno contra el motor real, y afirmaciones clínicas contrastadas con el
+> corpus RAG y las guías IRIS— pero **eso no la convierte en oro**: un profesional debe
+> revisar sus `diferenciales_aceptables` antes de que cuenten para la puerta.
 
 Ese estado ya no vive sólo en este README: cada caso lleva su `validado` y su `split`, y
 `run_evals.py` los respeta. Un caso pendiente se puntúa y se muestra, pero **no cuenta para
-la puerta**. Estado actual: **7 validados / 10 pendientes**, **12 dev / 5 test**.
+la puerta**. Estado actual: **17 validados / 26 pendientes**, **30 dev / 13 test**.
+
+## Cobertura de analitos
+
+Con la ampliación del 2026-08-03 el dataset ejercita **los 90 analitos** de
+`valores_referencia.json` (antes 32). La comprobación es reproducible: cada `hallazgos_clave`
+declarado se contrastó contra lo que el motor marca de verdad, porque declarar como clave un
+analito que el motor no señala deja la métrica de cobertura inalcanzable por construcción.
+
+Dos casos documentan a propósito comportamientos del motor que no son erratas:
+
+- **`erc-canino-sdma-discordante`** — la creatinina (1,6) está en rango y **no** se marca; la
+  SDMA (24) sí. Es el escenario de discordancia que la guía IRIS describe para escalar de
+  estadio, y por eso `creat` no figura entre los hallazgos clave.
+- **`ciclosporina-monitorizacion-canino`** — los valores renales tuvieron que subirse porque el
+  motor **ensancha los rangos en pacientes senior**: una azotemia leve en un perro de 7 años no
+  se marca.
 
 ## Esquema de cada caso
 

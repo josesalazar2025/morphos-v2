@@ -37,27 +37,50 @@ def cargar_casos() -> list[dict]:
     return [json.loads(ln) for ln in lineas if ln.strip()]
 
 
+def _entradas_del_motor(caso: dict) -> tuple[list[str], list[str]]:
+    """Nombres de patrón y de hallazgo TAL COMO los produce el motor para este caso.
+
+    Pasa por `analisis.ts` (vía Node) igual que el servicio, porque la consulta de producción
+    se arma con lo que el motor detecta, no con lo que el caso dorado declara.
+    """
+    from run_evals import _motor_determinista
+
+    hallazgos, patrones = _motor_determinista(caso["valores"], caso["paciente"])
+    return [p["nombre"] for p in patrones], [h["nombre"] for h in hallazgos]
+
+
 def construir_query_eval(caso: dict) -> str:
-    """Arma la consulta desde los HALLAZGOS del caso (no desde la respuesta, para no filtrar):
-    descripción + analitos clave + signos clínicos."""
-    partes = [caso.get("descripcion", "")]
-    partes.extend(caso.get("esperado", {}).get("hallazgos_clave", []))
-    if caso.get("signos_clinicos"):
-        partes.append(caso["signos_clinicos"])
-    return " ; ".join(p for p in partes if p)[:512]
+    """La consulta EXACTA que emitiría producción para este caso.
+
+    Antes se armaba a mano con `descripcion` + `esperado.hallazgos_clave` + `signos_clinicos`,
+    y eso medía una recuperación que el servicio nunca ejecuta, en tres sentidos:
+
+    1. **Claves en vez de nombres.** `hct`, `vcm`, `chcm` en lugar de «Hematocrito (Hct)»,
+       «VCM (MCV)». Los nombres traen la SIGLA INGLESA, que es justo lo que casa con un corpus
+       en inglés — sobre todo en la rama BM25, que es literal. La consulta medida era más pobre
+       que la real.
+    2. **Producción no manda `signos_clinicos`** en la consulta de recuperación: sólo patrones
+       y hallazgos (`ai/service.py`).
+    3. **`descripcion` es metadato del dataset y filtraba la respuesta.** «Anemia microcítica
+       hipocrómica en perro» orienta la recuperación hacia el diagnóstico esperado, que es
+       exactamente lo que el juez de relevancia luego premia. Misma familia de fuga que la que
+       se corrigió en el juez clínico (ver resultados 2026-08-01, §4.5).
+
+    Consecuencia: las cifras de recuperación anteriores al 2026-08-03 no son comparables con
+    las de después, y el `precision@k` de aquel A/B no describía la recuperación de producción.
+    """
+    from app.rag.retriever import construir_consulta
+
+    patrones, hallazgos = _entradas_del_motor(caso)
+    return construir_consulta(patrones, hallazgos)
 
 
 def construir_queries_eval(caso: dict) -> list[str]:
-    """Versión multi-consulta de la anterior, para poder medir el A/B.
-
-    Reproduce la descomposición de producción con lo que tiene el caso dorado: la entidad
-    clínica y los signos hacen de «patrones» (una consulta cada uno) y los analitos van
-    agregados, igual que `construir_consultas` hace con hallazgos.
-    """
+    """Versión multi-consulta de la anterior (una por patrón), para medir el A/B."""
     from app.rag.retriever import construir_consultas
 
-    patrones = [p for p in (caso.get("descripcion", ""), caso.get("signos_clinicos", "")) if p]
-    return construir_consultas(patrones, caso.get("esperado", {}).get("hallazgos_clave", []))
+    patrones, hallazgos = _entradas_del_motor(caso)
+    return construir_consultas(patrones, hallazgos)
 
 
 # --- Métricas (puras, testeables sin índice) ---
