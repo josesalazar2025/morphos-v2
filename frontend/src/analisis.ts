@@ -158,34 +158,9 @@ const ajustarReferencias = (
   }, {});
 };
 
-// Estadiaje IRIS de la enfermedad renal crónica
-//
-// Fuente: IRIS Staging of CKD (modificado 2026), indexada en el RAG; la misma tabla aparece en
-// Fundamentals 3.a ed., p. 573 (Tabla 8.4). Estadio por creatinina, con la escalada por
-// discrepancia con SDMA que describe la propia guía, y subestadio por proteinuria (UP/C).
-//
-// Limitación deliberada: la guía estadia pacientes YA diagnosticados de ERC, en ayunas y sobre
-// muestras seriadas estables. El motor sólo ve una analítica suelta, así que el estadio se
-// emite únicamente cuando la creatinina o la SDMA salen del rango de referencia, y se etiqueta
-// como orientativo. Un perro con creatinina 1,5 (estadio 2 IRIS pero dentro de nuestro rango)
-// no se estadia: haría falta el diagnóstico previo de ERC, que el motor no tiene.
-const CORTES_IRIS_CREAT: Record<Especie, number[]> = {
-  // Límite superior de los estadios 1, 2 y 3 en mg/dL (por encima del último → estadio 4).
-  canino: [1.4, 2.8, 5.0],
-  felino: [1.6, 2.8, 5.0],
-};
-
-const CORTES_IRIS_SDMA: Record<Especie, number[]> = {
-  // SDMA que hace subir de estadio cuando discrepa con la creatinina (µg/dL).
-  canino: [18, 35, 54],
-  felino: [18, 25, 38],
-};
-
-// UP/C: [no proteinúrico por debajo de, proteinúrico por encima de]
-const CORTES_IRIS_UPC: Record<Especie, [number, number]> = {
-  canino: [0.2, 0.5],
-  felino: [0.2, 0.4],
-};
+// Estadiaje IRIS de la enfermedad renal crónica.
+// Los cortes (creatinina, SDMA y UP/C) viven en data/ajustes_clinicos.json → `iris`, junto a su
+// procedencia bibliográfica y la limitación deliberada del estadiaje sobre una analítica suelta.
 
 type EstadioIris = { estadio: number; subestadio: string; nota: string };
 
@@ -194,11 +169,12 @@ const estadificarIris = (
   sdma: number | null,
   upc: number | null,
   especie: Especie,
+  ajustes: AjustesClinicos,
 ): EstadioIris | null => {
   if (creat === null && sdma === null) return null;
 
-  const cortesCreat = CORTES_IRIS_CREAT[especie];
-  const cortesSdma = CORTES_IRIS_SDMA[especie];
+  const cortesCreat = ajustes.iris.cortes_creatinina[especie] ?? [];
+  const cortesSdma = ajustes.iris.cortes_sdma[especie] ?? [];
 
   const porCreatinina = creat === null
     ? 1
@@ -213,7 +189,7 @@ const estadificarIris = (
 
   if (escalado < 2) return null; // estadio 1: sin azotemia ni SDMA alta, nada que informar
 
-  const [noProteinurico, proteinurico] = CORTES_IRIS_UPC[especie];
+  const [noProteinurico, proteinurico] = ajustes.iris.cortes_upc[especie] ?? [0, 0];
   const subestadio = upc === null
     ? ''
     : upc > proteinurico ? 'proteinúrico'
@@ -229,7 +205,12 @@ const estadificarIris = (
 
 // Detección de patrones clínicos
 
-const detectarPatrones = (hallazgos: Hallazgo[], especie: Especie, alt: Alteraciones): Patron[] => {
+const detectarPatrones = (
+  hallazgos: Hallazgo[],
+  especie: Especie,
+  alt: Alteraciones,
+  ajustes: AjustesClinicos,
+): Patron[] => {
   const mapa = hallazgos.reduce<Record<string, Hallazgo>>((acc, h) => { acc[h.clave] = h; return acc; }, {});
 
   const esAlto = (clave: string): boolean => mapa[clave]?.direccion === 'alto';
@@ -398,7 +379,7 @@ const detectarPatrones = (hallazgos: Hallazgo[], especie: Especie, alt: Alteraci
 
   // Estadiaje IRIS. Se emite como patrón aparte de la azotemia porque responde a otra
   // pregunta: la azotemia dice QUÉ está alterado, el estadio dice CUÁNTO y guía el manejo.
-  const estadio = estadificarIris(valor('creat'), valor('sdma'), valor('upc'), especie);
+  const estadio = estadificarIris(valor('creat'), valor('sdma'), valor('upc'), especie, ajustes);
   if (estadio) agregar({
     nombre: `${alt.erc_iris.nombre} — estadio ${estadio.estadio}${estadio.subestadio ? `, ${estadio.subestadio}` : ''}`,
     descripcion: `${alt.erc_iris.descripcion} ${estadio.nota}`,
@@ -962,7 +943,7 @@ export const analizarResultados = (
     }
   }
 
-  return { hallazgos, patrones: detectarPatrones(hallazgos, especie, alteraciones) };
+  return { hallazgos, patrones: detectarPatrones(hallazgos, especie, alteraciones, ajustes) };
 };
 
 // Exportado para pruebas unitarias del cálculo de gravedad de forma aislada.

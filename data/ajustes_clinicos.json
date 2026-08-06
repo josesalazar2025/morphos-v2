@@ -1,107 +1,288 @@
 {
   "_acerca_de": "Reglas clínicas del suelo de seguridad: umbrales de gravedad, categorías de edad y factores de ajuste por edad y raza. ÚNICA FUENTE DE VERDAD: la leen el motor del navegador (frontend/src/analisis.ts) y el del servidor (backend/app/motor/gravedad.py). Antes estaban duplicadas como constantes en ambos, que es lo que de verdad se desincroniza: la lógica de comparar no cambia casi nunca, los umbrales sí. Editar aquí cambia los dos motores a la vez, sin recompilar nada. backend/tests/test_paridad_motor.py compara ambos motores y avisa si un cambio los separa.",
   "_convenciones": "Los factores son MULTIPLICADORES sobre los límites del rango de referencia de data/valores_referencia.json (1.0 = sin cambio); si sólo se declara 'superior', el inferior queda intacto. En los cortes de gravedad, 'moderado_hasta': null significa que ese analito NUNCA llega a 'grave' (no hay corte superior).",
-
   "umbrales_gravedad": {
     "_fuente": "La desviación se mide en múltiplos del ancho del rango de referencia. Ej: rango WBC 6-17 (ancho 11), WBC 28 → 11/11 = 1.0 → moderado.",
     "leve": 0.5,
     "moderado": 1.5
   },
-
   "limites_edad_meses": {
     "_fuente": "Cortes de las categorías que seleccionan los ajustes de edad. Un valor por debajo del límite cae en esa categoría; por encima del último, en la siguiente.",
-    "canino": { "cachorro": 12, "adulto": 84, "senior": 120 },
-    "felino": { "cachorro": 12, "adulto": 120 }
+    "canino": {
+      "cachorro": 12,
+      "adulto": 84,
+      "senior": 120
+    },
+    "felino": {
+      "cachorro": 12,
+      "adulto": 120
+    }
   },
-
   "cortes_gravedad_bajo": {
     "_fuente": "Cortes clínicos explícitos del lado BAJO, en la unidad del analito. La regla genérica de anchos de rango no sabe expresar estos dos: con rango 24-45 un gato necesitaría un hematocrito NEGATIVO para llegar a 'grave', y con 200-500 unas plaquetas de -250. Es decir, ni una anemia felina ni una trombocitopenia disparaban nunca el suelo de derivación. PCV <= 20% es umbral de transfusión en perro y gato, y <= 12% (Hgb < 4 g/dL) potencialmente mortal (Thrall 3.a ed., p. 240); PCV 13 en gato se describe como 'markedly anemic' y 24 como 'mildly anemic' (p. 800-801). El riesgo hemorrágico por trombocitopenia aparece por debajo de 30x10^3/uL (Fundamentals 3.a ed., p. 310). Los cortes interiores del gato (14, 20) siguen la gradación de uso común.",
     "hct": {
-      "canino": { "leve_hasta": 30, "moderado_hasta": 20 },
-      "felino": { "leve_hasta": 20, "moderado_hasta": 14 }
+      "canino": {
+        "leve_hasta": 30,
+        "moderado_hasta": 20
+      },
+      "felino": {
+        "leve_hasta": 20,
+        "moderado_hasta": 14
+      }
     },
     "plt": {
-      "canino": { "leve_hasta": 100, "moderado_hasta": 30 },
-      "felino": { "leve_hasta": 100, "moderado_hasta": 30 }
+      "canino": {
+        "leve_hasta": 100,
+        "moderado_hasta": 30
+      },
+      "felino": {
+        "leve_hasta": 100,
+        "moderado_hasta": 30
+      }
     }
   },
-
   "cortes_gravedad_alto": {
     "_fuente": "Cortes explícitos del lado ALTO. Los renales salen del estadiaje IRIS de ERC (guía modificada en 2026; misma tabla en Fundamentals 3.a ed., p. 573, Tabla 8.4), mapeando los cuatro estadios sobre las tres gravedades del motor: estadio 2 → leve, 3 → moderado, 4 → grave. El estadio 1 queda dentro del rango de referencia y no genera hallazgo.",
     "creat": {
-      "canino": { "leve_hasta": 2.8, "moderado_hasta": 5.0 },
-      "felino": { "leve_hasta": 2.8, "moderado_hasta": 5.0 }
+      "canino": {
+        "leve_hasta": 2.8,
+        "moderado_hasta": 5.0
+      },
+      "felino": {
+        "leve_hasta": 2.8,
+        "moderado_hasta": 5.0
+      }
     },
     "sdma": {
-      "canino": { "leve_hasta": 35, "moderado_hasta": 54 },
-      "felino": { "leve_hasta": 25, "moderado_hasta": 38 }
+      "canino": {
+        "leve_hasta": 35,
+        "moderado_hasta": 54
+      },
+      "felino": {
+        "leve_hasta": 25,
+        "moderado_hasta": 38
+      }
     },
     "upc": {
       "_fuente": "La proteinuria IRIS no se subestadia más allá de 'proteinúrico': nunca llega a grave.",
-      "canino": { "leve_hasta": 0.5, "moderado_hasta": null },
-      "felino": { "leve_hasta": 0.4, "moderado_hasta": null }
+      "canino": {
+        "leve_hasta": 0.5,
+        "moderado_hasta": null
+      },
+      "felino": {
+        "leve_hasta": 0.4,
+        "moderado_hasta": null
+      }
     }
   },
-
   "ajustes_edad": {
     "_fuente": "El fósforo del animal en crecimiento es el hueco que más falsos positivos generaba: sin él, TODO cachorro sale hiperfosforémico y arrastra patrones renales falsos. Fundamentals 3.a ed., p. 831: cachorros < 12 sem 5,7-10,8 mg/dL frente a 2,5-5,5 del adulto; gatitos 5,0-10,0 frente a 1,8-6,4. La FAL del gatito va a x3,0: gatitos de 4 semanas 97-274 U/L frente a 10-80 del adulto (x3,4 el límite superior, Thrall 3.a ed., p. 447), y Fundamentals p. 831 pone el techo general del joven en '< 3 veces el límite superior del adulto'.",
     "canino": {
-      "cachorro": { "fal": { "superior": 3.0 }, "wbc": { "superior": 1.25 }, "fosf": { "superior": 1.8 } },
+      "cachorro": {
+        "fal": {
+          "superior": 3.0
+        },
+        "wbc": {
+          "superior": 1.25
+        },
+        "fosf": {
+          "superior": 1.8
+        }
+      },
       "adulto": {},
-      "senior": { "bun": { "superior": 1.15 }, "creat": { "superior": 1.15 } },
-      "geriatrico": { "bun": { "superior": 1.25 }, "creat": { "superior": 1.25 }, "fal": { "superior": 1.4 } }
+      "senior": {
+        "bun": {
+          "superior": 1.15
+        },
+        "creat": {
+          "superior": 1.15
+        }
+      },
+      "geriatrico": {
+        "bun": {
+          "superior": 1.25
+        },
+        "creat": {
+          "superior": 1.25
+        },
+        "fal": {
+          "superior": 1.4
+        }
+      }
     },
     "felino": {
-      "cachorro": { "fal": { "superior": 3.0 }, "wbc": { "superior": 1.2 }, "fosf": { "superior": 1.3 } },
+      "cachorro": {
+        "fal": {
+          "superior": 3.0
+        },
+        "wbc": {
+          "superior": 1.2
+        },
+        "fosf": {
+          "superior": 1.3
+        }
+      },
       "adulto": {},
-      "senior": { "bun": { "superior": 1.2 }, "creat": { "superior": 1.2 } }
+      "senior": {
+        "bun": {
+          "superior": 1.2
+        },
+        "creat": {
+          "superior": 1.2
+        }
+      }
     }
   },
-
   "ajustes_raza": {
     "_convencion": "Se combinan TODOS los grupos que casan, no sólo el primero: un shiba inu pertenece a la vez al grupo de microcitosis fisiológica y al de plaquetas bajas, y quedarse con el primero perdía el segundo en silencio. El nombre de la raza se compara en minúsculas por SUBCADENA.",
     "canino": [
       {
         "_fuente": "Lebreles. Fundamentals 3.a ed., p. 213-214: los RI de Hct, Hgb y RBC son más altos en greyhounds, afganos, salukis y whippets; plaquetas más bajas en lebreles (p. 307-310). La T4 es la trampa clínica: tT4 y fT4 por debajo del RI canino general en ~90% de los galgos sanos (p. 1065), así que sin este ajuste un galgo sano sale hipotiroideo. Creatinina más alta por masa muscular (Thrall 3.a ed., p. 363).",
-        "razas": ["galgo", "greyhound", "whippet", "lebrel", "afgano", "afghan", "saluki", "sloughi"],
+        "razas": [
+          "galgo",
+          "greyhound",
+          "whippet",
+          "lebrel",
+          "afgano",
+          "afghan",
+          "saluki",
+          "sloughi"
+        ],
         "ajustes": {
-          "rbc": { "inferior": 1.15, "superior": 1.15 },
-          "hgb": { "inferior": 1.12, "superior": 1.12 },
-          "hct": { "inferior": 1.12, "superior": 1.12 },
-          "plt": { "inferior": 0.75, "superior": 0.75 },
-          "t4_total": { "inferior": 0.5, "superior": 0.8 },
-          "t4_libre": { "inferior": 0.5, "superior": 0.8 },
-          "creat": { "superior": 1.15 }
+          "rbc": {
+            "inferior": 1.15,
+            "superior": 1.15
+          },
+          "hgb": {
+            "inferior": 1.12,
+            "superior": 1.12
+          },
+          "hct": {
+            "inferior": 1.12,
+            "superior": 1.12
+          },
+          "plt": {
+            "inferior": 0.75,
+            "superior": 0.75
+          },
+          "t4_total": {
+            "inferior": 0.5,
+            "superior": 0.8
+          },
+          "t4_libre": {
+            "inferior": 0.5,
+            "superior": 0.8
+          },
+          "creat": {
+            "superior": 1.15
+          }
         }
       },
       {
         "_fuente": "Razas asiáticas con microcitosis fisiológica. Fundamentals p. 221: 'some healthy Akitas, shibas, Jindos, chow-chows, and shar-peis have lower MCV' — VCM bajo SIN anemia. Antes se les subía RBC/Hct/Hgb, que generaba falsas anemias; bajar el VCM evita la falsa 'anemia microcítica'.",
-        "razas": ["shiba", "akita", "jindo", "chow", "shar pei", "shar-pei", "sharpei"],
-        "ajustes": { "vcm": { "inferior": 0.85, "superior": 0.92 } }
+        "razas": [
+          "shiba",
+          "akita",
+          "jindo",
+          "chow",
+          "shar pei",
+          "shar-pei",
+          "sharpei"
+        ],
+        "ajustes": {
+          "vcm": {
+            "inferior": 0.85,
+            "superior": 0.92
+          }
+        }
       },
       {
         "_fuente": "El shiba inu además tiene plaquetas sustancialmente más bajas (Fundamentals p. 307-310).",
-        "razas": ["shiba"],
-        "ajustes": { "plt": { "inferior": 0.75, "superior": 0.9 } }
+        "razas": [
+          "shiba"
+        ],
+        "ajustes": {
+          "plt": {
+            "inferior": 0.75,
+            "superior": 0.9
+          }
+        }
       }
     ],
     "felino": [
       {
         "_fuente": "Fundamentals p. 213-214: los límites inferiores de Hgb y Hct del Maine Coon son sustancialmente mayores que los de las razas felinas típicas.",
-        "razas": ["maine coon", "maine"],
-        "ajustes": { "hct": { "inferior": 1.15 }, "hgb": { "inferior": 1.15 } }
+        "razas": [
+          "maine coon",
+          "maine"
+        ],
+        "ajustes": {
+          "hct": {
+            "inferior": 1.15
+          },
+          "hgb": {
+            "inferior": 1.15
+          }
+        }
       },
       {
         "_fuente": "Fundamentals p. 585: la creatinina de gatos Birman clínicamente sanos puede superar el límite superior de los RI felinos de rutina.",
-        "razas": ["birman", "sagrado de birmania"],
-        "ajustes": { "creat": { "superior": 1.2 } }
+        "razas": [
+          "birman",
+          "sagrado de birmania"
+        ],
+        "ajustes": {
+          "creat": {
+            "superior": 1.2
+          }
+        }
       }
     ]
   },
-
   "ajustes_sexo": {
     "_fuente": "VACÍO A PROPÓSITO, no es un olvido. Se retiró el ajuste que subía un 15% el techo de creatinina en el gato MACHO: no aparece en ninguna de las dos obras del corpus. La secreción tubular de creatinina es cosa del perro macho —'cats and ponies do not secrete or reabsorb Ct in their kidneys' (Thrall p. 363)— y se describe como clínicamente intrascendente; tolerar un 15% más de creatinina justo en la población con más ERC era infradetección sin respaldo. Lo único con respaldo por sexo es menor: en perro las plaquetas son hasta un 10% mayores en hembras y en enteros (Fundamentals p. 310), por debajo de la resolución clínica del motor.",
     "canino": {},
     "felino": {}
+  },
+  "iris": {
+    "_fuente": "Estadiaje IRIS de la enfermedad renal crónica. IRIS Staging of CKD (modificado 2026), indexada en el RAG; la misma tabla aparece en Fundamentals 3.a ed., p. 573 (Tabla 8.4). Estadio por creatinina, con la escalada por discrepancia con SDMA que describe la propia guía, y subestadio por proteinuria (UP/C).",
+    "_limitacion": "DELIBERADA: la guía estadia pacientes YA diagnosticados de ERC, en ayunas y sobre muestras seriadas estables. El motor sólo ve una analítica suelta, así que el estadio se emite únicamente cuando la creatinina o la SDMA salen del rango de referencia, y se etiqueta como orientativo. Un perro con creatinina 1,5 (estadio 2 IRIS pero dentro de nuestro rango) no se estadia: haría falta el diagnóstico previo de ERC, que el motor no tiene.",
+    "cortes_creatinina": {
+      "_unidad": "mg/dL. Límite superior de los estadios 1, 2 y 3; por encima del último → estadio 4.",
+      "canino": [
+        1.4,
+        2.8,
+        5.0
+      ],
+      "felino": [
+        1.6,
+        2.8,
+        5.0
+      ]
+    },
+    "cortes_sdma": {
+      "_unidad": "µg/dL. SDMA que hace subir de estadio cuando discrepa con la creatinina (>18 en el estadio 1, >35/25 en el 2, >54/38 en el 3).",
+      "canino": [
+        18,
+        35,
+        54
+      ],
+      "felino": [
+        18,
+        25,
+        38
+      ]
+    },
+    "cortes_upc": {
+      "_unidad": "UP/C. [no proteinúrico por debajo de, proteinúrico por encima de].",
+      "canino": [
+        0.2,
+        0.5
+      ],
+      "felino": [
+        0.2,
+        0.4
+      ]
+    }
   }
 }

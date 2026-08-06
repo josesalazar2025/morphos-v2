@@ -383,6 +383,17 @@ describe('las reglas clínicas son datos, no código', () => {
     expect(r.hallazgos.find((h) => h.clave === 'hct')?.gravedad).toBe('leve');
   });
 
+  it('los cortes IRIS salen del JSON', () => {
+    // Se desplaza el estadio 2 canino de 1,4 a 4,0: una creatinina de 2,0 deja de ser estadio 2.
+    const desplazado = conAjustes((a) => {
+      a.iris.cortes_creatinina.canino = [4.0, 6.0, 8.0];
+    });
+    const p = analizarResultados({ creat: 2.0 }, paciente(), referencias, alteraciones, desplazado)
+      .patrones.find((x) => x.nombre.startsWith(alteraciones.erc_iris.nombre));
+    // Estadio 1 con los cortes nuevos → no se informa estadio.
+    expect(p).toBeUndefined();
+  });
+
   it('los límites de edad salen del JSON', () => {
     const adelantado = conAjustes((a) => {
       a.limites_edad_meses.canino!.cachorro = 1;

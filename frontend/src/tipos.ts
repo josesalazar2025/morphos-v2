@@ -66,4 +66,9 @@ export interface AjustesClinicos {
   ajustes_edad: Partial<Record<Especie, Record<string, TablaAjustes>>>;
   ajustes_raza: Partial<Record<Especie, GrupoRaza[]>>;
   ajustes_sexo: Partial<Record<Especie, Record<string, TablaAjustes>>>;
+  iris: {
+    cortes_creatinina: Partial<Record<Especie, number[]>>;
+    cortes_sdma: Partial<Record<Especie, number[]>>;
+    cortes_upc: Partial<Record<Especie, number[]>>;
+  };
 }
