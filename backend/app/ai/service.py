@@ -11,6 +11,7 @@ import asyncio
 import logging
 
 from ..config import obtener_config
+from ..motor.gravedad import evaluar
 from ..rag.retriever import (
     Fragmento,
     construir_consulta,
@@ -20,6 +21,7 @@ from ..rag.retriever import (
 )
 from ..schemas import (
     Gravedad,
+    HallazgoEntrada,
     InterpretacionClinica,
     PeticionInterpretacion,
     RespuestaInterpretacion,
@@ -72,18 +74,68 @@ def estructura_insuficiente(
     diferenciales. Lo que no vale es que un caso con alteraciones detectadas por el motor se
     resuelva con prosa y los campos estructurados en blanco, que es lo que hacía qwen2.5:7b.
     """
-    if pet.hallazgos and not resultado.hallazgos_clave:
+    hallazgos = hallazgos_efectivos(pet)
+    if hallazgos and not resultado.hallazgos_clave:
         return "hallazgos_clave"
-    if (pet.hallazgos or pet.patrones) and not resultado.diferenciales:
+    if (hallazgos or pet.patrones) and not resultado.diferenciales:
         return "diferenciales"
     return None
 
 
-def _derivacion_obligatoria(pet: PeticionInterpretacion) -> bool:
-    """True si el motor determinista ve algo grave, sea cual sea la opinión del modelo."""
-    return any(h.gravedad == Gravedad.grave for h in pet.hallazgos) or any(
-        p.gravedad == Gravedad.grave for p in pet.patrones
+def con_verdad_del_servidor(pet: PeticionInterpretacion) -> PeticionInterpretacion:
+    """Petición con los hallazgos y los analitos medidos RECALCULADOS de los valores crudos.
+
+    Se normaliza una vez, al entrar, para que todo lo de después —prompt, recuperación,
+    detección de analitos fabricados— trabaje sobre datos del servidor sin que cada sitio tenga
+    que acordarse. Importa que el PROMPT también use estos: si el navegador pudiera declarar
+    hallazgos libremente, tendría un canal directo para meter texto en el prompt y para dirigir
+    la recuperación.
+
+    `analitos_medidos` pasa a ser exactamente lo que trae `valores`: como controla qué analitos
+    se consideran "no fabricados" (`coherencia.py`), una lista inflada por el cliente relajaba
+    esa comprobación.
+
+    Sin `valores` no se toca nada: cliente antiguo o eval que construye la petición a mano.
+    """
+    if not pet.valores:
+        return pet
+    return pet.model_copy(
+        update={
+            "hallazgos": evaluar(pet.valores, pet.paciente),
+            "analitos_medidos": sorted(pet.valores),
+        }
     )
+
+
+def hallazgos_efectivos(pet: PeticionInterpretacion) -> list[HallazgoEntrada]:
+    """Hallazgos sobre los que trabaja el servicio: los del SERVIDOR si hay valores crudos.
+
+    Con `valores` presentes, el veredicto del navegador se ignora para esto: es el punto entero
+    de §1.1. Sin ellos (cliente antiguo, o una eval que construye la petición a mano) se cae a
+    los del cliente, que es el comportamiento anterior.
+    """
+    if not pet.valores:
+        return list(pet.hallazgos)
+    return evaluar(pet.valores, pet.paciente)
+
+
+def _derivacion_obligatoria(
+    pet: PeticionInterpretacion, original: PeticionInterpretacion | None = None
+) -> bool:
+    """True si algo es grave, sea cual sea la opinión del modelo.
+
+    Se toma la UNIÓN de lo que ve el servidor y lo que afirma el cliente: así una pista del
+    navegador sólo puede ENDURECER el suelo, nunca relajarlo. Omitir `gravedad: grave` en la
+    petición —que antes desactivaba la derivación obligatoria— ya no cambia nada, porque el
+    servidor la recalcula de los valores crudos; y si el cliente marca grave algo que el
+    servidor no ve (un patrón, que no tiene equivalente servidor), se deriva igualmente.
+    """
+    afirmado = original or pet
+    del_servidor = any(h.gravedad == Gravedad.grave for h in hallazgos_efectivos(pet))
+    del_cliente = any(h.gravedad == Gravedad.grave for h in afirmado.hallazgos) or any(
+        p.gravedad == Gravedad.grave for p in afirmado.patrones
+    )
+    return del_servidor or del_cliente
 
 
 def _derivacion_en_ruta_de_prosa(pet: PeticionInterpretacion) -> bool:
@@ -100,7 +152,7 @@ def _derivacion_en_ruta_de_prosa(pet: PeticionInterpretacion) -> bool:
     apoyo diagnóstico, el lado conservador es el que pide ojos de veterinario. El suelo de
     `_derivacion_obligatoria` sigue por encima para los casos graves.
     """
-    return bool(pet.hallazgos or pet.patrones)
+    return bool(hallazgos_efectivos(pet) or pet.patrones)
 
 
 def _crear_cliente(backend: str, modelo_local: str | None = None) -> ClienteModelo:
@@ -201,6 +253,12 @@ async def interpretar(pet: PeticionInterpretacion) -> RespuestaInterpretacion:
             fuentes_rag=0,
             fuentes=[],
         )
+
+    # 0.5) A partir de aquí el servicio trabaja con SUS hallazgos, no con los del navegador.
+    # Se guarda la petición original: lo que afirmó el cliente sólo sirve para ENDURECER el
+    # suelo de derivación, nunca para relajarlo.
+    peticion_del_cliente = pet
+    pet = con_verdad_del_servidor(pet)
 
     # 1) Recuperación RAG basada en los patrones/hallazgos del paciente (degrada a []).
     # Con `rag_multiconsulta`, una consulta por patrón fusionadas con RRF en vez de una sola
@@ -363,7 +421,7 @@ async def interpretar(pet: PeticionInterpretacion) -> RespuestaInterpretacion:
     # motor determinista ve algo grave, se deriva aunque el modelo diga que no. Medido: un 7B
     # general marcó `false` en una ERC felina avanzada (creat 4.8, BUN 68, isostenuria). Con
     # esto ese fallo es imposible por construcción, venga el modelo que venga.
-    if _derivacion_obligatoria(pet) and not resultado.requiere_derivacion:
+    if _derivacion_obligatoria(pet, peticion_del_cliente) and not resultado.requiere_derivacion:
         log.warning("El modelo no marcó derivación con hallazgos graves; se fuerza.")
         resultado.requiere_derivacion = True
 

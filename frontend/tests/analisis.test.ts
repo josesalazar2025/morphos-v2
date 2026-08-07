@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { analizarResultados, _internos } from '../src/analisis.js';
-import type { Alteraciones, Paciente, Referencias } from '../src/tipos.js';
+import type { AjustesClinicos, Alteraciones, Paciente, Referencias } from '../src/tipos.js';
 
 const aquí = dirname(fileURLToPath(import.meta.url));
 const raízDatos = resolve(aquí, '../../data');
@@ -18,6 +18,9 @@ const referencias = JSON.parse(
 const alteraciones = JSON.parse(
   readFileSync(resolve(raízDatos, 'alteraciones.json'), 'utf8'),
 ) as Alteraciones;
+const ajustes = JSON.parse(
+  readFileSync(resolve(raízDatos, 'ajustes_clinicos.json'), 'utf8'),
+) as AjustesClinicos;
 
 const paciente = (over: Partial<Paciente> = {}): Paciente => ({
   especie: 'canino',
@@ -28,7 +31,7 @@ const paciente = (over: Partial<Paciente> = {}): Paciente => ({
 });
 
 const nombresPatrones = (valores: Record<string, number>, p = paciente()): string[] =>
-  analizarResultados(valores, p, referencias, alteraciones).patrones.map((x) => x.nombre);
+  analizarResultados(valores, p, referencias, alteraciones, ajustes).patrones.map((x) => x.nombre);
 
 describe('datos de referencia', () => {
   it('cubre ambas especies', () => {
@@ -43,7 +46,7 @@ describe('datos de referencia', () => {
 
 describe('guardas de entrada', () => {
   it('sin especie devuelve vacío', () => {
-    const r = analizarResultados({ wbc: 30 }, paciente({ especie: null }), referencias, alteraciones);
+    const r = analizarResultados({ wbc: 30 }, paciente({ especie: null }), referencias, alteraciones, ajustes);
     expect(r).toEqual({ hallazgos: [], patrones: [] });
   });
 
@@ -53,13 +56,14 @@ describe('guardas de entrada', () => {
       paciente(),
       referencias,
       alteraciones,
+      ajustes,
     );
     expect(r.hallazgos).toHaveLength(0);
   });
 
   it('un valor dentro de rango no genera hallazgos', () => {
     // WBC canino ref 6-17 → 10 está dentro
-    const r = analizarResultados({ wbc: 10 }, paciente(), referencias, alteraciones);
+    const r = analizarResultados({ wbc: 10 }, paciente(), referencias, alteraciones, ajustes);
     expect(r.hallazgos).toHaveLength(0);
     expect(r.patrones).toHaveLength(0);
   });
@@ -70,22 +74,22 @@ describe('clasificación de gravedad', () => {
 
   it('desviación ≤ 0.5 anchos → leve', () => {
     // ancho 11; 17 + 5 = 22 → 5/11 ≈ 0.45
-    expect(_internos.clasificarGravedad(22, ref)).toBe('leve');
+    expect(_internos.clasificarGravedad(22, ref, ajustes)).toBe('leve');
   });
 
   it('desviación ≤ 1.5 anchos → moderado', () => {
     // 17 + 11 = 28 → 11/11 = 1.0
-    expect(_internos.clasificarGravedad(28, ref)).toBe('moderado');
+    expect(_internos.clasificarGravedad(28, ref, ajustes)).toBe('moderado');
   });
 
   it('desviación > 1.5 anchos → grave', () => {
     // 17 + 22 = 39 → 22/11 = 2.0
-    expect(_internos.clasificarGravedad(39, ref)).toBe('grave');
+    expect(_internos.clasificarGravedad(39, ref, ajustes)).toBe('grave');
   });
 
   it('aplica igual por debajo del límite inferior', () => {
     // 6 - 6 = 0 → 6/11 ≈ 0.55 → moderado
-    expect(_internos.clasificarGravedad(0, ref)).toBe('moderado');
+    expect(_internos.clasificarGravedad(0, ref, ajustes)).toBe('moderado');
   });
 });
 
@@ -93,7 +97,7 @@ describe('ajustes por edad', () => {
   it('cachorro canino eleva el techo de FAL (x3)', () => {
     // FAL canino base: superior típico ~150; con cachorro x3 no se marca a valores moderados
     const base = referencias.canino.fal.superior;
-    const adulto = analizarResultados({ fal: base * 2 }, paciente({ edadMeses: 6 }), referencias, alteraciones);
+    const adulto = analizarResultados({ fal: base * 2 }, paciente({ edadMeses: 6 }), referencias, alteraciones, ajustes);
     // A los 6 meses el techo es x3, así que base*2 queda dentro de rango → sin patrón colestásico
     expect(adulto.patrones.map((p) => p.nombre)).not.toContain(alteraciones.patron_colestasico.nombre);
   });
@@ -102,8 +106,8 @@ describe('ajustes por edad', () => {
     const sup = referencias.canino.creat.superior;
     // Valor justo por encima del techo adulto pero dentro del geriátrico (x1.25)
     const valor = sup * 1.2;
-    const adulto = analizarResultados({ creat: valor }, paciente({ edadMeses: 60 }), referencias, alteraciones);
-    const geriatrico = analizarResultados({ creat: valor }, paciente({ edadMeses: 130 }), referencias, alteraciones);
+    const adulto = analizarResultados({ creat: valor }, paciente({ edadMeses: 60 }), referencias, alteraciones, ajustes);
+    const geriatrico = analizarResultados({ creat: valor }, paciente({ edadMeses: 130 }), referencias, alteraciones, ajustes);
     expect(adulto.hallazgos.some((h) => h.clave === 'creat')).toBe(true);
     expect(geriatrico.hallazgos.some((h) => h.clave === 'creat')).toBe(false);
   });
@@ -136,16 +140,16 @@ describe('ajustes por sexo', () => {
   // ajuste de raza, no de sexo.
   it('el sexo ya no altera el umbral de creatinina en el gato', () => {
     const valor = referencias.felino.creat.superior * 1.1;
-    const hembra = analizarResultados({ creat: valor }, paciente({ especie: 'felino', sexo: 'Hembra' }), referencias, alteraciones);
-    const macho = analizarResultados({ creat: valor }, paciente({ especie: 'felino', sexo: 'Macho' }), referencias, alteraciones);
+    const hembra = analizarResultados({ creat: valor }, paciente({ especie: 'felino', sexo: 'Hembra' }), referencias, alteraciones, ajustes);
+    const macho = analizarResultados({ creat: valor }, paciente({ especie: 'felino', sexo: 'Macho' }), referencias, alteraciones, ajustes);
     expect(hembra.hallazgos.some((h) => h.clave === 'creat')).toBe(true);
     expect(macho.hallazgos.some((h) => h.clave === 'creat')).toBe(true);
   });
 
   it('el gato Birman sí tolera mayor creatinina (Fundamentals p. 585)', () => {
     const valor = referencias.felino.creat.superior * 1.1;
-    const comun = analizarResultados({ creat: valor }, paciente({ especie: 'felino', raza: 'Común Europeo' }), referencias, alteraciones);
-    const birman = analizarResultados({ creat: valor }, paciente({ especie: 'felino', raza: 'Birman' }), referencias, alteraciones);
+    const comun = analizarResultados({ creat: valor }, paciente({ especie: 'felino', raza: 'Común Europeo' }), referencias, alteraciones, ajustes);
+    const birman = analizarResultados({ creat: valor }, paciente({ especie: 'felino', raza: 'Birman' }), referencias, alteraciones, ajustes);
     expect(comun.hallazgos.some((h) => h.clave === 'creat')).toBe(true);
     expect(birman.hallazgos.some((h) => h.clave === 'creat')).toBe(false);
   });
@@ -153,7 +157,7 @@ describe('ajustes por sexo', () => {
 
 describe('cortes clínicos de gravedad (auditoría 2026-07-31)', () => {
   const gravedadDe = (valores: Record<string, number>, p = paciente(), clave = 'hct') =>
-    analizarResultados(valores, p, referencias, alteraciones)
+    analizarResultados(valores, p, referencias, alteraciones, ajustes)
       .hallazgos.find((h) => h.clave === clave)?.gravedad;
 
   it('una anemia felina puede ser grave (antes era imposible por construcción)', () => {
@@ -188,6 +192,7 @@ describe('patrones — serie roja', () => {
       paciente(),
       referencias,
       alteraciones,
+      ajustes,
     ).patrones;
     const anemia = patrones.find((p) => p.nombre.startsWith('Anemia'));
     expect(anemia?.nombre).toBe('Anemia microcítica');
@@ -233,7 +238,7 @@ describe('patrones — riñón e hígado', () => {
 
 describe('patrones — electrolitos y ácido-base', () => {
   it('ratio Na/K bajo dispara sospecha de hipoadrenocorticismo con gravedad escalada', () => {
-    const patrones = analizarResultados({ sodio: 130, potasio: 7 }, paciente(), referencias, alteraciones).patrones;
+    const patrones = analizarResultados({ sodio: 130, potasio: 7 }, paciente(), referencias, alteraciones, ajustes).patrones;
     const ratio = patrones.find((p) => p.nombre === alteraciones.ratio_nak.nombre);
     expect(ratio).toBeDefined();
     // 130/7 ≈ 18.6 < 20 → grave
@@ -249,7 +254,7 @@ describe('patrones — electrolitos y ácido-base', () => {
 
 describe('patrones — coagulación', () => {
   it('CID cuando D-dímeros altos y fibrinógeno bajo (gravedad grave)', () => {
-    const patrones = analizarResultados({ ddimeros: 5000, fibrinogeno: 50 }, paciente(), referencias, alteraciones).patrones;
+    const patrones = analizarResultados({ ddimeros: 5000, fibrinogeno: 50 }, paciente(), referencias, alteraciones, ajustes).patrones;
     const cid = patrones.find((p) => p.nombre === alteraciones.cid.nombre);
     expect(cid?.gravedad).toBe('grave');
   });
@@ -264,8 +269,8 @@ describe('ajustes por raza (auditoría 2026-07-31)', () => {
     // Fundamentals p. 221: "some healthy Akitas, shibas, Jindos, chow-chows, and shar-peis
     // have lower MCV". Antes se les subía RBC/Hct/Hgb, que no es lo que dice la literatura.
     const valor = referencias.canino.vcm.inferior * 0.95;
-    const mestizo = analizarResultados({ vcm: valor }, paciente(), referencias, alteraciones);
-    const akita = analizarResultados({ vcm: valor }, paciente({ raza: 'Akita Inu' }), referencias, alteraciones);
+    const mestizo = analizarResultados({ vcm: valor }, paciente(), referencias, alteraciones, ajustes);
+    const akita = analizarResultados({ vcm: valor }, paciente({ raza: 'Akita Inu' }), referencias, alteraciones, ajustes);
     expect(mestizo.hallazgos.some((h) => h.clave === 'vcm')).toBe(true);
     expect(akita.hallazgos.some((h) => h.clave === 'vcm')).toBe(false);
   });
@@ -281,8 +286,8 @@ describe('ajustes por raza (auditoría 2026-07-31)', () => {
   it('el galgo sano no sale hipotiroideo', () => {
     // Fundamentals p. 1065: ~90% de los galgos sanos por debajo del límite inferior de tT4.
     const valor = referencias.canino.t4_total.inferior * 0.7;
-    const mestizo = analizarResultados({ t4_total: valor }, paciente(), referencias, alteraciones);
-    const galgo = analizarResultados({ t4_total: valor }, paciente({ raza: 'Galgo español' }), referencias, alteraciones);
+    const mestizo = analizarResultados({ t4_total: valor }, paciente(), referencias, alteraciones, ajustes);
+    const galgo = analizarResultados({ t4_total: valor }, paciente({ raza: 'Galgo español' }), referencias, alteraciones, ajustes);
     expect(mestizo.hallazgos.some((h) => h.clave === 't4_total')).toBe(true);
     expect(galgo.hallazgos.some((h) => h.clave === 't4_total')).toBe(false);
   });
@@ -292,8 +297,8 @@ describe('ajustes por edad (auditoría 2026-07-31)', () => {
   it('el cachorro no sale hiperfosforémico con un fósforo propio de su edad', () => {
     // Fundamentals p. 831: cachorros < 12 sem 5,7–10,8 mg/dL frente a 2,5–5,5 del adulto.
     const valor = referencias.canino.fosf.superior * 1.5;
-    const adulto = analizarResultados({ fosf: valor }, paciente({ edadMeses: 48 }), referencias, alteraciones);
-    const cachorro = analizarResultados({ fosf: valor }, paciente({ edadMeses: 3 }), referencias, alteraciones);
+    const adulto = analizarResultados({ fosf: valor }, paciente({ edadMeses: 48 }), referencias, alteraciones, ajustes);
+    const cachorro = analizarResultados({ fosf: valor }, paciente({ edadMeses: 3 }), referencias, alteraciones, ajustes);
     expect(adulto.hallazgos.some((h) => h.clave === 'fosf')).toBe(true);
     expect(cachorro.hallazgos.some((h) => h.clave === 'fosf')).toBe(false);
   });
@@ -301,7 +306,7 @@ describe('ajustes por edad (auditoría 2026-07-31)', () => {
 
 describe('correlación calcio-fósforo (auditoría 2026-07-31)', () => {
   const descripcionHipercalcemia = (valores: Record<string, number>) =>
-    analizarResultados(valores, paciente(), referencias, alteraciones)
+    analizarResultados(valores, paciente(), referencias, alteraciones, ajustes)
       .patrones.find((p) => p.nombre === alteraciones.hipercalcemia.nombre)?.descripcion ?? '';
 
   it('con fósforo bajo prioriza malignidad e hiperparatiroidismo primario', () => {
@@ -320,7 +325,7 @@ describe('correlación calcio-fósforo (auditoría 2026-07-31)', () => {
 
 describe('estadiaje IRIS de ERC (guía IRIS 2026 + Fundamentals Tabla 8.4)', () => {
   const patronIris = (valores: Record<string, number>, p = paciente()) =>
-    analizarResultados(valores, p, referencias, alteraciones)
+    analizarResultados(valores, p, referencias, alteraciones, ajustes)
       .patrones.find((x) => x.nombre.startsWith(alteraciones.erc_iris.nombre));
 
   it('estadia por creatinina y escala la gravedad con el estadio', () => {
@@ -353,10 +358,49 @@ describe('estadiaje IRIS de ERC (guía IRIS 2026 + Fundamentals Tabla 8.4)', () 
 
   it('la gravedad de la creatinina sigue los estadios IRIS, no el ancho de rango', () => {
     const grav = (v: number, p = paciente()) =>
-      analizarResultados({ creat: v }, p, referencias, alteraciones)
+      analizarResultados({ creat: v }, p, referencias, alteraciones, ajustes)
         .hallazgos.find((h) => h.clave === 'creat')?.gravedad;
     expect(grav(2.0)).toBe('leve');
     expect(grav(4.0)).toBe('moderado');
     expect(grav(6.0)).toBe('grave');
+  });
+});
+
+describe('las reglas clínicas son datos, no código', () => {
+  // Simétrico de test_gravedad_servidor.py: si alguien volviera a incrustar los umbrales en el
+  // código, estos dos seguirían dando el veredicto viejo y fallarían.
+  const conAjustes = (mutar: (a: AjustesClinicos) => void): AjustesClinicos => {
+    const copia = JSON.parse(JSON.stringify(ajustes)) as AjustesClinicos;
+    mutar(copia);
+    return copia;
+  };
+
+  it('los cortes de gravedad salen del JSON', () => {
+    const relajado = conAjustes((a) => {
+      a.cortes_gravedad_bajo.hct.canino = { leve_hasta: 5, moderado_hasta: 1 };
+    });
+    const r = analizarResultados({ hct: 12 }, paciente(), referencias, alteraciones, relajado);
+    expect(r.hallazgos.find((h) => h.clave === 'hct')?.gravedad).toBe('leve');
+  });
+
+  it('los cortes IRIS salen del JSON', () => {
+    // Se desplaza el estadio 2 canino de 1,4 a 4,0: una creatinina de 2,0 deja de ser estadio 2.
+    const desplazado = conAjustes((a) => {
+      a.iris.cortes_creatinina.canino = [4.0, 6.0, 8.0];
+    });
+    const p = analizarResultados({ creat: 2.0 }, paciente(), referencias, alteraciones, desplazado)
+      .patrones.find((x) => x.nombre.startsWith(alteraciones.erc_iris.nombre));
+    // Estadio 1 con los cortes nuevos → no se informa estadio.
+    expect(p).toBeUndefined();
+  });
+
+  it('los límites de edad salen del JSON', () => {
+    const adelantado = conAjustes((a) => {
+      a.limites_edad_meses.canino!.cachorro = 1;
+    });
+    const cachorro = paciente({ edadMeses: 4 });
+    // Con el límite en 1 mes ya es adulto y pierde el ajuste de fósforo del animal en crecimiento.
+    const r = analizarResultados({ fosf: 8 }, cachorro, referencias, alteraciones, adelantado);
+    expect(r.hallazgos.map((h) => h.clave)).toContain('fosf');
   });
 });

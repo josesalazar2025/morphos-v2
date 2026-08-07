@@ -14,7 +14,23 @@ from app.security import session as ses
 
 def test_ida_y_vuelta():
     token = ses.firmar_sesion({"email": "vet@example.com"})
-    assert ses.leer_sesion(token) == {"email": "vet@example.com"}
+    sesion = ses.leer_sesion(token)
+    assert sesion["email"] == "vet@example.com"
+
+
+def test_toda_sesion_nace_identificada_y_fechada():
+    """`jti` y `emitida_en` los pone `firmar_sesion`, no quien llama.
+
+    Son lo que hace revocable una sesión: sin `jti` no hay nada que nombrar para cerrar UNA, y
+    sin `emitida_en` no se pueden cortar TODAS las de una cuenta por fecha. Si se generaran en
+    quien llama, una ruta podría emitir por descuido una sesión irrevocable.
+    """
+    a = ses.leer_sesion(ses.firmar_sesion({"email": "vet@example.com"}))
+    b = ses.leer_sesion(ses.firmar_sesion({"email": "vet@example.com"}))
+
+    assert a["jti"] and b["jti"]
+    assert a["jti"] != b["jti"], "dos sesiones con el mismo jti se revocarían juntas"
+    assert a["emitida_en"]
 
 
 @pytest.mark.parametrize(

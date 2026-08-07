@@ -78,6 +78,23 @@ User clicks "Análisis IA"
 - **`backend/app/ai/hf_space.py`** — Cliente del HF Space (Gradio) donde vive medGemma. El Space devuelve texto libre, así que va por la ruta de prosa: `ai/prosa.py` limpia los tokens del modelo, detecta salida defectuosa (razonamiento filtrado, bucle, frase cortada) y envuelve el resultado en el campo `interpretacion`. Es la ruta por defecto sin salida estructurada; un modelo local declarado `=prosa` usa la misma.
 - **`backend/app/ai/claude.py`** — Ruta Claude vía tool use forzado: el `input_schema` es el JSON Schema de `InterpretacionClinica`, así que valida contra Pydantic sin regex.
 - **`data/valores_referencia.json`** — Reference ranges for 90 analytes per species.
+- **`data/ajustes_clinicos.json`** — **Fuente única de las reglas del suelo de seguridad**:
+  umbrales de gravedad, límites de las categorías de edad y factores de ajuste por edad y raza.
+  Lo leen LOS DOS motores —`frontend/src/analisis.ts` (fetch, como los demás datos) y
+  `backend/app/motor/gravedad.py` (disco)— y también `evals/engine_runner.ts`.
+  - **No volver a incrustar estos valores en el código.** Estaban duplicados como constantes en
+    ambos motores, y eso es lo que de verdad se desincroniza: la lógica de comparar no cambia
+    casi nunca, los umbrales sí, y son justo lo que un veterinario querría ajustar sin pasar por
+    un build. Hay una prueba a cada lado (`test_el_motor_obedece_al_json_y_no_a_constantes` y su
+    gemela en `analisis.test.ts`) que muta el JSON y exige que el veredicto cambie: si alguien
+    vuelve a fijar los umbrales en el código, fallan.
+  - **Tampoco empaquetarlo en el bundle.** Un `import` de JSON lo inlinearía en tiempo de build
+    y editar el fichero dejaría de tener efecto sin recompilar, que es justo lo que se quiere
+    evitar. Se carga con `fetch`, como `valores_referencia.json`.
+  - `moderado_hasta: null` significa que ese analito **nunca** llega a `grave` por ese lado (es
+    el caso de `upc`, que la guía IRIS no subestadia más allá de «proteinúrico»).
+  - `backend/tests/test_paridad_motor.py` ejecuta el motor TS REAL contra el puerto Python sobre
+    18 casos: es el guardarraíl de que las dos implementaciones sigan de acuerdo.
 - **`data/alteraciones.json`** — 78 clinical entities used to enrich AI prompts with etiologic context.
 
 ### AI Backend Configuration
@@ -119,12 +136,15 @@ Dos defectos que se cerraron y **no se vuelven a abrir sin sustituirlos por algo
   el alta se convierte en un oráculo de qué cuentas hay (403 siempre, nunca 409, fuera de la
   lista). Es una **lista de emails y no un booleano** porque `instance/` es efímero: sin ella,
   el primer reinicio deja la instancia sin cuentas y sin forma de crear ninguna.
-- **`GET /api/lab/pendientes` está apagado** (`lab_pendientes_habilitado=False` → 404). Enumera
-  las muestras de todas las clínicas y cada `muestra_id` abre el panel completo más las pistas
-  de paciente. **Apagarlo no cierra el agujero y no hay que documentarlo como si lo hiciera**:
-  el `muestra_id` lo pone el analizador y suele ser correlativo, así que `/api/lab/resultados`
-  sigue siendo enumerable. Lo que elimina es el volcado en una petición. El cierre real es atar
-  cada resultado a un tenant y filtrar por sesión (ARCHITECTURE_REVIEW §2.1).
+- **Los resultados de analizador están segmentados por CLÍNICA (tenant).** El tenant lo pone
+  siempre el servidor: de la API key del dispositivo en la ingesta (`clinica:clave`) y de la
+  cookie firmada en la lectura. **Nunca del cuerpo ni de un parámetro** — si el puente pudiera
+  declarar su clínica, mentir en un campo bastaría para escribir en la de otro. Una muestra de
+  otra clínica devuelve 404, no 403. Sin tenants declarados todo cae en `principal`, así que un
+  despliegue de una sola clínica no nota nada.
+- **`GET /api/lab/pendientes` sigue apagado por defecto** (`lab_pendientes_habilitado=False` →
+  404). Ya no es un volcado global —sólo lista la clínica de la sesión—, pero dentro de ella
+  enumera todas las muestras, así que se enciende a propósito.
 
 Las pruebas describen el defecto CERRADO; las que sólo necesitan sesión piden el fixture
 `alta_abierta`. El fixture `_limitador_limpio` (autouse) vacía el contador de rate limiting

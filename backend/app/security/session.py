@@ -8,6 +8,7 @@ cabecera X-CSRF-Token en peticiones mutantes.
 from __future__ import annotations
 
 import secrets
+from datetime import UTC, datetime, timedelta
 
 from itsdangerous import BadData, URLSafeTimedSerializer
 
@@ -25,7 +26,29 @@ def _serializer() -> URLSafeTimedSerializer:
 
 
 def firmar_sesion(datos: dict) -> str:
-    return _serializer().dumps(datos)
+    """Firma la sesión añadiéndole identidad (`jti`) e instante de emisión (`emitida_en`).
+
+    Sin `jti` no se puede revocar UNA sesión —no hay nada que nombrar—, y sin `emitida_en` no se
+    puede cortar un conjunto de ellas por fecha. Se generan aquí, y no en quien llama, para que
+    ninguna ruta pueda emitir por descuido una sesión irrevocable.
+    """
+    completos = {
+        "jti": secrets.token_urlsafe(16),
+        "emitida_en": datetime.now(UTC).isoformat(),
+        **datos,
+    }
+    return _serializer().dumps(completos)
+
+
+def caducidad_de(sesion: dict) -> str:
+    """Cuándo deja de valer la firma por sí sola: hasta ahí hay que recordar una revocación."""
+    cfg = obtener_config()
+    emitida = sesion.get("emitida_en")
+    try:
+        base = datetime.fromisoformat(emitida) if emitida else datetime.now(UTC)
+    except ValueError:
+        base = datetime.now(UTC)
+    return (base + timedelta(seconds=cfg.session_max_age_s)).isoformat()
 
 
 def leer_sesion(token: str | None) -> dict | None:

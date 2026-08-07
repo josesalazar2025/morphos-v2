@@ -52,11 +52,18 @@ class PatronEntrada(BaseModel):
 class PeticionInterpretacion(BaseModel):
     """Lo que el frontend envía a /api/interpret.
 
-    hallazgos/patrones vienen del motor determinista analisis.ts, ya calculados en
-    cliente. El backend NO recalcula, sólo enriquece con RAG y llama al modelo.
+    `valores` son los datos crudos y son la fuente de verdad del servidor: con ellos recalcula
+    los hallazgos y su gravedad. `hallazgos`/`patrones` siguen llegando del motor del navegador
+    (`analisis.ts`), pero YA NO deciden por sí solos: valen como PISTA para el prompt y sólo
+    pueden endurecer el suelo de seguridad, nunca relajarlo. `patrones` no tiene equivalente
+    servidor —las 50 y pico reglas viven en el cliente— y por eso no gobierna nada crítico.
     """
 
     paciente: PacienteEntrada
+    # Valores CRUDOS del panel ({clave: valor}). Es lo único a partir de lo cual el servidor
+    # puede decidir por sí mismo: con ellos recalcula hallazgos y gravedad (`motor/gravedad.py`)
+    # en vez de fiarse del veredicto del navegador.
+    valores: dict[str, float] = Field(default_factory=dict, max_length=200)
     hallazgos: list[HallazgoEntrada] = Field(default_factory=list)
     patrones: list[PatronEntrada] = Field(default_factory=list)
     # Claves de TODOS los analitos que el usuario introdujo, alterados o no. `hallazgos` sólo

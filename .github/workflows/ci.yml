@@ -27,6 +27,13 @@ jobs:
       - uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
+      # Node aquí no es para el frontend: `test_paridad_motor.py` ejecuta el motor TS real
+      # (evals/engine_runner.ts) y lo compara con el puerto Python del suelo de seguridad. Sin
+      # Node esa prueba se OMITE en silencio, que es justo como se pierden las dos
+      # implementaciones de vista.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
       - name: Sincronizar backend
         working-directory: backend
         # Sin `--group rag`: los grupos pesados son opt-in (ver pyproject) y las dos suites que

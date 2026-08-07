@@ -50,3 +50,25 @@ export interface ResultadoAnalisis {
 
 // Los valores del formulario llegan como número o string (input HTML) o vacíos.
 export type ValoresFormulario = Record<string, number | string | null | undefined>;
+
+// Reglas clínicas compartidas con el motor del servidor: data/ajustes_clinicos.json.
+// Los campos que empiezan por `_` son documentación (procedencia bibliográfica) y se ignoran.
+export type FactorRango = { inferior?: number; superior?: number };
+export type TablaAjustes = Record<string, FactorRango>;
+export type CortesGravedad = { leve_hasta: number; moderado_hasta: number | null };
+export type GrupoRaza = { razas: string[]; ajustes: TablaAjustes };
+
+export interface AjustesClinicos {
+  umbrales_gravedad: { leve: number; moderado: number };
+  limites_edad_meses: Partial<Record<Especie, Record<string, number>>>;
+  cortes_gravedad_bajo: Record<string, Partial<Record<Especie, CortesGravedad>>>;
+  cortes_gravedad_alto: Record<string, Partial<Record<Especie, CortesGravedad>>>;
+  ajustes_edad: Partial<Record<Especie, Record<string, TablaAjustes>>>;
+  ajustes_raza: Partial<Record<Especie, GrupoRaza[]>>;
+  ajustes_sexo: Partial<Record<Especie, Record<string, TablaAjustes>>>;
+  iris: {
+    cortes_creatinina: Partial<Record<Especie, number[]>>;
+    cortes_sdma: Partial<Record<Especie, number[]>>;
+    cortes_upc: Partial<Record<Especie, number[]>>;
+  };
+}

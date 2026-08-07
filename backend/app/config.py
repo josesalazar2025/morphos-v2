@@ -7,6 +7,7 @@ lo necesario para una función concreta.
 
 from __future__ import annotations
 
+import hmac
 import logging
 import os
 from functools import lru_cache
@@ -20,6 +21,28 @@ log = logging.getLogger(__name__)
 
 # Raíz del repo (…/morphos). La BD y el índice RAG viven FUERA del directorio servido.
 RAIZ_REPO = Path(__file__).resolve().parents[2]
+
+# Punto de montaje del almacenamiento persistente en HF Spaces.
+VOLUMEN_PERSISTENTE = Path("/data")
+
+# Clínica a la que pertenecen los dispositivos y usuarios que no declaran otra. Un despliegue de
+# una sola clínica —el caso normal— se queda entero aquí y no nota el cambio; el aislamiento
+# aparece en cuanto se declaran tenants distintos.
+TENANT_POR_DEFECTO = "principal"
+
+
+def _ruta_db_por_defecto() -> Path:
+    """Volumen persistente si lo hay; si no, `instance/` (efímero) con aviso al arrancar.
+
+    En HF Spaces `instance/` se pierde en cada reinicio y con él TODAS las cuentas. Si el Space
+    tiene almacenamiento persistente contratado, se monta en /data y ahí sí sobreviven. Se elige
+    solo en vez de exigir configuración porque el fallo del defecto anterior era silencioso: la
+    app arrancaba igual y el problema sólo se veía cuando los usuarios ya no podían entrar.
+    Siempre se puede forzar con MORPHOS_DB_PATH.
+    """
+    if VOLUMEN_PERSISTENTE.is_dir() and os.access(VOLUMEN_PERSISTENTE, os.W_OK):
+        return VOLUMEN_PERSISTENTE / "morphos.db"
+    return RAIZ_REPO / "instance" / "morphos.db"
 
 
 # El `.env` del desarrollador NO debe filtrarse a las pruebas: son las mismas que corren en CI,
@@ -66,10 +89,16 @@ class Configuracion(BaseSettings):
     registro_allowlist: Annotated[list[str], NoDecode] = Field(default_factory=list)
 
     # --- Base de datos (usuarios). Ruta fuera del webroot. ---
-    db_path: Path = Field(default=RAIZ_REPO / "instance" / "morphos.db")
-    mysql_dsn: str = Field(default="")  # si se define, se usa en vez de SQLite
-    mysql_user: str = Field(default="")
-    mysql_password: str = Field(default="")
+    # Se prefiere el volumen persistente si existe (ver `_ruta_db_por_defecto`). `instance/` NO
+    # sobrevive a un reinicio en Spaces: allí cada rebuild se llevaba por delante las cuentas,
+    # los hashes y el historial de throttling, y los usuarios tenían que volver a registrarse.
+    db_path: Path = Field(default_factory=lambda: _ruta_db_por_defecto())
+
+    # NO hay soporte de MySQL. Existían `mysql_dsn`/`mysql_user`/`mysql_password` con el
+    # comentario «si se define, se usa en vez de SQLite», pero NADA en el código los leía: quien
+    # los configurara seguiría sobre SQLite sin enterarse. Se eliminan en vez de dejarlos: una
+    # opción de configuración que miente es peor que no tenerla. Para sacar los usuarios de
+    # SQLite, el camino es un volumen persistente (MORPHOS_DB_PATH) o portar `db.py`.
 
     # --- Ruta IA por defecto y proveedores ---
     ia_backend_defecto: str = Field(default="medgemma")  # medgemma | claude
@@ -231,6 +260,24 @@ class Configuracion(BaseSettings):
     max_imagenes: int = Field(default=4)
     max_bytes_imagen: int = Field(default=6 * 1024 * 1024)
 
+    # --- Proxy inverso ---
+    # Saltos de proxy DE CONFIANZA delante de la app. 0 = no confiar en `X-Forwarded-For`.
+    #
+    # Por qué existe: el limitador usaba `request.client.host`, que detrás de un proxy (HF
+    # Spaces, cualquier CDN) es la dirección del PROXY, no la del cliente. Con eso,
+    # `limite_login` (5/minute) y `limite_papers` dejaban de ser por IP y pasaban a ser
+    # GLOBALES: a la vez un bypass (fuerza bruta desde muchas IPs no se limitaba por IP) y una
+    # auto-denegación de servicio (un cliente ruidoso agotaba el login de todos).
+    #
+    # Se declara el número de saltos en vez de leer la cabecera a ciegas porque `X-Forwarded-For`
+    # la pone el cliente: confiar en ella sin más permite falsificar la IP y saltarse cualquier
+    # límite poniendo una distinta en cada petición. Cada proxy AÑADE la dirección de su par, así
+    # que con N saltos de confianza el cliente real es el elemento -N de la lista; todo lo que
+    # haya a la izquierda lo escribió alguien no confiable y se descarta.
+    #
+    # En HF Spaces detrás de su router: 1.
+    proxy_saltos_confiables: int = Field(default=0)
+
     # --- Rate limiting ---
     limite_interpret: str = Field(default="10/minute")
     # Techo por USUARIO además del de IP. La cuota de ZeroGPU es por cuenta y compartida entre
@@ -303,15 +350,49 @@ class Configuracion(BaseSettings):
                 permitidos[nombre] = modo.strip().lower() == "prosa"
         return permitidos
 
+    def _allowlist_con_tenant(self) -> dict[str, str]:
+        """email → tenant. Formato `email` o `email=tenant`; sin sufijo, TENANT_POR_DEFECTO."""
+        mapa: dict[str, str] = {}
+        for entrada in self.registro_allowlist:
+            email, _, tenant = entrada.partition("=")
+            email = email.strip().lower()
+            if email:
+                mapa[email] = tenant.strip() or TENANT_POR_DEFECTO
+        return mapa
+
     def emails_registro_permitidos(self) -> set[str]:
         """Allowlist normalizada (minúsculas, sin espacios) para comparar con el email entrante."""
-        return {e.strip().lower() for e in self.registro_allowlist if e.strip()}
+        return set(self._allowlist_con_tenant())
 
     def registro_permitido(self, email: str) -> bool:
         """Si este email puede darse de alta."""
         if self.registro_abierto:
             return True
         return email.strip().lower() in self.emails_registro_permitidos()
+
+    def tenant_de_email(self, email: str) -> str:
+        """Clínica a la que pertenece un email al darse de alta.
+
+        Con el alta abierta (desarrollo) todo el mundo cae en el tenant por defecto: no hay
+        ninguna declaración de la que deducir otra cosa.
+        """
+        return self._allowlist_con_tenant().get(email.strip().lower(), TENANT_POR_DEFECTO)
+
+    def tenant_de_clave_dispositivo(self, token: str) -> str | None:
+        """Tenant dueño de esta API key de dispositivo, o None si no es válida.
+
+        Recorre TODAS las claves con `compare_digest` en vez de indexar un diccionario: un
+        lookup por hash sobre un secreto filtra por tiempo si coincide el prefijo, y esta
+        comparación es la única barrera de la ingesta.
+        """
+        encontrado: str | None = None
+        for entrada in self.lab_api_keys:
+            tenant, sep, clave = entrada.partition(":")
+            if not sep:
+                tenant, clave = TENANT_POR_DEFECTO, entrada
+            if hmac.compare_digest(token, clave.strip()):
+                encontrado = tenant.strip() or TENANT_POR_DEFECTO
+        return encontrado
 
     def avisar_de_configuracion(self) -> None:
         """Avisos de arranque que no justifican fallar, pero sí que se vean en el log."""
@@ -325,6 +406,15 @@ class Configuracion(BaseSettings):
             log.warning(
                 "Alta de cuentas cerrada y MORPHOS_REGISTRO_ALLOWLIST vacía: nadie puede "
                 "registrarse. Si la base de usuarios está vacía, nadie podrá entrar."
+            )
+
+        if self.entorno == "prod" and self.proxy_saltos_confiables <= 0:
+            # Silencioso y caro: los límites siguen "funcionando", sólo que compartidos por todo
+            # el mundo, así que no se nota hasta que alguien agota el login de los demás.
+            log.warning(
+                "MORPHOS_PROXY_SALTOS_CONFIABLES=0 en producción: si hay un proxy delante "
+                "(HF Spaces lo tiene), los límites por IP son en realidad GLOBALES. Declara "
+                "cuántos saltos de confianza hay."
             )
 
     def validar_prod(self) -> None:
