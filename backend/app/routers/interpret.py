@@ -13,6 +13,7 @@ import re
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from ..ai.base import ErrorModelo
+from ..ai.cortacircuitos import reservar_plaza
 from ..ai.service import interpretar
 from ..config import obtener_config
 from ..schemas import PeticionInterpretacion, RespuestaInterpretacion
@@ -70,15 +71,24 @@ async def post_interpret(
 ) -> RespuestaInterpretacion:
     _validar_imagenes(pet.imagenes)
     try:
-        return await interpretar(pet)
+        # El aforo se toma AQUÍ y no dentro del servicio: es descarga de carga de la superficie
+        # web, y las evals —que llaman a `interpretar` directamente y en serie— no tienen por qué
+        # someterse a un límite pensado para peticiones concurrentes de navegador.
+        with reservar_plaza():
+            return await interpretar(pet)
     except ErrorModelo as exc:
         if exc.saturado:
             # 503 + Retry-After y no 502: al cliente le sirve saber que es transitorio y cuándo
             # reintentar. Un 502 genérico invita a recargar en bucle, que es lo peor que puede
             # hacerse contra una cuota agotada.
+            #
+            # Cuando el cortacircuitos está abierto, `espera_s` trae lo que queda de VERDAD para
+            # la reapertura; el resto de saturaciones no tienen forma de saberlo y usan el
+            # valor por defecto. Decir «vuelve en 300 s» cuando faltan 20 no es un detalle: es
+            # justo lo que hace que un cliente honesto deje de reintentar más de la cuenta.
             raise HTTPException(
                 status.HTTP_503_SERVICE_UNAVAILABLE,
                 str(exc),
-                headers={"Retry-After": "300"},
+                headers={"Retry-After": str(exc.espera_s or 300)},
             ) from exc
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"Error del modelo: {exc}") from exc

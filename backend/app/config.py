@@ -286,6 +286,27 @@ class Configuracion(BaseSettings):
     limite_interpret_usuario: str = Field(default="20/hour")
     limite_login: str = Field(default="5/minute")
     limite_papers: str = Field(default="30/minute")
+
+    # --- Cortacircuitos de la ruta IA ---
+    # Los límites de arriba frenan a UN cliente; esto protege el recurso COMPARTIDO cuando ya se
+    # agotó. Sólo lo alimentan los errores de saturación (cuota de ZeroGPU / límite del router de
+    # HF), nunca una salida malformada: ver `ai/cortacircuitos.py`.
+    #
+    # Dos y no uno: un 429 aislado puede venir de una ráfaga ajena en la cuenta compartida y no
+    # significa que el pozo esté vacío. Dos seguidos ya no son casualidad.
+    ia_breaker_fallos: int = Field(default=2)
+    # Umbral SEPARADO para «el modelo no contesta». Más alto que el de saturación porque un
+    # timeout suelto es más común que un 429 suelto, pero cuenta igualmente: es el fallo más caro
+    # (120 s × 2 intentos por petición) y era el único que no abría el circuito.
+    ia_breaker_timeouts: int = Field(default=3)
+    # Misma duración que el `Retry-After` que ya se le devolvía al cliente en ese caso, para no
+    # decirle «vuelve en 5 minutos» y seguir gastando llamadas por dentro mientras tanto.
+    ia_breaker_espera_s: int = Field(default=300)
+    # Aforo: interpretaciones simultáneas como mucho. Un cortacircuitos sin esto llega TARDE —
+    # abre después de que N peticiones concurrentes hayan agotado su timeout a la vez. 2 porque
+    # ZeroGPU serializa de todas formas: más peticiones en vuelo no producen más respuestas, sólo
+    # más esperas simultáneas. 0 lo desactiva.
+    ia_max_en_vuelo: int = Field(default=2)
     limite_lab_ingesta: str = Field(default="120/minute")  # el analizador puede enviar en ráfaga
     limite_lab_consulta: str = Field(default="60/minute")
 

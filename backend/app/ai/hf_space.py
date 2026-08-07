@@ -110,6 +110,14 @@ class HFSpaceClient:
                     json={"data": data},
                     headers=self._headers({"Content-Type": "application/json"}),
                 )
+            except httpx.TimeoutException as exc:
+                # El Space colgado es el fallo MÁS caro: 120 s de espera, y con el reintento del
+                # servicio, 240 s por petición. Se marca para que el cortacircuitos lo cuente;
+                # sin eso era el único modo de fallo que no abría el circuito.
+                raise ErrorModelo(
+                    f"El HF Space no respondió en 120 s ({type(exc).__name__}).",
+                    tiempo_agotado=True,
+                ) from exc
             except httpx.HTTPError as exc:
                 raise ErrorModelo(f"No se pudo contactar el HF Space: {exc}") from exc
             if r.status_code == 429:
@@ -136,6 +144,13 @@ class HFSpaceClient:
                 stream = await cliente.get(
                     f"{self._space}/call/analyze/{event_id}", headers=self._headers()
                 )
+            except httpx.TimeoutException as exc:
+                # El sondeo es donde se espera de verdad: la reserva de GPU y la generación
+                # ocurren aquí, así que este es el timeout que se ve en la práctica.
+                raise ErrorModelo(
+                    f"El HF Space no completó la generación en 120 s ({type(exc).__name__}).",
+                    tiempo_agotado=True,
+                ) from exc
             except httpx.HTTPError as exc:
                 raise ErrorModelo(f"Fallo sondeando el HF Space: {exc}") from exc
 
