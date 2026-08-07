@@ -99,3 +99,77 @@ def test_el_directorio_es_privado_y_propio():
     papers._escribir_cache("pm:permisos", {"a": 1})
     assert str(os.getuid()) in papers._DIR_CACHE.name
     assert (papers._DIR_CACHE.stat().st_mode & 0o777) == 0o700
+
+
+# --- Caché NEGATIVA (ARCHITECTURE_REVIEW §1.5) -----------------------------------------------
+#
+# Sólo se cacheaban los ÉXITOS. Con NCBI caído, cada petición volvía a pagar el timeout de 15 s
+# entero y salía otra vez a la red —el peor momento para insistir— y el User-Agent lleva el
+# correo de contacto del proyecto, así que el castigo por machacarles recae sobre esa dirección.
+
+
+def test_un_fallo_se_recuerda_pero_caduca_mucho_antes_que_un_acierto():
+    """Lo que hace utilizable el mecanismo es el TTL corto: un fallo cacheado media hora
+    convertiría una caída de diez segundos de NCBI en una avería nuestra."""
+    _limpiar()
+    papers._escribir_cache("pm:caido", {papers._CLAVE_FALLO: "No se pudo contactar PubMed."})
+    assert papers._leer_cache("pm:caido") is not None
+
+    # A la edad a la que un ACIERTO seguiría vivo, el fallo ya no.
+    edad = time.time() - papers._TTL_FALLO_S - 1
+    os.utime(papers._ruta("pm:caido"), (edad, edad))
+
+    assert papers._TTL_FALLO_S < papers._TTL_S
+    assert papers._leer_cache("pm:caido") is None
+
+
+def test_un_acierto_no_caduca_al_ritmo_de_los_fallos():
+    """El TTL se elige por CONTENIDO: un despiste aquí acortaría la caché buena a un minuto."""
+    _limpiar()
+    papers._escribir_cache("pm:bueno", {"total": 1, "data": [{"pmid": "1"}]})
+    edad = time.time() - papers._TTL_FALLO_S - 1
+    os.utime(papers._ruta("pm:bueno"), (edad, edad))
+
+    assert papers._leer_cache("pm:bueno") == {"total": 1, "data": [{"pmid": "1"}]}
+
+
+def test_ncbi_caido_se_pide_una_vez_y_las_siguientes_salen_de_la_cache(monkeypatch):
+    """El caso completo por el endpoint: tres peticiones, una sola salida a la red."""
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    _limpiar()
+    salidas = {"n": 0}
+
+    class ClienteQueFalla:
+        def __init__(self, *a, **kw):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        async def get(self, *a, **kw):
+            salidas["n"] += 1
+            raise papers.httpx.ConnectError("sin ruta al host")
+
+    monkeypatch.setattr(papers.httpx, "AsyncClient", ClienteQueFalla)
+
+    with TestClient(app) as cliente:
+        respuestas = [cliente.get("/api/papers?query=anemia+regenerativa") for _ in range(3)]
+
+    assert [r.status_code for r in respuestas] == [502, 502, 502]
+    assert salidas["n"] == 1, "las dos siguientes debían salir de la caché negativa"
+    # Y se le dice al cliente cuándo tiene sentido volver, que es lo que evita el bucle.
+    assert respuestas[-1].headers["Retry-After"] == str(papers._TTL_FALLO_S)
+
+
+def test_una_consulta_distinta_no_hereda_el_fallo_de_otra():
+    """La caché es por consulta: un fallo en una no puede tumbar las demás."""
+    _limpiar()
+    papers._escribir_cache("pm:caida", {papers._CLAVE_FALLO: "No se pudo contactar PubMed."})
+
+    assert papers._leer_cache("pm:otra") is None
