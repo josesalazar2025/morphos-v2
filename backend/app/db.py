@@ -16,6 +16,7 @@ import sqlite3
 from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import UTC, datetime
+from functools import lru_cache
 
 from .config import TENANT_POR_DEFECTO, VOLUMEN_PERSISTENTE, obtener_config
 
@@ -103,6 +104,9 @@ def inicializar_db() -> None:
     cfg.db_path.parent.mkdir(parents=True, exist_ok=True)
     with _conexion() as con:
         version = _migrar(con)
+    # Se calcula aquí y no en el primer login fallido: si no, esa primera petición pagaría dos
+    # scrypt en vez de uno y sería la única con un tiempo distinto.
+    _hash_senuelo()
     persistente = cfg.db_path.is_relative_to(VOLUMEN_PERSISTENTE)
     log.info("BD en %s (esquema v%d, %s).", cfg.db_path, version,
              "persistente" if persistente else "EFÍMERA: las cuentas no sobreviven al reinicio")
@@ -127,10 +131,16 @@ def _conexion() -> Iterator[sqlite3.Connection]:
 
 
 # --- Hash de contraseñas (scrypt, stdlib) ---
+#
+# Los parámetros viven en un solo sitio porque el hash SEÑUELO de abajo tiene que ser idéntico
+# al real: si divergen, la defensa contra la enumeración por tiempo deja de funcionar sin que
+# nada falle.
+_SCRYPT = {"n": 2**14, "r": 8, "p": 1, "dklen": 32}
+
 
 def hash_password(password: str) -> str:
     sal = secrets.token_bytes(16)
-    dk = hashlib.scrypt(password.encode(), salt=sal, n=2**14, r=8, p=1, dklen=32)
+    dk = hashlib.scrypt(password.encode(), salt=sal, **_SCRYPT)
     return f"scrypt${sal.hex()}${dk.hex()}"
 
 
@@ -140,10 +150,36 @@ def verificar_password(password: str, almacenado: str) -> bool:
         if algo != "scrypt":
             return False
         sal = bytes.fromhex(sal_hex)
-        dk = hashlib.scrypt(password.encode(), salt=sal, n=2**14, r=8, p=1, dklen=32)
+        dk = hashlib.scrypt(password.encode(), salt=sal, **_SCRYPT)
         return hmac.compare_digest(dk.hex(), hash_hex)
     except (ValueError, AttributeError):
         return False
+
+
+@lru_cache(maxsize=1)
+def _hash_senuelo() -> str:
+    """Hash real de una contraseña aleatoria que nadie conoce.
+
+    Es real y no una cadena fija a propósito: `verificar_password` tiene que recorrer el mismo
+    camino que con un usuario existente —parsear, derivar la clave, comparar— y sólo entonces
+    devolver False. La contraseña se genera al arranque y se descarta, así que ninguna entrada
+    puede acertarla.
+    """
+    return hash_password(secrets.token_urlsafe(32))
+
+
+def simular_verificacion_password(password: str) -> bool:
+    """Gasta el mismo tiempo que verificar una contraseña, y siempre falla.
+
+    Sin esto, el login era un oráculo de qué cuentas existen: si el email NO estaba en la BD no
+    se calculaba ningún hash y la respuesta salía en sub-milisegundo, mientras que un email
+    existente pagaba scrypt (n=2**14, decenas de ms). El mensaje de error ya era genérico, pero
+    el reloj lo desmentía, y esa diferencia se mide trivialmente desde fuera.
+
+    Enumerar cuentas importa aquí más de lo normal: el alta está cerrada con lista blanca
+    (`registro_allowlist`), así que la lista de emails válidos ES el control de admisión.
+    """
+    return verificar_password(password, _hash_senuelo())
 
 
 # --- Operaciones de usuario ---
