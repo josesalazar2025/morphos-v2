@@ -28,6 +28,10 @@ class ErrorModelo(Exception):
     misma petición no sirve: se ha medido que el corte es determinista y lo provoca el
     contexto RAG comiéndose el presupuesto de generación del Space. El servicio lo usa para
     reintentar con MENOS literatura en vez de con el mismo prompt.
+
+    `espera_s` es cuánto falta para que valga la pena reintentar, cuando se sabe. Lo rellena el
+    cortacircuitos, que es lo único que conoce el dato real; el resto de casos deja el valor por
+    defecto del router. Sirve para no responder «vuelve en 5 minutos» cuando faltan 20 segundos.
     """
 
     def __init__(
@@ -37,11 +41,13 @@ class ErrorModelo(Exception):
         reintentable: bool = True,
         saturado: bool = False,
         truncado: bool = False,
+        espera_s: int | None = None,
     ) -> None:
         super().__init__(mensaje)
         self.reintentable = reintentable
         self.saturado = saturado
         self.truncado = truncado
+        self.espera_s = espera_s
 
 
 class ClienteModelo(Protocol):

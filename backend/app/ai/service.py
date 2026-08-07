@@ -34,6 +34,7 @@ from .coherencia import (
     analitos_fabricados_en_prosa,
     descartar_fabricados,
 )
+from .cortacircuitos import cortacircuitos_ia
 from .prescripcion import detectar_prescripcion, encuadrar
 from .prompt import (
     LARGO_FRAGMENTO_PROMPT,
@@ -260,6 +261,20 @@ async def interpretar(pet: PeticionInterpretacion) -> RespuestaInterpretacion:
     peticion_del_cliente = pet
     pet = con_verdad_del_servidor(pet)
 
+    # 0.7) Cortacircuitos. Va ANTES de la recuperación a propósito: si el modelo está saturado,
+    # embeber la consulta y pasar el reranker por hasta `rag_candidatos` filas es trabajo de
+    # segundos de CPU para una petición que ya se sabe que no va a poder llamar al modelo.
+    breaker = cortacircuitos_ia()
+    if not breaker.permitir():
+        restantes = breaker.segundos_restantes()
+        raise ErrorModelo(
+            "El modelo está saturado (cuota de GPU agotada). Inténtalo de nuevo en unos minutos, "
+            "o configura la ruta local de Ollama.",
+            reintentable=False,
+            saturado=True,
+            espera_s=restantes,
+        )
+
     # 1) Recuperación RAG basada en los patrones/hallazgos del paciente (degrada a []).
     # Con `rag_multiconsulta`, una consulta por patrón fusionadas con RRF en vez de una sola
     # cadena concatenada; OFF por defecto hasta que un juez LLM confirme la mejora (ver
@@ -355,8 +370,14 @@ async def interpretar(pet: PeticionInterpretacion) -> RespuestaInterpretacion:
                 )
             log.warning("Interpretación fallida (intento %d): %s", intento + 1, exc)
 
+    # Alimentar el cortacircuitos: SÓLO la saturación cuenta. Una salida malformada o un 500
+    # puntual son problemas de esta petición —para eso está el reintento correctivo— y contarlos
+    # aquí convertiría un modelo con un mal día en una caída completa de la funcionalidad.
     if resultado is None:
+        if ultimo_error is not None and ultimo_error.saturado:
+            breaker.registrar_saturacion()
         raise ultimo_error or ErrorModelo("Fallo desconocido de interpretación.")
+    breaker.registrar_exito()
 
     # 4) Atribución: las fuentes salen de la recuperación, no del modelo, y las citas que no
     # se resuelven contra un fragmento real se descartan. Es lo que da citas verificables
