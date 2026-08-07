@@ -16,10 +16,12 @@ from pydantic import BaseModel, EmailStr, Field
 
 from ..config import TENANT_POR_DEFECTO, obtener_config
 from ..db import (
+    actualizar_password_hash,
     buscar_usuario,
     crear_usuario,
     intentos_recientes,
     limpiar_intentos,
+    necesita_rehash,
     registrar_intento,
     revocar_sesion,
     revocar_todas_las_sesiones,
@@ -107,6 +109,13 @@ async def login(request: Request, body: LoginBody, response: Response) -> dict:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Email o contraseña incorrectos.")
 
     await asyncio.to_thread(limpiar_intentos, body.email)
+    # Migración oportunista del hash. Éste es el ÚNICO momento en que el servidor tiene la
+    # contraseña en claro, así que es el único en que se puede volver a derivar con los
+    # parámetros vigentes: de un hash no se sale. Cuesta un scrypt extra, una sola vez por
+    # cuenta, y sin esto subir el coste dejaría a los usuarios antiguos en el viejo para siempre.
+    if necesita_rehash(usuario["password"]):
+        await asyncio.to_thread(actualizar_password_hash, body.email, body.password)
+
     csrf = _emitir_sesion(
         response, usuario["email"], usuario["nombre"], usuario["tenant"] or TENANT_POR_DEFECTO
     )
