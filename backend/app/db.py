@@ -3,7 +3,9 @@
 Diferencias de seguridad frente a la versión PHP:
 - La BD SQLite vive en instance/ FUERA del directorio servido (no es descargable).
 - Esquema versionado con `PRAGMA user_version` (ver `_MIGRACIONES`).
-- Hash de contraseña con scrypt (stdlib), sal aleatoria por usuario.
+- Hash de contraseña con scrypt (stdlib), sal aleatoria por usuario y parámetros de coste
+  guardados JUNTO al hash, de modo que subirlos no invalide las contraseñas existentes: cada
+  una se verifica con los suyos y se migra en su siguiente login correcto.
 """
 
 from __future__ import annotations
@@ -132,28 +134,101 @@ def _conexion() -> Iterator[sqlite3.Connection]:
 
 # --- Hash de contraseñas (scrypt, stdlib) ---
 #
-# Los parámetros viven en un solo sitio porque el hash SEÑUELO de abajo tiene que ser idéntico
-# al real: si divergen, la defensa contra la enumeración por tiempo deja de funcionar sin que
-# nada falle.
+# Formato almacenado: `scrypt$n$r$p$sal$hash`, AUTODESCRIPTIVO.
+#
+# Antes era `scrypt$sal$hash` y los parámetros de coste vivían sólo en el código, con dos
+# consecuencias: subir el coste habría invalidado en bloque todas las contraseñas existentes
+# (el mismo `verificar_password` que las comprueba habría empezado a derivar con otra n), y ni
+# siquiera se podía DETECTAR cuáles estaban al coste viejo. Guardar n/r/p junto al hash es lo
+# que hace posible verificar cada uno con los suyos y migrarlos de a uno.
+#
+# `dklen` no se guarda: se deduce de la longitud del hash almacenado, que es exactamente lo que
+# mide. Un número menos que pueda desincronizarse.
+#
+# Los parámetros vigentes viven en un solo sitio también porque el hash SEÑUELO de abajo tiene
+# que costar lo mismo que uno real: si divergen, la defensa contra la enumeración por tiempo
+# deja de funcionar sin que nada falle.
 _SCRYPT = {"n": 2**14, "r": 8, "p": 1, "dklen": 32}
+
+# Parámetros IMPLÍCITOS de los hashes en formato antiguo. No son "los de antes" en el sentido de
+# una constante que se actualiza: son los que se aplicaron de hecho a esas contraseñas, así que
+# esta línea no se toca nunca aunque `_SCRYPT` suba.
+_SCRYPT_HEREDADO = {"n": 2**14, "r": 8, "p": 1, "dklen": 32}
+
+# Nota para cuando se suba `_SCRYPT`: mientras dure la migración, verificar un hash sin migrar
+# costará MENOS que el señuelo de `simular_verificacion_password`, que se deriva con los
+# parámetros vigentes. Durante esa ventana el reloj no distingue «existe» de «no existe» —para
+# eso está el señuelo— pero sí «existe y aún no ha entrado desde la subida». Es una fuga menor y
+# temporal; si algún día importa, la respuesta es derivar el señuelo con `_SCRYPT_HEREDADO`
+# hasta que no queden hashes antiguos, no bajar el coste real.
+
+# Techo de cordura al leer n de la BD. `hashlib.scrypt` reserva del orden de 128·n·r bytes, así
+# que un valor absurdo en una fila corrupta o manipulada convierte un login en un agotamiento de
+# memoria. El rango cubre de sobra cualquier coste razonable.
+_N_MAXIMA = 2**20
 
 
 def hash_password(password: str) -> str:
     sal = secrets.token_bytes(16)
     dk = hashlib.scrypt(password.encode(), salt=sal, **_SCRYPT)
-    return f"scrypt${sal.hex()}${dk.hex()}"
+    return f"scrypt${_SCRYPT['n']}${_SCRYPT['r']}${_SCRYPT['p']}${sal.hex()}${dk.hex()}"
+
+
+def _parsear_hash(almacenado: str) -> tuple[dict, bytes, str, bool] | None:
+    """(parámetros, sal, hash, es_formato_antiguo), o None si no se entiende."""
+    try:
+        partes = almacenado.split("$")
+        if partes[0] != "scrypt":
+            return None
+        if len(partes) == 3:
+            _, sal_hex, hash_hex = partes
+            parametros = dict(_SCRYPT_HEREDADO)
+            antiguo = True
+        elif len(partes) == 6:
+            _, n, r, p, sal_hex, hash_hex = partes
+            parametros = {
+                "n": int(n), "r": int(r), "p": int(p), "dklen": len(hash_hex) // 2,
+            }
+            if not 0 < parametros["n"] <= _N_MAXIMA:
+                return None
+            antiguo = False
+        else:
+            return None
+        return parametros, bytes.fromhex(sal_hex), hash_hex, antiguo
+    except (ValueError, AttributeError, IndexError):
+        return None
 
 
 def verificar_password(password: str, almacenado: str) -> bool:
-    try:
-        algo, sal_hex, hash_hex = almacenado.split("$")
-        if algo != "scrypt":
-            return False
-        sal = bytes.fromhex(sal_hex)
-        dk = hashlib.scrypt(password.encode(), salt=sal, **_SCRYPT)
-        return hmac.compare_digest(dk.hex(), hash_hex)
-    except (ValueError, AttributeError):
+    parseado = _parsear_hash(almacenado)
+    if parseado is None:
         return False
+    parametros, sal, hash_hex, _ = parseado
+    try:
+        # Con los parámetros DEL HASH, no con los vigentes: es lo que permite que una contraseña
+        # guardada al coste viejo siga entrando después de subirlo.
+        dk = hashlib.scrypt(password.encode(), salt=sal, **parametros)
+    except ValueError:
+        return False
+    return hmac.compare_digest(dk.hex(), hash_hex)
+
+
+def necesita_rehash(almacenado: str) -> bool:
+    """¿Este hash está al día? Se comprueba tras un login CORRECTO, que es el único momento en
+    que existe la contraseña en claro para volver a derivarla.
+
+    Devuelve True también para el formato antiguo aunque su coste coincida hoy con el vigente:
+    interesa que el parque converja al formato autodescriptivo ANTES de que alguien suba la n, y
+    no a la vez. Si no, la primera subida de coste tendría que lidiar con las dos cosas.
+
+    Un hash ilegible devuelve False: no se puede arreglar re-derivando algo que no se entiende, y
+    de todas formas `verificar_password` nunca lo dará por bueno.
+    """
+    parseado = _parsear_hash(almacenado)
+    if parseado is None:
+        return False
+    parametros, _, _, antiguo = parseado
+    return antiguo or parametros != _SCRYPT
 
 
 @lru_cache(maxsize=1)
@@ -192,6 +267,19 @@ def buscar_usuario(email: str) -> sqlite3.Row | None:
             (email,),
         )
         return cur.fetchone()
+
+
+def actualizar_password_hash(email: str, password: str) -> None:
+    """Vuelve a derivar el hash con los parámetros VIGENTES y lo guarda.
+
+    Sólo se llama tras un login correcto: es el único instante en que el servidor tiene la
+    contraseña en claro. Cualquier otro momento (una tarea de fondo, un script de migración) sólo
+    tiene el hash, y de un hash no se sale.
+    """
+    with _conexion() as con:
+        con.execute(
+            "UPDATE usuarios SET password = ? WHERE email = ?", (hash_password(password), email)
+        )
 
 
 def crear_usuario(nombre: str, apellido: str, email: str, password: str, tenant: str) -> None:
