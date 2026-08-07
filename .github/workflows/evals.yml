@@ -19,6 +19,10 @@ on:
       - "data/**"
   push:
     branches: [main]
+  # Disparo manual: además de para relanzar tras un fallo de infraestructura, esta puerta va
+  # filtrada por rutas, así que a veces interesa correrla a mano sobre un cambio que el filtro
+  # no coge. Ver la nota en ci.yml.
+  workflow_dispatch:
 
 jobs:
   motor-regresion:
