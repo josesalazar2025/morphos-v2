@@ -13,6 +13,7 @@ import re
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from ..ai.base import ErrorModelo
+from ..ai.cortacircuitos import reservar_plaza
 from ..ai.service import interpretar
 from ..config import obtener_config
 from ..schemas import PeticionInterpretacion, RespuestaInterpretacion
@@ -70,7 +71,11 @@ async def post_interpret(
 ) -> RespuestaInterpretacion:
     _validar_imagenes(pet.imagenes)
     try:
-        return await interpretar(pet)
+        # El aforo se toma AQUÍ y no dentro del servicio: es descarga de carga de la superficie
+        # web, y las evals —que llaman a `interpretar` directamente y en serie— no tienen por qué
+        # someterse a un límite pensado para peticiones concurrentes de navegador.
+        with reservar_plaza():
+            return await interpretar(pet)
     except ErrorModelo as exc:
         if exc.saturado:
             # 503 + Retry-After y no 502: al cliente le sirve saber que es transitorio y cuándo

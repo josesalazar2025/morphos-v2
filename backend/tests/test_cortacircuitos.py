@@ -19,6 +19,7 @@ import pytest
 
 from app.ai.base import ErrorModelo
 from app.ai.cortacircuitos import Cortacircuitos
+from app.config import obtener_config
 
 
 class Reloj:
@@ -224,3 +225,115 @@ async def test_el_error_del_circuito_abierto_dice_cuanto_falta(monkeypatch, brea
     assert exc.value.saturado is True
     assert exc.value.reintentable is False
     assert 0 < exc.value.espera_s <= 300
+
+
+# --- Llamada LENTA: el modo de fallo que el cortacircuitos no veía --------------------------
+#
+# Era el hueco de verdad. Un timeout levantaba `ErrorModelo` con los valores por defecto
+# (`saturado=False`), así que el Space colgado no abría nada: 120 s de espera × 2 intentos por
+# petición, repetidos para cada usuario que llegara. Un cortacircuitos que sólo mira errores
+# explícitos y no llamadas lentas no está terminado.
+
+
+def test_los_timeouts_abren_con_su_propio_umbral(reloj):
+    breaker = Cortacircuitos(fallos_para_abrir=2, espera_s=300, timeouts_para_abrir=3, reloj=reloj)
+
+    breaker.registrar_timeout()
+    breaker.registrar_timeout()
+    assert breaker.permitir() is True, "un timeout suelto es más común que un 429 suelto"
+
+    breaker.registrar_timeout()
+    assert breaker.permitir() is False
+
+
+def test_los_dos_contadores_son_independientes(breaker):
+    """Sumarlos daría un número sin significado: describen problemas distintos."""
+    breaker.registrar_saturacion()
+    breaker.registrar_timeout()
+    breaker.registrar_timeout()
+
+    assert breaker.permitir() is True, "ninguna de las dos señales llegó a ser concluyente"
+
+    breaker.registrar_saturacion()
+    assert breaker.permitir() is False, "la segunda saturación sí completa SU umbral"
+
+
+def test_un_exito_borra_las_dos_cuentas(breaker):
+    breaker.registrar_saturacion()
+    breaker.registrar_timeout()
+
+    breaker.registrar_exito()
+    breaker.registrar_saturacion()
+    breaker.registrar_timeout()
+    breaker.registrar_timeout()
+
+    assert breaker.permitir() is True
+
+
+class ClienteLento(ClienteSaturado):
+    async def interpretar(self, sistema, mensaje, imagenes):
+        self.llamadas += 1
+        raise ErrorModelo("no respondió en 120 s", tiempo_agotado=True)
+
+
+async def test_el_servicio_corta_tras_tres_peticiones_colgadas(monkeypatch, breaker_limpio):
+    """El caso que motivó esto: el Space colgado dejaba de costar dinero pero seguía costando
+    240 s por petición, y nadie cortaba."""
+    cliente = ClienteLento()
+
+    for _ in range(4):
+        with pytest.raises(ErrorModelo):
+            await _interpretar_con_cliente(monkeypatch, cliente)
+
+    # 3 peticiones × 2 intentos (el timeout es reintentable) = 6; la cuarta ya no sale.
+    assert cliente.llamadas == 6
+    assert breaker_limpio.permitir() is False
+
+
+# --- Aforo (bulkhead) ------------------------------------------------------------------------
+#
+# Sin esto el cortacircuitos llega TARDE: N peticiones concurrentes agotan su timeout a la vez y
+# el circuito abre DESPUÉS de haberlas quemado todas.
+
+def test_el_aforo_rechaza_rapido_lo_que_excede(monkeypatch):
+    from app.ai import cortacircuitos as cc
+
+    monkeypatch.setattr(cc, "_en_vuelo", 0)
+    monkeypatch.setattr(obtener_config(), "ia_max_en_vuelo", 2)
+
+    with cc.reservar_plaza(), cc.reservar_plaza():
+        assert cc.en_vuelo() == 2
+        with pytest.raises(ErrorModelo) as exc:
+            with cc.reservar_plaza():
+                pass
+
+    # Transitorio y por carga: 503 con espera corta, no 502.
+    assert exc.value.saturado is True
+    assert exc.value.espera_s == 30
+    assert cc.en_vuelo() == 0, "las plazas se liberan al salir, también si hubo excepción"
+
+
+def test_la_plaza_se_libera_aunque_la_interpretacion_falle(monkeypatch):
+    """Una fuga aquí deja el aforo lleno para siempre: peor que no tenerlo."""
+    from app.ai import cortacircuitos as cc
+
+    monkeypatch.setattr(cc, "_en_vuelo", 0)
+    monkeypatch.setattr(obtener_config(), "ia_max_en_vuelo", 1)
+
+    with pytest.raises(ValueError):
+        with cc.reservar_plaza():
+            raise ValueError("algo reventó dentro")
+
+    assert cc.en_vuelo() == 0
+    with cc.reservar_plaza():
+        pass
+
+
+def test_con_aforo_cero_no_se_limita_nada(monkeypatch):
+    from app.ai import cortacircuitos as cc
+
+    monkeypatch.setattr(cc, "_en_vuelo", 0)
+    monkeypatch.setattr(obtener_config(), "ia_max_en_vuelo", 0)
+
+    with cc.reservar_plaza(), cc.reservar_plaza(), cc.reservar_plaza():
+        assert cc.en_vuelo() == 3

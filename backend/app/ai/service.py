@@ -370,12 +370,17 @@ async def interpretar(pet: PeticionInterpretacion) -> RespuestaInterpretacion:
                 )
             log.warning("Interpretación fallida (intento %d): %s", intento + 1, exc)
 
-    # Alimentar el cortacircuitos: SÓLO la saturación cuenta. Una salida malformada o un 500
-    # puntual son problemas de esta petición —para eso está el reintento correctivo— y contarlos
-    # aquí convertiría un modelo con un mal día en una caída completa de la funcionalidad.
+    # Alimentar el cortacircuitos: sólo la saturación y el tiempo agotado cuentan, cada uno con
+    # su umbral. Una salida malformada o un 500 puntual son problemas de esta petición —para eso
+    # está el reintento correctivo— y contarlos aquí convertiría un modelo con un mal día en una
+    # caída completa de la funcionalidad.
+    # Se registra una vez por PETICIÓN y no por intento: el umbral cuenta peticiones que no se
+    # pudieron servir, que es lo que describe el estado del recurso.
     if resultado is None:
         if ultimo_error is not None and ultimo_error.saturado:
             breaker.registrar_saturacion()
+        elif ultimo_error is not None and ultimo_error.tiempo_agotado:
+            breaker.registrar_timeout()
         raise ultimo_error or ErrorModelo("Fallo desconocido de interpretación.")
     breaker.registrar_exito()
 

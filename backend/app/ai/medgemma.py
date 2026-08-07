@@ -81,6 +81,7 @@ class MedGemmaClient:
                 f"medGemma no respondió en {self._timeout}s ({type(exc).__name__}). Si el modelo "
                 "acaba de cambiar, la primera petición carga pesos y tarda: sube "
                 "MORPHOS_MEDGEMMA_TIMEOUT_S o precarga el modelo.",
+                tiempo_agotado=True,
             ) from exc
         except httpx.HTTPError as exc:
             raise ErrorModelo(

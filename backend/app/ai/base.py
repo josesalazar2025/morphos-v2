@@ -32,6 +32,12 @@ class ErrorModelo(Exception):
     `espera_s` es cuánto falta para que valga la pena reintentar, cuando se sabe. Lo rellena el
     cortacircuitos, que es lo único que conoce el dato real; el resto de casos deja el valor por
     defecto del router. Sirve para no responder «vuelve en 5 minutos» cuando faltan 20 segundos.
+
+    `tiempo_agotado` marca que el modelo NO CONTESTÓ a tiempo. Es distinto de `saturado` —uno
+    dice «no queda cuota», el otro «no responde»— y por eso no se colapsan en un solo flag,
+    pero los dos alimentan el cortacircuitos, cada uno con su umbral. Sin esto, la llamada
+    LENTA era el único modo de fallo que el cortacircuitos no veía, y es justo el que más caro
+    sale: 120 s de espera × 2 intentos por petición, repetidos para cada usuario.
     """
 
     def __init__(
@@ -42,12 +48,14 @@ class ErrorModelo(Exception):
         saturado: bool = False,
         truncado: bool = False,
         espera_s: int | None = None,
+        tiempo_agotado: bool = False,
     ) -> None:
         super().__init__(mensaje)
         self.reintentable = reintentable
         self.saturado = saturado
         self.truncado = truncado
         self.espera_s = espera_s
+        self.tiempo_agotado = tiempo_agotado
 
 
 class ClienteModelo(Protocol):
