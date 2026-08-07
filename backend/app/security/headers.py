@@ -11,8 +11,17 @@ from starlette.requests import Request
 
 from ..config import obtener_config
 
-# CSP estricta: sólo mismo origen. El frontend inlinea lo mínimo; ajustar si se
-# externalizan scripts. 'unsafe-inline' se evita salvo para estilos si fuese necesario.
+# CSP estricta: sólo mismo origen, SIN 'unsafe-inline' en ninguna directiva.
+#
+# `style-src` lo tuvo hasta el 2026-08-07 «por si hiciera falta», y era el único hueco de la
+# política: con él, cualquier marcado que se colara en la página podía traer estilos, y el
+# vector clásico es la exfiltración por selectores CSS (`input[value^="a"] {background:url(…)}`).
+# No hacía falta: `index.html` no tiene ni un `style="…"` ni un `<style>`, y todo el estilo
+# dinámico del frontend se aplica por CSSOM (`el.style.height = …`, `style.setProperty`), que la
+# CSP NO restringe —sólo bloquea el atributo `style` en el marcado y los bloques `<style>`.
+# Si algún día algo necesita estilo inline, la respuesta es una clase en `css/styles.css` o un
+# hash/nonce, nunca devolver 'unsafe-inline'. `test_csp.py` lo fija.
+#
 # worker-src incluye blob: porque PDF.js crea su worker desde un blob URL
 # (URL.createObjectURL + new Worker); sin ello el parseo de PDF en cliente falla.
 _CSP = (
@@ -21,7 +30,7 @@ _CSP = (
     "script-src 'self'; "
     "worker-src 'self' blob:; "
     "child-src 'self' blob:; "
-    "style-src 'self' 'unsafe-inline'; "
+    "style-src 'self'; "
     "font-src 'self'; "
     "connect-src 'self'; "
     "frame-ancestors 'none'; "
