@@ -22,7 +22,21 @@ pinned: false
 Morphos es una aplicación web de apoyo al diagnóstico veterinario. Detecta patrones clínicos en tiempo real a partir de valores de laboratorio con un motor propio que corre entero en el navegador, y permite interpretarlos con un modelo de IA especializado en medicina (medGemma multimodal de Google DeepMind, auto-alojado) o con Claude. Incluye búsqueda de artículos científicos en PubMed relacionados con los diagnósticos diferenciales del paciente.
 
 Está orientada a caninos y felinos, con ajuste automático de rangos de referencia por especie, edad, raza y sexo.
-Ataca una necesidad real del sector veterinario que actualmente no dispone de herramientas de este tipo que sean gratuitas y de fácil uso y que permitan obtener información complementaria relevante sobre sus pacientes en muy poco tiempo y sin exponer la data sensible a los LLM.
+Ataca una necesidad real del sector veterinario, que hoy no dispone de herramientas de este tipo
+gratuitas, de uso sencillo y capaces de dar información complementaria relevante en muy poco tiempo.
+
+**Qué sale del navegador y qué no.** El esquema de la petición (`PacienteEntrada`) admite
+únicamente **especie, raza, edad y sexo**: no existe ningún campo para el nombre del animal ni
+para datos del propietario, así que no es una política sino una imposibilidad estructural. A eso
+se suman los valores de laboratorio y, si las hay, imágenes de citología o microscopía: campos de
+microscopio, sin identificadores. El PDF original **nunca se sube**: se parsea entero en el
+navegador.
+
+El único campo de texto libre es «signos clínicos». Hoy viaja tal cual —el servidor lo inspecciona
+para la guarda de alcance, pero no lo filtra—, así que es el único sitio donde alguien podría
+teclear algo identificativo. Está previsto acotarlo a vocabulario clínico (ver *Mejoras futuras*).
+
+Con la ruta auto-alojada (Ollama en la clínica) no sale nada en absoluto: ver más abajo.
 
 Funcionalidades principales:
 
@@ -69,19 +83,23 @@ Conceptos aplicados:
 
 ```text
 /frontend
-    src/analisis.ts  → motor de detección de patrones clínicos (única fuente de verdad)
+    src/analisis.ts  → motor de detección de patrones clínicos (tiempo real, en el navegador)
     src/main.ts      → orquestación general, eventos y renderizado
     src/ia.ts        → cliente tipado de /api/interpret y render de la salida estructurada
     src/ui.ts        → navegación por tabs, gestos, sincronización móvil
     src/auth.ts      → modal de autenticación y validación en tiempo real
     src/papers.ts    → búsqueda y paginación de literatura científica
     src/pdf-parser.ts→ extracción de valores desde PDF en el navegador
-    tests/           → suite de regresión del motor (Vitest)
+    src/lab-import.ts→ importación desde analizadores (cola de muestras y emparejado)
+    src/panel-vacio.ts→ estado vacío de los paneles de exámenes (escritorio)
+    src/form-inject.ts→ base común de los importadores (PDF y analizador)
+    tests/           → suite de regresión del motor y del parser de PDF (Vitest)
 
 /backend
     app/main.py      → app FastAPI, CORS, cabeceras, montaje de estáticos
     app/config.py    → configuración por variables de entorno (sin secretos por defecto)
     app/schemas.py   → esquemas Pydantic: petición y salida clínica validada
+    app/motor/       → suelo de seguridad recalculado en servidor (rangos y gravedad)
     app/ai/          → rutas de modelo (hf_space, medgemma/Ollama, claude), prompt y citas
     app/rag/         → ingesta e índice LanceDB + recuperación híbrida con reranking
     app/routers/     → interpret, auth, papers, lab
@@ -101,14 +119,19 @@ Conceptos aplicados:
 
 /data
     valores_referencia.json → rangos de referencia por especie y analito
+    ajustes_clinicos.json   → umbrales de gravedad, cortes clínicos, ajustes por edad/raza e IRIS
+                              (única fuente de verdad: la leen los DOS motores)
     alteraciones.json       → descripciones clínicas de los patrones
+    lab_mapeos/             → códigos de prueba → analito canónico, por fabricante
+    rag_alcance.json        → qué páginas del corpus entran y con qué especie
 
 /assets
     /fonts           → Inter y JetBrains Mono (carga local)
     /icons           → iconos SVG de la interfaz
     /lib/pdfjs       → librería PDF.js en local
 
-/instance            → BD de usuarios e índice RAG, FUERA de la raíz servida (gitignored)
+/instance            → índice RAG y BD de usuarios si no hay volumen persistente; FUERA de la
+                       raíz servida (gitignored)
 index.html           → SPA principal (carga el bundle de frontend/)
 Dockerfile           → imagen de despliegue (frontend + backend + índice RAG horneado)
 ```
@@ -170,8 +193,15 @@ ni al repositorio; en HF Spaces se usan los *Secrets* del Space en su lugar.
 
 ### 3. Base de datos
 
-Se crea sola al arrancar: SQLite en `instance/morphos.db`, fuera de la raiz servida. Con
-`MORPHOS_MYSQL_DSN` definido se usa MySQL/MariaDB en su lugar.
+Se crea sola al arrancar y el esquema se migra solo (`PRAGMA user_version`; ver `_MIGRACIONES`
+en `backend/app/db.py`). Es SQLite, siempre fuera de la raiz servida:
+
+* Si hay un **volumen persistente** montado en `/data`, la BD vive ahí y sobrevive a los reinicios.
+* Si no, cae a `instance/morphos.db`, que en HF Spaces es **efímero**: cada reinicio borra
+  cuentas, contraseñas e historial de intentos. Se avisa por log al arrancar.
+
+Se puede forzar la ruta con `MORPHOS_DB_PATH`. **No hay soporte de MySQL/MariaDB**: existieron
+variables `MORPHOS_MYSQL_*` que ningún código leía y se eliminaron.
 
 ### 4. Iniciar la aplicacion
 
@@ -237,14 +267,29 @@ El mismo Ollama sirve ademas de **juez gratuito** para las evals (ver `evals/REA
 
 ## Motor de deteccion de patrones
 
-`frontend/src/analisis.ts` compara cada valor ingresado contra los rangos de referencia del JSON, ajustados dinamicamente segun:
+`frontend/src/analisis.ts` compara cada valor ingresado contra los rangos de referencia del JSON,
+ajustados dinamicamente segun:
 
 * **Especie**: canino / felino
-* **Edad**: cachorro, adulto, senior, geriatrico
-* **Raza**: galgo/whippet (RBC y plaquetas), Shiba/Akita (RBC)
-* **Sexo**: felinos machos tienen mayor tolerancia a creatinina
+* **Edad**: cachorro, adulto, senior, geriatrico (p. ej. el fosforo del cachorro, sin el cual todo
+  animal en crecimiento sale hiperfosforemico)
+* **Raza**: lebreles —galgo, greyhound, whippet, saluki…— en serie roja, plaquetas, creatinina y
+  T4 (sin ese ajuste, ~90 % de los galgos sanos salen hipotiroideos); razas asiaticas (shiba,
+  akita, chow, shar pei) en **VCM**, que es microcitosis fisiologica **sin** anemia; Maine Coon y
+  Birman en felinos
+* **Sexo**: sin ajustes. El que habia —mas tolerancia a creatinina en el gato macho— se **retiro**
+  por no tener respaldo en el corpus: toleraba un 15 % mas justo en la poblacion con mas ERC
 
-La gravedad se calcula como la desviacion relativa al ancho del rango de referencia. Con los hallazgos se identifican mas de 50 patrones clinicos (anemias, hepatopatias, nefropatia, alteraciones endocrinas, electrolitos, entre otros).
+La gravedad se mide como desviacion relativa al ancho del rango, **salvo** donde esa regla no sabe
+expresar la clinica: hematocrito y plaquetas por lo bajo, y creatinina, SDMA y UP/C por lo alto,
+tienen cortes explicitos (con rango 24-45, un gato necesitaria un hematocrito negativo para llegar
+a «grave»). Con los hallazgos se identifican mas de 50 patrones clinicos (anemias, hepatopatias,
+nefropatia, alteraciones endocrinas, electrolitos, entre otros) y el estadiaje IRIS de ERC.
+
+**Las reglas clinicas son datos, no codigo.** Umbrales, cortes, limites de edad, factores por raza
+y cortes IRIS viven en `data/ajustes_clinicos.json`, con su procedencia bibliografica, y los leen
+por igual el motor del navegador y el del servidor. Un veterinario puede revisarlos y ajustarlos
+sin desarrollador ni build.
 
 El motor está congelado por una suite de regresión (`frontend/tests`, Vitest) que se ejecuta
 con `make frontend-test`. Es la red que permite tocar el resto del stack sin cambiar
@@ -276,7 +321,8 @@ validación veterinaria firmada. Detalle en `evals/README.md`.
 * Sesiones firmadas con cookie `HttpOnly` / `SameSite` / `Secure`, y CSRF de doble token
 * Contraseñas hasheadas con **scrypt** y comparación en tiempo constante
 * Consultas parametrizadas (sin interpolacion directa)
-* `/api/interpret` y `/api/papers` exigen sesión: no hay acceso anónimo al modelo
+* `/api/interpret` exige sesión: no hay acceso anónimo al modelo. `/api/papers` **no** la exige
+  a propósito (búsqueda en PubMed, ni sensible ni cara); lo acota el rate limiting
 * Rate limiting por IP **y por usuario** (la cuota de GPU es compartida entre veterinarios)
 * CORS restringido a orígenes conocidos, nunca `*`
 * Cabeceras de seguridad: CSP estricta, HSTS en producción, `nosniff`, `frame-ancestors none`
@@ -284,6 +330,18 @@ validación veterinaria firmada. Detalle en `evals/README.md`.
 * BD de usuarios e índice RAG **fuera de la raíz servida** (`instance/`), no descargables
 * Validación en servidor de las imágenes de citología (número, tipo MIME y tamaño)
 * Texto del modelo y de APIs externas insertado con escapado, sin `eval` ni `document.write`
+* **Alta de cuentas cerrada** por lista blanca de emails (`MORPHOS_REGISTRO_ALLOWLIST`): una
+  cuenta alcanza el modelo, así que el alta abierta era una autorización de gasto para cualquiera
+* **Resultados de analizador aislados por clínica**: el tenant lo pone el servidor —de la API key
+  del dispositivo al ingerir, de la cookie firmada al leer—, nunca el cuerpo de la petición. Una
+  muestra de otra clínica responde 404, no 403
+* **Sesiones revocables**: el logout invalida el token de verdad (no sólo borra la cookie) y
+  `/api/auth/logout-todas` cierra la sesión en todos los dispositivos
+* **El suelo de seguridad se recalcula en el servidor**: los hallazgos y su gravedad se derivan de
+  los valores crudos (`app/motor/gravedad.py`), así que omitir o falsear el veredicto del cliente
+  ya no relaja la derivación obligatoria. Lo que afirma el navegador sólo puede endurecerla
+* Rate limiting consciente del proxy inverso (`MORPHOS_PROXY_SALTOS_CONFIABLES`): detrás de un
+  proxy, `request.client.host` es el proxy y los límites «por IP» serían en realidad globales
 
 ---
 
@@ -293,7 +351,7 @@ validación veterinaria firmada. Detalle en `evals/README.md`.
 * CSS personalizado: variables, fuentes fluidas, grid, flexbox, media queries, temas claro/oscuro
 * JavaScript/TypeScript: ES Modules, `fetch`, `async/await`, eventos, DOM API, tipos estrictos
 * Python: FastAPI, Pydantic, `async`/`await`, gestión de dependencias con uv
-* Bases de datos: creacion de tablas, consultas con parametros, indices unicos (SQLite o MariaDB)
+* Bases de datos: creacion de tablas, consultas con parametros, indices unicos y migraciones versionadas (SQLite)
 
 ---
 
@@ -303,6 +361,8 @@ validación veterinaria firmada. Detalle en `evals/README.md`.
 * Desarrollo de extensión de navegador para captar datos del DOM de PIMS y obtener los datos de los analisis de los pacientes con intervención mínima del usuario
 * Desarrollo de mobile app dedicada
 * Integración con PIMS más utilizados en veterinaria
+* Filtrado del campo «signos clínicos» contra una lista de términos clínicos permitidos, para que
+  ni datos identificativos ni texto arbitrario lleguen al modelo
 * Rankeo de papers basado en confiabilidad y relevancia
 * Creación de Dataset específico para citologías de animales
 * Hosting del modelo en VPS serverless para finetuning y menor latencia
