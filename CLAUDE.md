@@ -58,6 +58,15 @@ User clicks "Análisis IA"
 
 - **`frontend/src/analisis.ts`** — Core engine (845 lines). Compares values against species-specific reference ranges, classifies severity (mild/moderate/severe), applies age/breed/sex adjustments, and identifies 50+ clinical patterns (anemia types, hepatic, renal, endocrine, etc.). Cubierto por 27 tests dorados en `frontend/tests/analisis.test.ts` — **es la red de regresión: no tocar sin ejecutarlos**.
 - **`frontend/src/ia.ts`** — Cliente tipado de `POST /api/interpret`; renderiza la salida estructurada (hallazgos, diferenciales con citas, banner de derivación). No construye el prompt (eso vive en el backend).
+  - **El render se construye con nodos del DOM y `textContent`, nunca concatenando HTML.** El
+    texto lo escribe un LLM alimentado con fragmentos del RAG y con los `signos_clinicos` del
+    usuario, y entra por un cast (`data as RespuestaInterpretacion`) que no valida nada. La
+    versión anterior era una plantilla con un helper `esc()`, y no bastaba: `esc()` escapaba
+    contexto de TEXTO (dejaba pasar `"` y `'`) mientras la plantilla interpolaba valores dentro
+    de ATRIBUTOS —`class="ia-prob-${probabilidad}"`, `<li value="${indice}">`— donde ni se
+    llamaba. Medido: una `probabilidad` con comilla doble materializaba un `onmouseover` real
+    sobre el `<span>`. `frontend/tests/ia.test.ts` lo fija con cargas útiles de etiqueta y de
+    ruptura de atributo; si alguien vuelve a la plantilla, falla.
 - **`frontend/src/main.ts`** — Orquestación: carga los JSON, cablea eventos del formulario, dispara el análisis, exporta PDF.
 - **`frontend/src/ui.ts`** — Tab navigation (8 panels, 4 exam sub-tabs), swipe gestures, mobile/desktop field sync, collapsible panels.
 - **`frontend/src/pdf-parser.ts`** — Client-side PDF extraction using PDF.js. 47 regex patterns to identify analytes in Spanish/English. Runs fully in the browser. También cablea el arrastrar-y-soltar sobre los paneles de exámenes.

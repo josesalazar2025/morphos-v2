@@ -71,14 +71,14 @@ export async function inicializarConfigBackend(): Promise<void> {
   [radioLocal, radioHF].forEach((r) => r?.addEventListener('change', aplicar));
 }
 
-interface Diferencial {
+export interface Diferencial {
   nombre: string;
   probabilidad: 'alta' | 'media' | 'baja';
   evidencia: string[];
   citas: string[];
 }
 
-interface InterpretacionClinica {
+export interface InterpretacionClinica {
   interpretacion: string;
   hallazgos_clave: Array<{ analito: string; direccion: string; gravedad: string; comentario: string }>;
   diferenciales: Diferencial[];
@@ -92,7 +92,7 @@ interface InterpretacionClinica {
 // Las fuentes las construye el servidor a partir de lo que la recuperación entregó de
 // verdad (no las escribe el modelo), así que se pueden mostrar en las tres rutas —incluida
 // la del HF Space, que sólo devuelve prosa con marcadores [n].
-interface Fuente {
+export interface Fuente {
   indice: number;
   libro: string;
   edicion: string;
@@ -102,7 +102,7 @@ interface Fuente {
   citada: boolean;
 }
 
-interface RespuestaInterpretacion {
+export interface RespuestaInterpretacion {
   resultado: InterpretacionClinica;
   modelo: string;
   fuentes_rag: number;
@@ -114,71 +114,119 @@ function leerCookie(nombre: string): string | null {
   return par ? decodeURIComponent(par.split('=')[1]) : null;
 }
 
-// Escapado mínimo: los datos vienen del modelo, se insertan como texto.
-function esc(texto: string): string {
-  const div = document.createElement('div');
-  div.textContent = texto;
-  return div.innerHTML;
+// --- Render sin HTML como texto -----------------------------------------------------------
+//
+// Todo lo que sale de aquí se construye con nodos del DOM y `textContent`, NUNCA concatenando
+// cadenas para `innerHTML`. El texto que se pinta lo escribe un LLM alimentado con fragmentos
+// del RAG y con los `signos_clinicos` que teclea el usuario: es entrada no confiable, aunque
+// venga de nuestro propio backend.
+//
+// Antes esto era una plantilla con un helper `esc()`. Se eliminó a propósito y no debe volver:
+// `esc()` escapaba contexto de TEXTO (dejaba pasar `"` y `'`), pero la plantilla interpolaba
+// valores también dentro de ATRIBUTOS —`class="ia-prob-${d.probabilidad}"`,
+// `<li value="${f.indice}">`— y ahí ni siquiera se llamaba. Bastaba una comilla en uno de esos
+// campos para salirse del atributo y añadir un `onerror`. El tipo TypeScript no protegía: la
+// respuesta entra por `data as RespuestaInterpretacion`, un cast sin comprobación.
+//
+// Construir nodos elimina la clase entera de fallo: `textContent` no interpreta marcado y no
+// existe contexto de atributo que romper.
+
+const PROBABILIDADES = new Set(['alta', 'media', 'baja']);
+
+function crear(tag: string, clase?: string, texto?: string): HTMLElement {
+  const el = document.createElement(tag);
+  if (clase) el.className = clase;
+  if (texto !== undefined) el.textContent = texto;
+  return el;
 }
 
-function renderizar(resp: RespuestaInterpretacion): string {
+export function renderizar(resp: RespuestaInterpretacion): DocumentFragment {
   const r = resp.resultado;
+  const frag = document.createDocumentFragment();
+
   // El rechazo por alcance lo decide el servidor antes de llamar al modelo, así que se anuncia
   // como tal en vez de dejarlo sólo en la prosa.
-  const aviso = r.fuera_de_alcance
-    ? '<div class="ia-aviso-alcance">⛔ Caso fuera del alcance de la herramienta (pacientes caninos y felinos)</div>'
-    : r.requiere_derivacion
-      ? '<div class="ia-aviso-derivacion">⚠ Requiere valoración presencial del veterinario</div>'
-      : '';
+  if (r.fuera_de_alcance) {
+    frag.append(
+      crear('div', 'ia-aviso-alcance', '⛔ Caso fuera del alcance de la herramienta (pacientes caninos y felinos)'),
+    );
+  } else if (r.requiere_derivacion) {
+    frag.append(crear('div', 'ia-aviso-derivacion', '⚠ Requiere valoración presencial del veterinario'));
+  }
 
-  const hallazgos = r.hallazgos_clave.length
-    ? `<ul class="ia-hallazgos">${r.hallazgos_clave
-        .map((h) => `<li>${esc(h.analito)}: ${esc(h.direccion)} · ${esc(h.gravedad)}${h.comentario ? ` — ${esc(h.comentario)}` : ''}</li>`)
-        .join('')}</ul>`
-    : '';
+  frag.append(crear('p', 'ia-interpretacion', r.interpretacion ?? ''));
 
-  const diferenciales = r.diferenciales.length
-    ? `<ol class="ia-diferenciales">${r.diferenciales
-        .map(
-          (d) => `<li>
-            <span class="ia-dif-nombre">${esc(d.nombre)}</span>
-            <span class="ia-dif-prob ia-prob-${d.probabilidad}">${d.probabilidad}</span>
-            ${d.evidencia.length ? `<div class="ia-dif-evidencia">${esc(d.evidencia.join('; '))}</div>` : ''}
-            ${d.citas.length ? `<div class="ia-dif-citas">${d.citas.map((c) => `<cite>${esc(c)}</cite>`).join(' ')}</div>` : ''}
-          </li>`,
-        )
-        .join('')}</ol>`
-    : '';
+  if (r.hallazgos_clave?.length) {
+    const ul = crear('ul', 'ia-hallazgos');
+    for (const h of r.hallazgos_clave) {
+      const base = `${h.analito}: ${h.direccion} · ${h.gravedad}`;
+      ul.append(crear('li', undefined, h.comentario ? `${base} — ${h.comentario}` : base));
+    }
+    frag.append(ul);
+  }
 
-  const pruebas = r.siguientes_pruebas.length
-    ? `<div class="ia-pruebas"><strong>Siguientes pruebas:</strong> ${esc(r.siguientes_pruebas.join(', '))}</div>`
-    : '';
+  if (r.diferenciales?.length) {
+    frag.append(crear('h4', undefined, 'Diagnósticos diferenciales'));
+    const ol = crear('ol', 'ia-diferenciales');
+    for (const d of r.diferenciales) {
+      const li = crear('li');
+      li.append(crear('span', 'ia-dif-nombre', d.nombre));
+      // Lista blanca: la probabilidad viaja a un NOMBRE DE CLASE, así que un valor arbitrario
+      // sería el único hueco que queda para inyectar en un atributo. El esquema del servidor la
+      // restringe a estas tres, pero aquí llega tras un cast sin validar.
+      const prob = PROBABILIDADES.has(d.probabilidad) ? d.probabilidad : 'baja';
+      li.append(crear('span', `ia-dif-prob ia-prob-${prob}`, d.probabilidad));
+      if (d.evidencia?.length) li.append(crear('div', 'ia-dif-evidencia', d.evidencia.join('; ')));
+      if (d.citas?.length) {
+        const divCitas = crear('div', 'ia-dif-citas');
+        d.citas.forEach((c, i) => {
+          if (i > 0) divCitas.append(' ');
+          divCitas.append(crear('cite', undefined, c));
+        });
+        li.append(divCitas);
+      }
+      ol.append(li);
+    }
+    frag.append(ol);
+  }
+
+  if (r.siguientes_pruebas?.length) {
+    const div = crear('div', 'ia-pruebas');
+    div.append(crear('strong', undefined, 'Siguientes pruebas:'), ` ${r.siguientes_pruebas.join(', ')}`);
+    frag.append(div);
+  }
 
   // Se listan todas las fuentes recuperadas y se distingue cuáles sostienen la respuesta:
   // en la ruta de prosa, los marcadores [n] del texto apuntan a esta numeración.
   const listaFuentes = resp.fuentes ?? [];
-  const citadas = listaFuentes.filter((f) => f.citada).length;
-  const fuentes = listaFuentes.length
-    ? `<details class="ia-fuentes"><summary>Literatura consultada (${citadas} de ${listaFuentes.length} citadas)</summary>
-        <ol class="ia-fuentes-lista">${listaFuentes
-          .map(
-            (f) =>
-              `<li value="${f.indice}" class="${f.citada ? 'ia-fuente-citada' : 'ia-fuente-no-citada'}">
-                <cite>${esc(f.cita)}</cite>${f.capitulo ? ` — ${esc(f.capitulo)}` : ''}
-              </li>`,
-          )
-          .join('')}</ol></details>`
-    : '';
+  if (listaFuentes.length) {
+    const citadas = listaFuentes.filter((f) => f.citada).length;
+    const details = crear('details', 'ia-fuentes');
+    details.append(
+      crear('summary', undefined, `Literatura consultada (${citadas} de ${listaFuentes.length} citadas)`),
+    );
+    const ol = crear('ol', 'ia-fuentes-lista') as HTMLOListElement;
+    for (const f of listaFuentes) {
+      const li = crear('li', f.citada ? 'ia-fuente-citada' : 'ia-fuente-no-citada') as HTMLLIElement;
+      // `value` es una propiedad numérica del DOM: asignarla no pasa por el parseo de atributos.
+      if (Number.isInteger(f.indice)) li.value = f.indice;
+      li.append(crear('cite', undefined, f.cita));
+      if (f.capitulo) li.append(` — ${f.capitulo}`);
+      ol.append(li);
+    }
+    details.append(ol);
+    frag.append(details);
+  }
 
-  const meta = `<div class="ia-meta">Modelo: ${esc(resp.modelo)} · Fragmentos recuperados: ${resp.fuentes_rag} · Confianza: ${r.confianza}</div>`;
+  frag.append(
+    crear(
+      'div',
+      'ia-meta',
+      `Modelo: ${resp.modelo} · Fragmentos recuperados: ${resp.fuentes_rag} · Confianza: ${r.confianza}`,
+    ),
+  );
 
-  return `${aviso}
-    <p class="ia-interpretacion">${esc(r.interpretacion)}</p>
-    ${hallazgos}
-    ${diferenciales ? `<h4>Diagnósticos diferenciales</h4>${diferenciales}` : ''}
-    ${pruebas}
-    ${fuentes}
-    ${meta}`;
+  return frag;
 }
 
 export async function llamarIA(
@@ -241,7 +289,8 @@ export async function llamarIA(
     if (!res.ok) {
       salidaEl.textContent = data?.error ?? data?.detail ?? `Error HTTP ${res.status}`;
     } else {
-      salidaEl.innerHTML = renderizar(data as RespuestaInterpretacion);
+      // `replaceChildren` con un fragmento, no `innerHTML`: ver la nota sobre el render.
+      salidaEl.replaceChildren(renderizar(data as RespuestaInterpretacion));
     }
   } catch (e) {
     salidaEl.textContent = `Error de red: ${(e as Error).message}`;
