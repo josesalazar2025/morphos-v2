@@ -23,6 +23,7 @@ from ..db import (
     registrar_intento,
     revocar_sesion,
     revocar_todas_las_sesiones,
+    simular_verificacion_password,
     verificar_password,
 )
 from ..security.authz import usuario_actual
@@ -93,7 +94,14 @@ async def login(request: Request, body: LoginBody, response: Response) -> dict:
         raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Demasiados intentos. Espera unos minutos.")
 
     usuario = await asyncio.to_thread(buscar_usuario, body.email)
-    if not usuario or not await asyncio.to_thread(verificar_password, body.password, usuario["password"]):
+    # Las dos ramas cuestan lo mismo. Antes, un email inexistente saltaba scrypt entero y
+    # respondía en sub-milisegundo frente a las decenas de ms de uno existente: el mensaje de
+    # error era genérico, pero el reloj revelaba qué cuentas hay (ver `simular_verificacion_password`).
+    if usuario:
+        correcta = await asyncio.to_thread(verificar_password, body.password, usuario["password"])
+    else:
+        correcta = await asyncio.to_thread(simular_verificacion_password, body.password)
+    if not correcta:
         await asyncio.to_thread(registrar_intento, body.email, ip)
         # Mensaje genérico: no revela si el email existe.
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Email o contraseña incorrectos.")
