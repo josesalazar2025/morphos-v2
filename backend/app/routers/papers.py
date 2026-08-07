@@ -1,7 +1,11 @@
 """GET /api/papers — búsqueda en PubMed con caché en disco.
 
 Porta la lógica de papers_proxy.php (esearch + esummary + caché 30 min) pero ahora
-protegida con sesión y rate limiting.
+protegida con rate limiting.
+
+La caché guarda también los FALLOS, con un TTL mucho más corto: sin eso, una caída de NCBI
+hacía que cada petición pagara el timeout entero y volviera a salir a la red, justo cuando
+menos conviene insistir.
 """
 
 from __future__ import annotations
@@ -27,6 +31,18 @@ router = APIRouter()
 # un directorio ajeno (o un enlace simbólico plantado ahí) se habría usado tal cual.
 _DIR_CACHE = Path(tempfile.gettempdir()) / f"morphos_papers_cache_{os.getuid()}"
 _TTL_S = 1800
+# TTL de los FALLOS, mucho más corto que el de los aciertos. Sólo se cacheaban los éxitos, así
+# que con NCBI caído cada petición volvía a pagar el timeout de 15 s ENTERO y salía otra vez a
+# la red: el peor momento para insistir, y encima el User-Agent lleva el correo de contacto del
+# proyecto, así que el castigo de NCBI por machacarles recae sobre esa dirección.
+#
+# Un minuto es el compromiso: corta la ráfaga contra un servicio caído sin dejar la búsqueda
+# rota un rato largo después de que NCBI vuelva. Un TTL de fallo largo convierte una caída de
+# diez segundos en una avería de media hora, que es peor que el problema que resuelve.
+_TTL_FALLO_S = 60
+# Marca de entrada negativa. No colisiona con una respuesta real: el payload de éxito lo
+# construye este módulo y sólo tiene `total` y `data`.
+_CLAVE_FALLO = "_fallo"
 _MAX_ENTRADAS = 500
 _CABECERAS = {"User-Agent": "Morphos/1.0 (mailto:ceo@equipamed.net)", "Accept": "application/json"}
 
@@ -45,14 +61,21 @@ def _leer_cache(clave: str) -> dict | None:
     """
     archivo = _ruta(clave)
     try:
-        if (time.time() - archivo.stat().st_mtime) >= _TTL_S:
-            return None
-        return json.loads(archivo.read_text(encoding="utf-8"))
+        edad = time.time() - archivo.stat().st_mtime
+        datos = json.loads(archivo.read_text(encoding="utf-8"))
     except FileNotFoundError:
         return None
     except (OSError, json.JSONDecodeError, UnicodeDecodeError):
         archivo.unlink(missing_ok=True)  # corrupta: que no se relea eternamente
         return None
+    if not isinstance(datos, dict):
+        archivo.unlink(missing_ok=True)
+        return None
+    # El TTL depende del tipo de entrada, así que hay que leer el contenido para decidirlo. Un
+    # fallo caduca mucho antes que un acierto: ver `_TTL_FALLO_S`.
+    if edad >= (_TTL_FALLO_S if _CLAVE_FALLO in datos else _TTL_S):
+        return None
+    return datos
 
 
 def _podar_cache() -> None:
@@ -112,6 +135,15 @@ async def get_papers(
     consulta = query.strip()
     clave = f"pm:{consulta}"
     if (cacheado := _leer_cache(clave)) is not None:
+        if _CLAVE_FALLO in cacheado:
+            # NCBI falló hace poco para esta misma consulta. Se responde igual que entonces, al
+            # instante, sin pagar otra vez el timeout ni añadir una petición más a un servicio
+            # que ya está teniendo un mal rato. `Retry-After` para que el cliente lo sepa.
+            raise HTTPException(
+                status.HTTP_502_BAD_GATEWAY,
+                cacheado[_CLAVE_FALLO],
+                headers={"Retry-After": str(_TTL_FALLO_S)},
+            )
         return cacheado
 
     base = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
@@ -134,7 +166,15 @@ async def get_papers(
             )
             r2.raise_for_status()
         except httpx.HTTPError as exc:
-            raise HTTPException(status.HTTP_502_BAD_GATEWAY, "No se pudo contactar PubMed.") from exc
+            # Caché NEGATIVA. Cubre por igual timeout, error de conexión y respuesta de error de
+            # NCBI (incluido su 429): en los tres casos repetir de inmediato no puede ir mejor y
+            # sí empeora las cosas. Es la única escritura de caché que ocurre en el camino de
+            # error, y se hace ANTES de levantar el 502 para que la siguiente petición ya la vea.
+            mensaje = "No se pudo contactar PubMed."
+            _escribir_cache(clave, {_CLAVE_FALLO: mensaje})
+            raise HTTPException(
+                status.HTTP_502_BAD_GATEWAY, mensaje, headers={"Retry-After": str(_TTL_FALLO_S)}
+            ) from exc
 
     resultado = r2.json().get("result", {})
     papers = []
